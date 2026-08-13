@@ -50,7 +50,10 @@ QGIS/geojson, WBS `.mpp`) e i riferimenti testuali al nome progetto.
   - `localStorage['_qts_revalidate_fails']` — contatore fallimenti rivalidazione ruolo
 - **Auth**: JWT via header `x-session-token`; endpoint protetti da `_require_staff_session` lato backend.
 - **Dati centrali**: `Master.csv` (append-only) come sorgente di verità per pratiche/tratte.
-- **Config backend**: `GITHUB_REPO` (env var, default attuale `QTS-RDS/dashboard` — **da verificare/correggere** con il nome reale del repo GitHub, vedi §5), `MONGO_URL`, `DB_NAME`.
+- **Config backend**: `GITHUB_REPO=ENRI-RDS/QTS_DASHBOARD` (confermato,
+  impostato via env var Render — il default nel codice resta il vecchio
+  placeholder `QTS-RDS/dashboard`, non modificato in `server.py`), `MONGO_URL`,
+  `DB_NAME=qts_dashboard`.
 
 ## 4. Brand kit (obbligatorio)
 
@@ -64,40 +67,36 @@ Applicare sempre il brand kit Retelit (`brandkitretelit.md`, se presente nel rep
 
 Citare la sezione del brand kit pertinente quando informa una scelta di design.
 
-## 5. Cosa serve completare (TODO aperti da questa sessione di setup)
+## 5. Prossimi step (in ordine)
 
-Rinominato in automatico **ENRI → QTS** in tutto il codice (titoli pagina,
-namespace JS, chiavi localStorage, log console, commenti, GITHUB_REPO
-default), preservando `enrich`/`enriched` (falsi positivi). Restano da
-definire con dati reali del progetto QTS:
-
-- [x] **`GITHUB_REPO`** confermato: repo reale è `ENRI-RDS/QTS_DASHBOARD` (non
-      `QTS-RDS/dashboard`). Da impostare come env var `GITHUB_REPO` su Render
-      (il default nel codice resta sbagliato, non modificato — si sovrascrive
-      via env var). Stesso discorso per `ALLOWED_ORIGINS` (default nel codice
-      punta a `qts-rds.github.io`, va sovrascritto con l'URL Pages reale).
-- [ ] **Link GitHub Pages** in `hub.html` (es. `https://qts-rds.github.io/dashboard/...`) — va aggiornato con l'URL Pages reale una volta pubblicato sotto `ENRI-RDS`.
-- [ ] **Auth separata da ENRI**: creato nuovo Google Sheet + Apps Script
-      dedicato QTS (Code.gs custom, contratto compatibile con
-      `/api/auth/login` in server.py). APPS_SCRIPT_URL/SECRET da inserire
-      come env var Render una volta distribuito lo script come Web App.
-- [ ] **Deploy Render**: creato nuovo workspace Render "QTS" (separato da
-      ENRI per necessità di permessi granulari tra i due progetti). Web
-      Service in creazione: repo `ENRI-RDS/QTS_DASHBOARD`, root `backend`,
-      start command `uvicorn server:app --host 0.0.0.0 --port $PORT`,
-      instance Free (carico previsto ~195h/mese, entro le 750h/mese incluse).
-      Mancano ancora: MONGO_URL (nuovo DB Atlas, DB_NAME `qts_dashboard`),
-      GITHUB_TOKEN (fine-grained, permesso Contents R/W sul repo).
-- [ ] **File sorgente dati**: i riferimenti a file Excel/CSV/QGIS del progetto
-      ENRI (`Riepilogo_progettazione.csv`, `Master.csv`, `QGIS.geojson`,
-      `Progetto_QTS_GANTT_Cluster_1-2.mpp` — quest'ultimo rinominato
-      automaticamente da `Progetto_ENRI_GANTT_Cluster_1-2.mpp` in `gantt.html`,
-      ma il file `.mpp` reale è diverso per QTS) vanno sostituiti con i nomi/percorsi
-      reali dei file del progetto QTS non appena disponibili.
-- [ ] **`DEFAULT_API_BASE`** in `js/api-config.js` / `api-config.js` (placeholder
-      `https://qts-dashboard-api.onrender.com`) da aggiornare dopo il deploy Render.
-- [ ] Verificare se esiste un `brandkitretelit.md` dedicato o se va riportato dal progetto ENRI.
-- [ ] Lotti/cluster: verificare se la struttura lotti (1A/1B/2A/2B) è la stessa o cambia per QTS.
+1. [~] **Verificare esito deploy Render** dopo fix `PYTHON_VERSION=3.11.10`
+       (rev.5) — **verifica in corso**: env var inserita e salvata su Render,
+       redeploy automatico triggerato, in attesa di conferma stato "Live" nei
+       deploy logs.
+2. [ ] **Distribuire Code.gs come Web App** sul Google Sheet QTS
+       (Estensioni → Apps Script → Distribuisci → Nuova distribuzione →
+       tipo "Applicazione web") e copiare l'URL `/exec`.
+3. [ ] **Inserire su Render** `APPS_SCRIPT_URL` (URL dal punto 2) e
+       `APPS_SCRIPT_SECRET` (stesso valore scritto dentro `Code.gs`).
+4. [ ] **Testare login** da `hub.html` con un nome/codice presente nel
+       foglio Utenti QTS.
+5. [ ] **Aggiornare `DEFAULT_API_BASE`** in `js/api-config.js` e
+       `api-config.js` (root, sono duplicati) con l'URL reale del Web
+       Service Render (es. `https://qts-dashboard-xyz.onrender.com`).
+6. [ ] **Aggiornare link GitHub Pages** in `hub.html` (placeholder
+       `https://qts-rds.github.io/dashboard/...`) con l'URL Pages reale
+       una volta pubblicato il frontend.
+7. [ ] **Caricare i file dati reali** del progetto QTS (Master.csv,
+       QGIS.geojson, Riepilogo_progettazione.csv, SED_classificato.geojson)
+       via pannello admin — verificare che le colonne combacino con quanto
+       si aspetta il parser lato backend (§ struttura in `_regenerate_derived_files`).
+8. [ ] **Gantt**: `.mpp` reale di QTS ancora da fornire — `GANTT_ROWS`/
+       `GANTT_DEPS` in `gantt.html` sono ancora quelli ereditati da ENRI,
+       vanno ricostruiti da zero una volta ricevuto il file.
+9. [ ] Verificare se esiste un `brandkitretelit.md` dedicato o se va
+       riportato dal progetto ENRI.
+10. [ ] Lotti/cluster: verificare se la struttura lotti (1A/1B/2A/2B) è la
+        stessa o cambia per QTS.
 
 ## 6. Log revisioni
 
@@ -125,7 +124,11 @@ definire con dati reali del progetto QTS:
   QTS_DASHBOARD).
 - **rev.4** — Creato cluster Atlas M0 free dedicato QTS (project Atlas
   separato da ENRI, cluster `qts-cluster`, utente DB `qts_admin`, network
-  access 0.0.0.0/0). `MONGO_URL` inserito su Render. Mancano ancora:
-  `APPS_SCRIPT_URL`/`APPS_SCRIPT_SECRET` (script Code.gs creato in sessione
-  precedente ma non ancora distribuito come Web App su Google). TODO aperti:
-  vedi §5.
+  access 0.0.0.0/0). `MONGO_URL` inserito su Render.
+- **rev.5** — Fix build Render fallito: `pydantic-core` non compilava su
+  Python 3.14 (default Render, nessuna wheel precompilata per quella
+  versione). Aggiunta env var `PYTHON_VERSION=3.11.10` su Render (creato
+  anche `backend/runtime.txt` con `python-3.11.10` come alternativa
+  equivalente, da caricare su GitHub se si preferisce documentarlo nel repo
+  invece che solo in env var). TODO aperti: vedi §5 (prossimi step in
+  ordine).
