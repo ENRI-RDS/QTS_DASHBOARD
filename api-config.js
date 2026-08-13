@@ -1,0 +1,82 @@
+/**
+ * ENRI Dashboard — API config helper
+ * ----------------------------------
+ * Drop-in helper for the static HTML pages on GitHub Pages.
+ *
+ * If you set `window.ENRI_API_BASE` (or save it in localStorage as
+ * `qts_api_base`), the helper rewrites every fetch() targeting a CSV /
+ * GeoJSON / JSON file to go through your backend API instead of the
+ * static file on GitHub Pages.
+ *
+ * Usage in each HTML page (single line in <head>):
+ *   <script src="js/api-config.js"></script>
+ *
+ * Then to point all pages at the backend, run once in the browser console:
+ *   localStorage.setItem('qts_api_base', 'https://qts-dashboard-api.onrender.com')
+ *
+ * To go back to static files, clear it:
+ *   localStorage.removeItem('qts_api_base')
+ *
+ * NOTA: DEFAULT_API_BASE qui sotto è un PLACEHOLDER — va aggiornato con
+ * l'URL reale assegnato da Render dopo la creazione del Web Service
+ * (Render lo mostra in cima alla pagina del servizio, tipo
+ * https://<nome-servizio>.onrender.com).
+ */
+(function () {
+  const DEFAULT_API_BASE = 'https://qts-dashboard-api.onrender.com'; // ⚠️ AGGIORNARE dopo il deploy su Render
+
+  const API_BASE = (window.ENRI_API_BASE
+    || localStorage.getItem('qts_api_base')
+    || DEFAULT_API_BASE
+    || '').replace(/\/$/, '');
+
+  window.ENRI = {
+    apiBase: API_BASE,
+    isEnabled: !!API_BASE,
+    /** Returns the URL where the given data file should be fetched from. */
+    dataUrl(path) {
+      const clean = String(path).replace(/^\.?\//, '');
+      return API_BASE ? `${API_BASE}/api/data/${clean}` : clean;
+    },
+  };
+
+  if (!API_BASE) return; // no backend configured → behave like before
+
+  // Transparent fetch() rewrite for CSV / GeoJSON / JSON requests pointing to
+  // local files. Absolute URLs and explicit /api/ calls are left untouched.
+  const origFetch = window.fetch.bind(window);
+  const DATA_RE = /\.(csv|geojson|json)(?:\?.*)?$/i;
+
+  window.fetch = function (input, init) {
+    try {
+      let url = typeof input === 'string' ? input : (input && input.url) || '';
+      const isAbsolute = /^https?:\/\//i.test(url);
+      const isApi = url.includes('/api/');
+      if (!isAbsolute && !isApi && DATA_RE.test(url)) {
+        const rewritten = `${API_BASE}/api/data/${url.replace(/^\.?\//, '')}`;
+        if (typeof input === 'string') input = rewritten;
+        else input = new Request(rewritten, input);
+      }
+    } catch (_) { /* fall through */ }
+
+    // Inietta x-session-token su ogni chiamata diretta al nostro backend
+    // (data-file riscritti sopra + /api/... espliciti), a meno che il
+    // chiamante non l'abbia già impostato esplicitamente. Evita la classe di
+    // bug "fetch senza header token → 401 silenzioso" ricorsa più volte nello
+    // storico (v. AGENT_BRIEF rev.129/130/135/136/149).
+    try {
+      const finalUrl = typeof input === 'string' ? input : input.url;
+      if (API_BASE && finalUrl && finalUrl.startsWith(API_BASE)) {
+        const token = localStorage.getItem('_qts_session') || '';
+        const existingHeaders = (init && init.headers) || (input instanceof Request ? input.headers : undefined);
+        const headers = new Headers(existingHeaders);
+        if (token && !headers.has('x-session-token')) headers.set('x-session-token', token);
+        init = { ...(init || {}), headers };
+      }
+    } catch (_) { /* fall through */ }
+
+    return origFetch(input, init);
+  };
+
+  console.info('[ENRI] API base active →', API_BASE);
+})();

@@ -480,9 +480,9 @@ window.addEventListener('pageshow', (e) => {
   if (e.persisted) location.reload();
 });
 window.addEventListener('DOMContentLoaded', () => {
-  const u = localStorage.getItem('_enri_user');
+  const u = localStorage.getItem('_qts_user');
   if (!u) { document.getElementById('authGuard').style.display='flex'; return; }
-  const tok = localStorage.getItem('_enri_session');
+  const tok = localStorage.getItem('_qts_session');
   if (!tok) {
     document.getElementById('authGuard').style.display='flex';
     document.getElementById('authGuard').querySelector('p').textContent = 'Sessione scaduta. Effettua di nuovo il login.';
@@ -576,8 +576,8 @@ let _deepLinkApplied = false;
 
 async function _loadLottiCantieri() {
   try {
-    const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || '';
-    const token   = localStorage.getItem('_enri_session') || '';
+    const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
+    const token   = localStorage.getItem('_qts_session') || '';
     const res = await fetch(apiBase + '/api/lotti-cantieri', {
       headers: { 'x-session-token': token }
     });
@@ -642,8 +642,8 @@ async function inviaVerbale(){
   const SVG_INVIA = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
   if (btn) { btn.disabled = true; btn.innerHTML = SVG_INVIA + ' Invio in corso…'; }
   try {
-    const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || '';
-    const token   = localStorage.getItem('_enri_session') || '';
+    const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
+    const token   = localStorage.getItem('_qts_session') || '';
     if (!apiBase) throw new Error('API endpoint non configurato — torna all\'hub e riaccedi');
     if (!token) {
       showToast('✗ Sessione scaduta — riaccedi dall\'hub');
@@ -692,7 +692,7 @@ function resetVerbaleForm() {
   document.getElementById('impresa').value = '';
   document.getElementById('impresa').placeholder = 'Seleziona prima il lotto';
   document.getElementById('ruolo').value = 'Direttore Lavori';
-  const u = localStorage.getItem('_enri_user');
+  const u = localStorage.getItem('_qts_user');
   document.getElementById('redattore').value = u || '';
   document.getElementById('grav_nessuna').checked = true;
   document.getElementById('segnalazioni').value = '';
@@ -932,13 +932,13 @@ async function generatePdfForRecord(id){
 <!-- ── TRACKING ACCESSI (sopralluoghi) — usa proxy backend sicuro (no secret in chiaro) ── -->
 <script>
 (function(){
-  const _apiBase = () => (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || '';
-  const _sessionToken = () => localStorage.getItem('_enri_session') || '';
+  const _apiBase = () => (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
+  const _sessionToken = () => localStorage.getItem('_qts_session') || '';
   const LOG_BIN_ID   = '69c8fbdced015c742bc8e978';
   const ACCESSI_MAX  = 500;
 
-  const utente = localStorage.getItem('_enri_user');
-  const ruolo  = localStorage.getItem('_enri_role') || 'user';
+  const utente = localStorage.getItem('_qts_user');
+  const ruolo  = localStorage.getItem('_qts_role') || 'user';
   if (!utente) return;
 
   let _sessionStart = Date.now();
@@ -1027,8 +1027,8 @@ async function loadVerbali() {
   const list = document.getElementById('verbali-list');
   list.innerHTML = '<div style="color:#888;font-size:12px;padding:20px 0;text-align:center">Caricamento…</div>';
   try {
-    const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || '';
-    const token   = localStorage.getItem('_enri_session') || '';
+    const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
+    const token   = localStorage.getItem('_qts_session') || '';
     const res = await fetch(apiBase + '/api/sopralluoghi', {
       headers: { 'x-session-token': token }
     });
@@ -1177,7 +1177,7 @@ function _selectVerbale(id) {
 }
 
 function _renderPreview(v) {
-  const isAdmin = (localStorage.getItem('_enri_role') || '').toLowerCase() === 'admin';
+  const isAdmin = (localStorage.getItem('_qts_role') || '').toLowerCase() === 'admin';
   const campi = [
     ['Lotto', v.lotto], ['N° Cantiere', v.tratta_id],
     ['Comune / Località', [v.comune, v.localita].filter(Boolean).join(' — ')],
@@ -1217,8 +1217,8 @@ function _renderPreview(v) {
 async function deleteVerbale(id) {
   if (!confirm('Eliminare definitivamente questo verbale?')) return;
   try {
-    const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || '';
-    const token   = localStorage.getItem('_enri_session') || '';
+    const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
+    const token   = localStorage.getItem('_qts_session') || '';
     const res = await fetch(apiBase + '/api/sopralluoghi/' + id, {
       method: 'DELETE', headers: { 'x-session-token': token }
     });

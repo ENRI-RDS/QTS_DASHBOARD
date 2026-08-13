@@ -2095,7 +2095,7 @@ async function fetchWithSWR(rel, { onUpdate, isJson = true } = {}) {
 
   // Fetch Render — timeout 30s tramite Promise.race
   const renderP = Promise.race([
-    fetch(rel + qs, { headers: { 'x-session-token': localStorage.getItem('_enri_session') || '' } }).then(r => r.ok ? r.text() : Promise.reject('render-fail')),
+    fetch(rel + qs, { headers: { 'x-session-token': localStorage.getItem('_qts_session') || '' } }).then(r => r.ok ? r.text() : Promise.reject('render-fail')),
     _timeout(30000, 'Il server non risponde. Attendi qualche secondo e ricarica la pagina.')
   ]).catch(e => Promise.reject(e));
 
@@ -2131,10 +2131,10 @@ async function fetchWithSWR(rel, { onUpdate, isJson = true } = {}) {
 // intero con i lotti di tutti i concorrenti. Cache in memoria per la sessione.
 function _loadScopedGeo() {
   if (window._scopedGeoPromise) return window._scopedGeoPromise;
-  const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || '';
+  const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
   window._scopedGeoPromise = (async () => {
     const resp = await fetch(apiBase + '/api/imprese/master-sed', {
-      headers: { 'x-session-token': localStorage.getItem('_enri_session') || '' }
+      headers: { 'x-session-token': localStorage.getItem('_qts_session') || '' }
     });
     if (!resp.ok) throw new Error('Errore nel recupero dei dati mappa (HTTP ' + resp.status + ').');
     return resp.json();
@@ -2833,9 +2833,9 @@ async function _loadSEDInner() {
   // di Master.csv intero con le pratiche di tutti i concorrenti.
   if (!window._sedFromCSV) {
     try {
-      const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || '';
+      const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
       const resp = await fetch(apiBase + '/api/imprese/pratiche', {
-        headers: { 'x-session-token': localStorage.getItem('_enri_session') || '' }
+        headers: { 'x-session-token': localStorage.getItem('_qts_session') || '' }
       });
       const data = resp.ok ? await resp.json() : { pratiche: [] };
       const permMap = {}; // key: nSed|pratica|tipo → best row
@@ -3013,18 +3013,18 @@ new SedControl().addTo(map);
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ── FILTRO IMPRESA: carica i lotti assegnati all'utente loggato ────────────
-// Riusa lo stesso pattern di autenticazione di imprese.html (_enri_user in
+// Riusa lo stesso pattern di autenticazione di imprese.html (_qts_user in
 // localStorage + endpoint /api/imprese/me). Ritorna l'elenco lotti, oppure
 // lancia un errore con messaggio già pronto per essere mostrato nell'overlay.
 async function _loadMyLotti() {
-  const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || '';
-  const nome = (localStorage.getItem('_enri_user') || '').trim();
+  const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
+  const nome = (localStorage.getItem('_qts_user') || '').trim();
   if (!nome) throw new Error('Devi loggarti prima di accedere alla mappa. Torna al portale e accedi con le tue credenziali.');
   if (!apiBase) throw new Error('Endpoint API non configurato. Contatta l\'amministratore.');
   let resp;
   try {
     resp = await fetch(apiBase + '/api/imprese/me?nome=' + encodeURIComponent(nome), {
-      headers: { 'x-session-token': localStorage.getItem('_enri_session') || '' }
+      headers: { 'x-session-token': localStorage.getItem('_qts_session') || '' }
     });
   } catch(e) {
     throw new Error('Il server non risponde. Attendi qualche secondo e ricarica la pagina.');
@@ -3631,9 +3631,9 @@ window.addEventListener('load', () => {
 let PR_PRATICHE = [], PR_QUEUE = [], PR_SELECTED = null, PR_SIBLINGS = [], PR_LOTTI_RAW = [], PR_MINE = [];
 let PR_INIT_PROMISE = null;
 
-function _prApiBase(){ return (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || ''; }
+function _prApiBase(){ return (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || ''; }
 async function prApi(path, opts={}){
-  const headers = { ...(opts.headers||{}), 'x-session-token': localStorage.getItem('_enri_session')||'' };
+  const headers = { ...(opts.headers||{}), 'x-session-token': localStorage.getItem('_qts_session')||'' };
   const r = await fetch(_prApiBase() + path, { ...opts, headers });
   const text = await r.text();
   let data; try { data = text ? JSON.parse(text) : {}; } catch { data = { raw:text }; }
@@ -4633,14 +4633,14 @@ document.addEventListener('click', async e => {
 <!-- ── TRACKING ACCESSI (mappa) — usa proxy backend sicuro (no secret in chiaro) ── -->
 <script>
 (function(){
-  const _apiBase = () => (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || '';
-  const _sessionToken = () => localStorage.getItem('_enri_session') || '';
+  const _apiBase = () => (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
+  const _sessionToken = () => localStorage.getItem('_qts_session') || '';
   const LOG_BIN_ID   = '69c8fbdced015c742bc8e978';
   const ACCESSI_MAX  = 500;
   const SAVE_INTERVAL_MS = 60_000;
 
-  const utente = localStorage.getItem('_enri_user');
-  const ruolo  = localStorage.getItem('_enri_role') || 'user';
+  const utente = localStorage.getItem('_qts_user');
+  const ruolo  = localStorage.getItem('_qts_role') || 'user';
   if (!utente) return;
 
   const _sessionStart = Date.now();

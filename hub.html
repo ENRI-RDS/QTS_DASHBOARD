@@ -623,9 +623,9 @@ window.addEventListener('pageshow', (e) => {
   if (e.persisted) location.reload();
 });
 window.addEventListener('DOMContentLoaded', () => {
-  const savedUser = localStorage.getItem('_enri_user');
-  const token     = localStorage.getItem('_enri_session');
-  const apiBase   = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || '';
+  const savedUser = localStorage.getItem('_qts_user');
+  const token     = localStorage.getItem('_qts_session');
+  const apiBase   = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
 
   function showLogin() {
     _buildLoginModal();
@@ -639,20 +639,20 @@ window.addEventListener('DOMContentLoaded', () => {
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(d => {
         if (!d || !d.ok) return Promise.reject();
-        localStorage.setItem('_enri_role', d.ruolo || 'user'); // ruolo sempre dal server, non dal client
+        localStorage.setItem('_qts_role', d.ruolo || 'user'); // ruolo sempre dal server, non dal client
         _showHub(d.nome || savedUser);
       })
       .catch(() => {
-        localStorage.removeItem('_enri_user');
-        localStorage.removeItem('_enri_role');
-        localStorage.removeItem('_enri_session');
+        localStorage.removeItem('_qts_user');
+        localStorage.removeItem('_qts_role');
+        localStorage.removeItem('_qts_session');
         showLogin();
       });
   } else if (savedUser) {
     // Nome salvato ma token/apiBase assenti: niente accesso senza verifica.
-    localStorage.removeItem('_enri_user');
-    localStorage.removeItem('_enri_role');
-    localStorage.removeItem('_enri_session');
+    localStorage.removeItem('_qts_user');
+    localStorage.removeItem('_qts_role');
+    localStorage.removeItem('_qts_session');
     showLogin();
   } else {
     showLogin();
@@ -669,7 +669,7 @@ function _showHub(nome) {
   document.getElementById('topbarUser').style.display = '';
   document.getElementById('logoutBtn').style.display  = '';
 
-  const ruolo = (localStorage.getItem('_enri_role') || '').toLowerCase();
+  const ruolo = (localStorage.getItem('_qts_role') || '').toLowerCase();
   const scaviCard  = document.getElementById('scaviCard');
   const scaviBadge = document.getElementById('scaviBadge');
 
@@ -705,7 +705,7 @@ function _showHub(nome) {
     document.getElementById('hubContent').style.display = '';
   }
 
-  const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || '';
+  const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
 
   if (isImpresa && apiBase) {
     let _autoRetryCount = 0;
@@ -716,7 +716,7 @@ function _showHub(nome) {
       const timeoutId  = setTimeout(() => controller.abort(), 12000);
       fetch(apiBase + '/api/imprese/me?nome=' + encodeURIComponent(nome), {
         signal: controller.signal,
-        headers: { 'x-session-token': localStorage.getItem('_enri_session') || '' }
+        headers: { 'x-session-token': localStorage.getItem('_qts_session') || '' }
       })
         .then(r => { clearTimeout(timeoutId); return r.ok ? r.json() : Promise.reject('not-ok'); })
         .then(d => {
@@ -784,14 +784,14 @@ function _showHub(nome) {
 }
 
 function _doLogout() {
-  localStorage.removeItem('_enri_user');
-  localStorage.removeItem('_enri_role');
-  localStorage.removeItem('_enri_session');
+  localStorage.removeItem('_qts_user');
+  localStorage.removeItem('_qts_role');
+  localStorage.removeItem('_qts_session');
   location.reload();
 }
 
 function _buildLoginModal() {
-  const savedUser   = localStorage.getItem('_enri_user');
+  const savedUser   = localStorage.getItem('_qts_user');
   const isReturning = !!savedUser;
 
   const overlay = document.createElement('div');
@@ -879,7 +879,7 @@ async function _handleLogin() {
   btn.disabled = true;
 
   try {
-    const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || '';
+    const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
     if (!apiBase) throw new Error('API non configurata');
     const res = await fetch(apiBase + '/api/auth/login', {
       method: 'POST',
@@ -901,9 +901,9 @@ async function _handleLogin() {
 
     const ruolo         = (risposta.ruolo || 'user').toLowerCase();
     const nomeCanonical = risposta.nome;
-    localStorage.setItem('_enri_user', nomeCanonical);
-    localStorage.setItem('_enri_role', ruolo);
-    localStorage.setItem('_enri_session', risposta.token);
+    localStorage.setItem('_qts_user', nomeCanonical);
+    localStorage.setItem('_qts_role', ruolo);
+    localStorage.setItem('_qts_session', risposta.token);
     document.getElementById('loginOverlay').remove();
     _showHub(nomeCanonical);
 

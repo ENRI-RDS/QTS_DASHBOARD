@@ -762,7 +762,7 @@ function _parseCsvLine(line, sep) {
 
 async function _loadPermessi() {
   try {
-    const res = await fetch(RIEPILOGO_URL, { cache: 'no-cache', headers: { 'x-session-token': localStorage.getItem('_enri_session') || '' } });
+    const res = await fetch(RIEPILOGO_URL, { cache: 'no-cache', headers: { 'x-session-token': localStorage.getItem('_qts_session') || '' } });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const text = await res.text();
     console.log('[ENRI] Riepilogo_progettazione.csv caricato:', text.length, 'caratteri');
@@ -871,8 +871,8 @@ function _lottoCompare(a, b) {
 async function _loadCantieri() {
   try {
     const apiBase = (window.ENRI && window.ENRI.apiBase)
-      || localStorage.getItem('enri_api_base') || '';
-    const res = await fetch(apiBase + '/api/cantieri', { cache: 'no-cache', headers: { 'x-session-token': localStorage.getItem('_enri_session') || '' } });
+      || localStorage.getItem('qts_api_base') || '';
+    const res = await fetch(apiBase + '/api/cantieri', { cache: 'no-cache', headers: { 'x-session-token': localStorage.getItem('_qts_session') || '' } });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const d = await res.json();
     const cantieri = d.cantieri || [];
@@ -1127,7 +1127,7 @@ function _renderAll() {
 async function _loadQgisGeojsonForMappa() {
   if (QGIS_GEOJSON_CACHE) return QGIS_GEOJSON_CACHE;
   try {
-    const res = await fetch('QGIS.geojson', { cache: 'no-cache', headers: { 'x-session-token': localStorage.getItem('_enri_session') || '' } });
+    const res = await fetch('QGIS.geojson', { cache: 'no-cache', headers: { 'x-session-token': localStorage.getItem('_qts_session') || '' } });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     QGIS_GEOJSON_CACHE = await res.json();
   } catch (e) {
@@ -1298,8 +1298,8 @@ async function openModalRegistro(cantiereKey) {
   bodyEl.innerHTML = `<div style="text-align:center;color:var(--muted);padding:20px">Caricamento…</div>`;
   overlay.classList.add('open');
   try {
-    const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || '';
-    const res = await fetch(apiBase + '/api/cantieri/' + encodeURIComponent(cantiereKey) + '/log', { cache: 'no-cache', headers: { 'x-session-token': localStorage.getItem('_enri_session') || '' } });
+    const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
+    const res = await fetch(apiBase + '/api/cantieri/' + encodeURIComponent(cantiereKey) + '/log', { cache: 'no-cache', headers: { 'x-session-token': localStorage.getItem('_qts_session') || '' } });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const d = await res.json();
     const log = (d.log || []).slice().reverse(); // più recenti in alto
@@ -2432,7 +2432,7 @@ window.addEventListener('pageshow', (e) => {
   if (e.persisted) location.reload();
 });
 window.addEventListener('DOMContentLoaded', () => {
-  const u = localStorage.getItem('_enri_user');
+  const u = localStorage.getItem('_qts_user');
   if (!u) { document.getElementById('authGuard').style.display='flex'; return; }
   // Carica dati reali: permessi (CSV) + scavi (API)
   _loadAndRenderAll();
@@ -2442,13 +2442,13 @@ window.addEventListener('DOMContentLoaded', () => {
 <!-- ── TRACKING ACCESSI (scavi) — usa proxy backend sicuro (no secret in chiaro) ── -->
 <script>
 (function(){
-  const _apiBase = () => (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || '';
-  const _sessionToken = () => localStorage.getItem('_enri_session') || '';
+  const _apiBase = () => (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
+  const _sessionToken = () => localStorage.getItem('_qts_session') || '';
   const LOG_BIN_ID   = '69c8fbdced015c742bc8e978';
   const ACCESSI_MAX  = 500;
 
-  const utente = localStorage.getItem('_enri_user');
-  const ruolo  = localStorage.getItem('_enri_role') || 'user';
+  const utente = localStorage.getItem('_qts_user');
+  const ruolo  = localStorage.getItem('_qts_role') || 'user';
   if (!utente) return;
 
   let _sessionStart = Date.now();

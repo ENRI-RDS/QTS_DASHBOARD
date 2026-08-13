@@ -2415,8 +2415,8 @@ function buildPratCard(p) {
 
 // ── API BASE ──────────────────────────────────────────────────────────────────
 // Tutte le chiamate auth/log passano per il backend — nessun segreto in chiaro.
-const _apiBase = () => (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || '';
-const _sessionToken = () => localStorage.getItem('_enri_session') || '';
+const _apiBase = () => (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
+const _sessionToken = () => localStorage.getItem('_qts_session') || '';
 const _authHeaders = () => ({ 'Content-Type': 'application/json', 'x-session-token': _sessionToken() });
 
 // ── LOGIN MODAL ───────────────────────────────────────────────────────────────
@@ -2443,8 +2443,8 @@ function _showUserBadge(nome) {
     logoutBtn.onmouseout  = () => { logoutBtn.style.background='transparent'; logoutBtn.style.borderColor='#C0392B44'; };
     logoutBtn.onclick = () => {
       if (!confirm('Vuoi uscire?')) return;
-      localStorage.removeItem('_enri_user');
-      localStorage.removeItem('_enri_role');
+      localStorage.removeItem('_qts_user');
+      localStorage.removeItem('_qts_role');
       location.reload();
     };
 
@@ -2465,7 +2465,7 @@ function _buildLoginModal() {
     animation:_loginFadeIn .25s ease both;
   `;
 
-  const savedUser = localStorage.getItem('_enri_user');
+  const savedUser = localStorage.getItem('_qts_user');
   const isReturning = !!savedUser;
 
   overlay.innerHTML = `
@@ -2724,9 +2724,9 @@ async function _handleLogin() {
 
     const ruolo = (risposta.ruolo || 'user').toLowerCase();
     const nomeCanonical = risposta.nome;
-    localStorage.setItem('_enri_user', nomeCanonical);
-    localStorage.setItem('_enri_role', ruolo);
-    localStorage.setItem('_enri_session', risposta.token);
+    localStorage.setItem('_qts_user', nomeCanonical);
+    localStorage.setItem('_qts_role', ruolo);
+    localStorage.setItem('_qts_session', risposta.token);
     window._enriValidatedRole = ruolo; // ruolo validato lato server — non manipolabile da localStorage
 
     const _doRedirect = () => {
@@ -2736,7 +2736,7 @@ async function _handleLogin() {
     _doRedirect();
 
     _showUserBadge(nomeCanonical);
-    window.dispatchEvent(new Event('_enri_role_changed'));
+    window.dispatchEvent(new Event('_qts_role_changed'));
 
   } catch(e) {
     console.warn('[Login]', e.message);
@@ -2752,7 +2752,7 @@ window.addEventListener('pageshow', (e) => {
   if (e.persisted) location.reload();
 });
 document.addEventListener('DOMContentLoaded', () => {
-  const savedUser = localStorage.getItem('_enri_user');
+  const savedUser = localStorage.getItem('_qts_user');
   if (savedUser) {
     // Già loggato: forza sempre il passaggio per hub.html
     // ECCEZIONE: se si arriva da hub con ?direct=1, mostra direttamente la pagina
@@ -2766,7 +2766,7 @@ document.addEventListener('DOMContentLoaded', () => {
       window.location.href = 'hub.html';
       return;
     }
-    // NON dispatchiamo _enri_role_changed qui: _enriValidatedRole non è ancora impostato
+    // NON dispatchiamo _qts_role_changed qui: _enriValidatedRole non è ancora impostato
     // e causerebbe un flicker (admin button nascosto poi riappare). Lo dispatch avviene
     // solo dopo che la validazione ha stabilito il ruolo effettivo.
 
@@ -2783,28 +2783,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const failKey = '_enri_revalidate_fails';
         const fails = parseInt(localStorage.getItem(failKey) || '0', 10) + 1;
         if (fails >= 2) {
-          localStorage.removeItem('_enri_user');
-          localStorage.removeItem('_enri_role');
+          localStorage.removeItem('_qts_user');
+          localStorage.removeItem('_qts_role');
           localStorage.removeItem(failKey);
           alert('La tua utenza non è più attiva. Contatta l\'amministratore.');
           location.reload();
         } else {
           localStorage.setItem(failKey, String(fails));
-          const cachedRole = localStorage.getItem('_enri_role') || 'user';
+          const cachedRole = localStorage.getItem('_qts_role') || 'user';
           window._enriValidatedRole = (cachedRole === 'admin') ? 'user' : cachedRole;
-          window.dispatchEvent(new Event('_enri_role_changed'));
+          window.dispatchEvent(new Event('_qts_role_changed'));
         }
         return;
       }
       localStorage.removeItem('_enri_revalidate_fails');
       const ruoloAggiornato = (risposta.ruolo || 'user').toLowerCase();
-      localStorage.setItem('_enri_role', ruoloAggiornato);
+      localStorage.setItem('_qts_role', ruoloAggiornato);
       window._enriValidatedRole = ruoloAggiornato;
-      window.dispatchEvent(new Event('_enri_role_changed'));
+      window.dispatchEvent(new Event('_qts_role_changed'));
     }).catch(() => {
-      const cachedRole = localStorage.getItem('_enri_role') || 'user';
+      const cachedRole = localStorage.getItem('_qts_role') || 'user';
       window._enriValidatedRole = (cachedRole === 'admin') ? 'user' : cachedRole;
-      window.dispatchEvent(new Event('_enri_role_changed'));
+      window.dispatchEvent(new Event('_qts_role_changed'));
     });
     // ─────────────────────────────────────────────────────────────────────
   } else {
@@ -5884,7 +5884,7 @@ _hookScadenze();
       // Pages, che dipendeva dal deploy Pages spesso bloccato/in coda — vedi
       // AGENT_BRIEF). Endpoint staff-autenticato, passa sempre per Render.
       const apiUrl = (window.ENRI && ENRI.isEnabled ? ENRI.apiBase : 'https://enri-dashboard-api.onrender.com') + '/api/staff/solleciti';
-      const token = localStorage.getItem('_enri_session') || '';
+      const token = localStorage.getItem('_qts_session') || '';
       const r = await fetch(apiUrl, { cache: 'no-cache', headers: { 'x-session-token': token } });
       if (!r.ok) return;
       const data = await r.json();

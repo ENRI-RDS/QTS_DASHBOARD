@@ -799,12 +799,12 @@ window.addEventListener('pageshow', (e) => {
 <script>
 (function() {
   // ── Config ────────────────────────────────────────────────────────────────
-  const SESSION_KEY = '_enri_session';
-  const USER_KEY    = '_enri_user';
+  const SESSION_KEY = '_qts_session';
+  const USER_KEY    = '_qts_user';
 
   function apiBase() {
     return (window.ENRI && window.ENRI.apiBase)
-      || localStorage.getItem('enri_api_base') || '';
+      || localStorage.getItem('qts_api_base') || '';
   }
   function sessionToken() {
     return localStorage.getItem(SESSION_KEY) || '';

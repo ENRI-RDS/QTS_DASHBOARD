@@ -427,9 +427,9 @@
 
   async function loadDates() {
     try {
-      const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || '';
+      const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
       if (!apiBase) return;
-      const r = await fetch(apiBase + '/api/admin/polizze-convenzioni/data-richiesta', { cache: 'no-cache', headers: { 'x-session-token': localStorage.getItem('_enri_session') || '' } });
+      const r = await fetch(apiBase + '/api/admin/polizze-convenzioni/data-richiesta', { cache: 'no-cache', headers: { 'x-session-token': localStorage.getItem('_qts_session') || '' } });
       if (r.ok) {
         const data = await r.json();
         DATE_MAP = data.date || {};
@@ -442,11 +442,11 @@
 
   async function loadData() {
     await loadDates();
-    const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || '';
+    const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
     let text = '';
     try {
       if (apiBase) {
-        const r = await fetch(apiBase + '/api/data-text/Master.csv', { cache:'no-cache', headers: { 'x-session-token': localStorage.getItem('_enri_session') || '' } });
+        const r = await fetch(apiBase + '/api/data-text/Master.csv', { cache:'no-cache', headers: { 'x-session-token': localStorage.getItem('_qts_session') || '' } });
         if (r.ok) text = await r.text();
       }
       if (!text) {
@@ -746,7 +746,7 @@
   }
 
   async function _execSave(lotto, pratica, field, val, token, btn, cell) {
-    const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || '';
+    const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
     if (!apiBase) { showToast('API base non configurata.', 'err'); return; }
     btn.disabled = true;
     try {
@@ -823,7 +823,7 @@
   }
 
   async function _execSaveDate(lotto, pratica, field, dateKey, val, token, btn, cell) {
-    const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || '';
+    const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
     if (!apiBase) { showToast('API base non configurata.', 'err'); return; }
     btn.disabled = true;
     try {
@@ -947,7 +947,7 @@
   });
 
   // Guardia login — stesso pattern di scavi.html/sopralluoghi.html
-  if (!localStorage.getItem('_enri_user')) {
+  if (!localStorage.getItem('_qts_user')) {
     document.getElementById('authGuard').style.display = 'flex';
   } else {
     loadData();

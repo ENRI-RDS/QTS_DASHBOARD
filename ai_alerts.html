@@ -990,7 +990,7 @@
 
 <script>
 (() => {
-  const _ruolo = (localStorage.getItem('_enri_role') || '').toLowerCase();
+  const _ruolo = (localStorage.getItem('_qts_role') || '').toLowerCase();
   if (_ruolo === 'dl') {
     window.location.replace('hub.html');
   }
@@ -1000,7 +1000,7 @@ window.addEventListener('pageshow', (e) => {
 });
 // Auth guard
 window.addEventListener('DOMContentLoaded', () => {
-  const u = localStorage.getItem('_enri_user');
+  const u = localStorage.getItem('_qts_user');
   if (u) document.getElementById('topbarUser').textContent = u;
 });
 

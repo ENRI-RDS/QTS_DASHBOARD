@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>ENRI — Avanzamento Progettazione</title>
 <script src="js/api-config.js"></script>
-<script>function _sessionToken(){ return localStorage.getItem('_enri_session') || ''; }</script>
+<script>function _sessionToken(){ return localStorage.getItem('_qts_session') || ''; }</script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -2685,7 +2685,7 @@ const RO_SC_TECNICA_LABEL = { trincea:'Trincea', no_dig:'No Dig', canaletta:'Can
 let RO_CANTIERI = [];
 async function _roLoadCantieri(){
   try {
-    const r = await fetch(ENRI.isEnabled ? ENRI.apiBase + '/api/cantieri' : '/api/cantieri', { headers: { 'x-session-token': localStorage.getItem('_enri_session') || '' } });
+    const r = await fetch(ENRI.isEnabled ? ENRI.apiBase + '/api/cantieri' : '/api/cantieri', { headers: { 'x-session-token': localStorage.getItem('_qts_session') || '' } });
     if (r.ok) { const d = await r.json(); RO_CANTIERI = d.cantieri || []; }
   } catch(_) {}
 }
@@ -3323,14 +3323,14 @@ window.addEventListener('load', () => {
   window.addEventListener('pageshow', (e) => {
     if (e.persisted) location.reload();
   });
-  const _apiBase = () => (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || '';
-  const _sessionToken = () => localStorage.getItem('_enri_session') || '';
+  const _apiBase = () => (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
+  const _sessionToken = () => localStorage.getItem('_qts_session') || '';
   const LOG_BIN_ID   = '69c8fbdced015c742bc8e978';
   const ACCESSI_MAX  = 500;
   const SAVE_INTERVAL_MS = 60_000;
 
-  const utente = localStorage.getItem('_enri_user');
-  const ruolo  = localStorage.getItem('_enri_role') || 'user';
+  const utente = localStorage.getItem('_qts_user');
+  const ruolo  = localStorage.getItem('_qts_role') || 'user';
   if (!utente) return;
 
   const _sessionStart = Date.now();

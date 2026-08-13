@@ -222,8 +222,8 @@ tbody tr.group-row td{background:var(--surface2);font-family:var(--font-mono);fo
 
 <script>
 (() => {
-  const _ruolo = (localStorage.getItem('_enri_role') || '').toLowerCase();
-  if (!localStorage.getItem('_enri_user') || !['admin','admin2','user'].includes(_ruolo)) {
+  const _ruolo = (localStorage.getItem('_qts_role') || '').toLowerCase();
+  if (!localStorage.getItem('_qts_user') || !['admin','admin2','user'].includes(_ruolo)) {
     window.location.replace('hub.html');
   }
 })();
@@ -291,9 +291,9 @@ function _renderMilestoneData() {
 }
 
 (function _loadMilestoneData() {
-  var apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || '';
+  var apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
   fetch(apiBase + '/api/milestone', {
-    headers: { 'x-session-token': localStorage.getItem('_enri_session') || '' }
+    headers: { 'x-session-token': localStorage.getItem('_qts_session') || '' }
   })
     .then(function(r) {
       if (r.status === 403) { window.location.replace('hub.html'); return null; }
