@@ -1,0 +1,1757 @@
+<!DOCTYPE html>
+<html lang="it" translate="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ENRI — Area Impresa</title>
+<script src="js/api-config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --retelit-blue:#043F75;--retelit-blue-75:#436A93;--retelit-blue-50:#819FB9;--retelit-blue-25:#C0CFDC;
+    --retelit-sky:#41BBD9;--retelit-teal:#1A7D99;--retelit-mist:#ADCAD6;--retelit-ice:#D3DEEA;
+    --gray-50:#F7F8FA;--gray-100:#EEF1F5;--gray-200:#DFE4EB;--gray-300:#C4CDD8;
+    --gray-400:#9AA5B4;--gray-500:#6B7685;--gray-700:#363D48;
+    --font-display:"Raleway","Calibri",system-ui,-apple-system,"Segoe UI",sans-serif;
+    --font-body:"Raleway","Calibri",system-ui,-apple-system,"Segoe UI",sans-serif;
+    --font-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    --bg:var(--gray-50);--surface:#FFFFFF;--border:var(--gray-200);--border-focus:var(--retelit-sky);
+    --text:var(--gray-700);--muted:var(--gray-500);--accent:var(--retelit-blue);--accent-light:rgba(4,63,117,.05);
+    --ok:#1E9E6A;--ok-bg:#EBFAF3;--warn:#D08A1A;--warn-bg:#FEF7E7;
+    --danger:#C0392B;--danger-bg:#FEECEB;
+    --shadow-md:0 4px 12px rgba(4,63,117,.08),0 2px 4px rgba(4,63,117,.04);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:58px;background:var(--retelit-blue);position:sticky;top:0;z-index:100}
+  .topbar-left{display:flex;align-items:center;gap:16px}
+  .topbar-divider{width:1px;height:20px;background:var(--retelit-blue-50)}
+  .topbar-title{font-size:13px;font-weight:600;letter-spacing:.04em;color:var(--retelit-ice);text-transform:uppercase}
+  .topbar-right{display:flex;align-items:center;gap:10px}
+  .topbar-user{font-size:12px;color:var(--retelit-ice);font-weight:500;background:rgba(255,255,255,.1);padding:4px 12px;border-radius:var(--radius-pill,999px);border:1px solid rgba(255,255,255,.15)}
+  .topbar-back{font-size:12px;color:var(--retelit-sky);font-weight:600;text-decoration:none;display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:var(--radius-md,8px);border:1px solid var(--retelit-sky);transition:background .15s;white-space:nowrap;background:none;font-family:inherit;cursor:pointer;appearance:none;-webkit-appearance:none}
+  .topbar-back:hover{background:rgba(65,187,217,.1)}
+  .main{max-width:1600px;margin:0 auto;padding:28px 24px;display:flex;flex-direction:column;gap:20px}
+  .hdr{border-bottom:1px solid var(--border);padding-bottom:14px}
+  .eyebrow{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.15em;color:var(--muted);margin-bottom:6px}
+  .title{font-family:var(--font-display);font-size:26px;font-weight:700;letter-spacing:-.02em}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;box-shadow:var(--shadow-md)}
+  .tabbar{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border)}
+  .tab{padding:10px 16px;font-size:13px;font-weight:600;color:var(--muted);background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;font-family:inherit}
+  .tab.active{color:var(--accent);border-color:var(--accent)}
+  .panel{display:none}.panel.active{display:block}
+  label{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;margin-top:12px;color:var(--text)}
+  label:first-of-type{margin-top:0}
+  input[type=text],input[type=date],input[type=number],select,textarea{width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:7px;background:var(--bg);font-family:inherit;font-size:13px;color:var(--text)}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--border-focus);background:var(--surface);box-shadow:0 0 0 3px rgba(65,187,217,.25)}
+  select[multiple]{padding:6px 8px;line-height:1.6;background:var(--surface);border-color:var(--border)}
+  select[multiple] option:checked{background:var(--retelit-blue);color:#fff}
+  select[multiple]:focus{border-color:var(--border-focus);box-shadow:0 0 0 3px rgba(65,187,217,.25)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 18px;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-weight:600;font-size:13px;background:var(--accent);color:#fff;transition:filter .15s}
+  .btn:hover{filter:brightness(1.08)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn-ghost{background:transparent;color:var(--text);border:1px solid var(--border)}
+  .btn-ghost:hover{background:var(--bg)}
+  .btn-xs{padding:5px 10px;font-size:11.5px;border-radius:6px}
+  .msg{margin-top:12px;padding:10px 12px;border-radius:8px;font-size:13px;font-weight:500;display:none}
+  .msg.ok{display:block;background:var(--ok-bg);color:var(--ok);border:1px solid rgba(43,138,62,.2)}
+  .msg.err{display:block;background:var(--danger-bg);color:var(--danger);border:1px solid rgba(185,28,28,.2)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;padding:9px 8px;border-bottom:2px solid var(--border);text-align:left;background:var(--surface);position:sticky;top:0}
+  th.sortable-th{cursor:pointer;user-select:none;white-space:nowrap}
+  th.sortable-th:hover{color:var(--accent)}
+  .sort-arrow{display:inline-block;width:10px;font-size:9px;color:var(--border);opacity:.7}
+  .sort-arrow.active{color:var(--accent);opacity:1}
+  td{padding:9px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
+  tr:hover td{background:rgba(0,0,0,.015);cursor:pointer}
+  tr.selected td{background:var(--accent-light)}
+  td.mono{font-family:var(--font-mono);font-size:11.5px;color:var(--gray-500)}
+  .tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:5px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.02em}
+  /* Submission detail modal */
+  .sub-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:9999;padding:24px}
+  .sub-modal{background:#fff;border-radius:16px;width:100%;max-width:620px;max-height:82vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.18)}
+  .sub-modal-head{display:flex;align-items:flex-start;justify-content:space-between;padding:20px 24px 16px;border-bottom:1px solid #f0f2f5}
+  .sub-modal-title{font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--gray-700)}
+  .sub-modal-sub{font-size:12px;color:var(--muted);margin-top:3px}
+  .sub-modal-body{overflow-y:auto;flex:1;padding:16px 24px 20px}
+  .sub-modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted);line-height:1;padding:0;margin-left:12px}
+  .sub-change{background:var(--gray-50);border-radius:10px;padding:12px 14px;margin-bottom:10px}
+  .sub-change-header{font-weight:700;font-size:12px;margin-bottom:8px;color:var(--gray-700);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .sub-field{display:flex;gap:8px;padding:4px 0;border-bottom:1px solid #eef0f3}
+  .sub-field:last-child{border-bottom:none}
+  .sub-field-key{color:var(--muted);min-width:150px;font-size:12px}
+  .sub-field-val{color:var(--gray-700);font-size:12px;font-weight:500;word-break:break-all}
+  tr[data-sub]:hover td{background:rgba(67,97,238,.04);cursor:pointer}
+  .warn-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:9999;padding:24px}
+  .warn-modal{background:#fff;border-radius:16px;width:100%;max-width:440px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+  .warn-modal-icon{width:40px;height:40px;border-radius:999px;display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+  .warn-modal-icon.danger{background:var(--danger-bg);color:var(--danger)}
+  .warn-modal-icon.warn{background:var(--warn-bg);color:var(--warn)}
+  .warn-modal-title{font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--gray-700);margin-bottom:8px}
+  .warn-modal-body{font-size:13px;color:var(--gray-700);line-height:1.5;margin-bottom:18px}
+  .sub-section-label{font-size:11px;font-weight:600;color:var(--muted);margin-bottom:8px}
+  .tag.pending{background:#FEF3C7;color:#B45309}.tag.approved{background:#EBFBEE;color:#2B8A3E}.tag.rejected{background:#FEE2E2;color:#B91C1C}
+  .stato-cell{font-weight:600}
+  .empty{text-align:center;padding:30px;color:var(--muted);font-style:italic;font-size:13px}
+  /* Spinner */
+  .spinner-wrap{display:flex;align-items:center;justify-content:center;gap:10px;padding:30px;color:var(--muted);font-size:13px}
+  .spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;display:inline-block;animation:spin .8s linear infinite;vertical-align:middle}
+  .spinner-sm{width:13px;height:13px;border-width:2px;margin-right:6px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .btn[disabled]{opacity:.6;cursor:not-allowed;filter:none}
+  .btn .spinner{border-color:rgba(255,255,255,.4);border-top-color:#fff}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:700px){.grid2{grid-template-columns:1fr}}
+  .scroll{max-height:520px;overflow:auto;border:1px solid var(--border);border-radius:8px}
+  .search{margin-bottom:12px}
+  .search input{padding-left:34px;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236C757D' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><circle cx='11' cy='11' r='7'/><path d='m21 21-4.3-4.3'/></svg>");background-repeat:no-repeat;background-position:11px center}
+  .pill-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .pill-row .pill{font-size:11px;background:var(--accent-light);color:var(--accent);padding:3px 9px;border-radius:5px;font-weight:600;letter-spacing:.02em}
+  .submit-bar{position:sticky;bottom:0;background:var(--surface);padding:14px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;margin:14px -20px -20px;border-radius:0 0 14px 14px}
+  .guard{display:none;text-align:center;padding:60px 20px}
+  .guard h2{font-family:var(--font-display);font-size:22px;margin-bottom:12px}
+  .guard p{color:var(--muted);max-width:520px;margin:0 auto 18px}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <span style="font-family:var(--font-display);font-size:14px;font-weight:700;letter-spacing:.08em;color:#fff">ENRI</span>
+    <div class="topbar-divider"></div>
+    <span class="topbar-title">Area Impresa · Pratiche</span>
+  </div>
+  <div class="topbar-right">
+    <span class="topbar-user" id="userPill">—</span>
+    <a href="imprese_scavi.html" class="topbar-back"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 3.5 3.5 14.5a2.121 2.121 0 0 0 3 3L17.5 6.5"/><path d="M3 21l3.5-3.5"/><path d="M16 3l5 5"/></svg>Scavi</a>
+    <a href="mappa_impresa_caricamento.html" class="topbar-back"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>Aggiorna Mappa</a>
+    <a href="hub.html" class="topbar-back"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>Hub</a>
+    <button type="button" class="topbar-back" onclick="_openHelp()" title="Guida">?</button>
+  </div>
+</header>
+
+<!-- Guard: not logged in or not authorized -->
+<div class="guard" id="guard">
+  <h2 id="guardTitle">Accesso non autorizzato</h2>
+  <p id="guardMsg">Per accedere a quest'area devi prima effettuare il login dal portale e la tua impresa deve essere stata abilitata dall'amministratore.</p>
+  <button id="guardRetryBtn" class="btn" onclick="_retryBoot()" style="display:none;margin-right:10px">⟳ Riprova</button>
+  <a class="btn" href="hub.html" data-testid="goto-hub" style="background:var(--gray-100);color:var(--gray-700);border:1px solid var(--border)">← Torna al login</a>
+</div>
+
+<div class="main" id="app" style="display:none">
+  <div class="hdr">
+    <div class="eyebrow">Operatività impresa</div>
+    <div class="title" id="welcomeTitle">Benvenuta impresa</div>
+    <div class="pill-row" id="lottiPills"></div>
+  </div>
+
+  <div class="card">
+    <div class="tabbar">
+      <button class="tab active" data-tab="aggiorna" data-testid="tab-update">Aggiorna pratiche</button>
+      <button class="tab" data-tab="nuova" data-testid="tab-new">Nuova pratica</button>
+      <button class="tab" data-tab="solleciti" data-testid="tab-solleciti">Solleciti</button>
+      <button class="tab" data-tab="mie" data-testid="tab-mine">Le mie submission</button>
+    </div>
+
+    <!-- AGGIORNA -->
+    <div class="panel active" id="panel-aggiorna">
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px;flex-wrap:wrap">
+        <div class="search" style="margin-bottom:0;max-width:320px;flex:1 1 220px"><input type="text" id="searchPratiche" placeholder="Cerca…" data-testid="search-pratiche"></div>
+        <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--gray-700);cursor:pointer;white-space:nowrap;margin:0">
+          <input type="checkbox" id="filterPrevisioneScaduta" data-testid="filter-previsione-scaduta" style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent);margin:0">
+          Previsione scaduta
+        </label>
+        <label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--gray-700);cursor:pointer;white-space:nowrap;margin:0">
+          <input type="checkbox" id="filterUpdateScaduto" data-testid="filter-update-scaduto" style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent);margin:0">
+          Update oltre 5gg
+        </label>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead><tr>
+            <th class="sortable-th" data-key="_codice">Pratica<span class="sort-arrow" data-key="_codice"></span></th>
+            <th class="sortable-th" data-key="TRATTA_ID">Tratte<span class="sort-arrow" data-key="TRATTA_ID"></span></th>
+            <th class="sortable-th" data-key="ENTE">Ente<span class="sort-arrow" data-key="ENTE"></span></th>
+            <th class="sortable-th" data-key="TIPO_PERMESSO">Tipo<span class="sort-arrow" data-key="TIPO_PERMESSO"></span></th>
+            <th class="sortable-th" data-key="STATO_PERMESSO">Stato<span class="sort-arrow" data-key="STATO_PERMESSO"></span></th>
+            <th class="sortable-th" data-key="DATA_RICHIESTA">Data richiesta<span class="sort-arrow" data-key="DATA_RICHIESTA"></span></th>
+            <th class="sortable-th" data-key="DATA_ULTIMA_MODIFICA">Data agg.<span class="sort-arrow" data-key="DATA_ULTIMA_MODIFICA"></span></th>
+            <th class="sortable-th" data-key="DATA_UPDATE">Update<span class="sort-arrow" data-key="DATA_UPDATE"></span></th>
+            <th class="sortable-th" data-key="DATA_PREVISTA_RILASCIO">Data previsione<span class="sort-arrow" data-key="DATA_PREVISTA_RILASCIO"></span></th>
+            <th class="sortable-th" data-key="LUNGHEZZA" style="text-align:right">Lung. (m)<span class="sort-arrow" data-key="LUNGHEZZA"></span></th>
+          </tr></thead>
+          <tbody id="pratBody"><tr><td colspan="10"><div class="spinner-wrap" data-testid="pratiche-loading"><span class="spinner" aria-hidden="true"></span><span>Caricamento pratiche…</span></div></td></tr></tbody>
+        </table>
+      </div>
+
+      <div id="editForm" style="display:none;margin-top:16px;border-top:1px dashed var(--border);padding-top:16px">
+        <div style="font-weight:700;margin-bottom:10px;font-size:14px">Aggiornamento — <span id="editRowSub" class="mono" style="color:var(--muted);font-size:12px"></span></div>
+        <div id="siblingsPanel" style="display:none;background:var(--accent-light);border:1px solid var(--retelit-blue-25);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:12.5px">
+          <div style="font-weight:700;color:var(--accent);margin-bottom:4px">Questa pratica include le seguenti tratte</div>
+          <div id="siblingsList" style="color:var(--gray-700)"></div>
+        </div>
+        <div class="grid2">
+          <div>
+            <label>Nuovo stato</label>
+            <select id="fld-stato" data-testid="fld-stato">
+              <option value="">— seleziona stato —</option>
+            </select>
+            <div id="fld-stato-hint" style="font-size:10.5px;color:var(--muted);margin-top:4px"></div>
+          </div>
+          <!-- Data richiesta: visibile solo se nuovo stato = INVIATO -->
+          <div id="wrap-data-rich" style="display:none">
+            <label>Data richiesta (gg/mm/aaaa)</label>
+            <input type="date" id="fld-data-rich" data-testid="fld-data-richiesta">
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">Obbligatoria per lo stato INVIATO</div>
+          </div>
+          <!-- Data approvazione: visibile solo se nuovo stato = OTTENUTO -->
+          <div id="wrap-data-app" style="display:none">
+            <label>Data ottenimento (gg/mm/aaaa)</label>
+            <input type="date" id="fld-data-app" data-testid="fld-data-app">
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">Obbligatoria per lo stato OTTENUTO</div>
+          </div>
+          <!-- Nulla Osta / Polizza / Convenzione: raggruppati in colonna, non sparsi nella grid -->
+          <div id="wrap-checkboxes" style="grid-column:span 2;display:flex;flex-direction:column;gap:10px;margin:2px 0 4px">
+            <div id="wrap-upd-no-nec" style="display:none">
+              <label style="display:flex;align-items:center;gap:7px;cursor:pointer">
+                <input type="checkbox" id="fld-no-nec" style="width:15px;height:15px;cursor:pointer">
+                Nulla Osta Necessario
+              </label>
+            </div>
+            <div id="wrap-polizza">
+              <label style="display:flex;align-items:center;gap:7px;cursor:pointer">
+                <input type="checkbox" id="fld-polizza" style="width:15px;height:15px;cursor:pointer">
+                Polizza necessaria
+              </label>
+            </div>
+            <div id="wrap-convenzione">
+              <label style="display:flex;align-items:center;gap:7px;cursor:pointer">
+                <input type="checkbox" id="fld-convenzione" style="width:15px;height:15px;cursor:pointer">
+                Convenzione
+              </label>
+            </div>
+          </div>
+          <div id="wrap-prev-rilascio">
+            <label>Data prevista rilascio <span id="prev-rilascio-req" style="color:var(--danger);display:none">*</span></label>
+            <input type="date" id="fld-prev-rilascio">
+            <div style="font-size:10px;color:var(--muted);margin-top:2px" id="prev-rilascio-hint">Stima della data di rilascio dell'autorizzazione. Obbligatoria dallo stato INVIATO in poi (fino a PROTOCOLLATO INTEGRAZIONE); non richiesta per OTTENUTO, NO COMPETENZA o gli stati precedenti l'invio.</div>
+          </div>
+          <!-- Tratte NO: visibile solo se Nulla Osta Necessario = SI -->
+          <div id="wrap-upd-no-tratte" style="display:none;grid-column:span 2">
+            <label>Tratte che richiedono Nulla Osta</label>
+            <select id="fld-no-tratte" multiple size="5"
+                    style="height:auto;min-height:100px;font-family:var(--font-mono);font-size:12px">
+            </select>
+            <div style="font-size:10.5px;color:var(--muted);margin-top:3px">Ctrl+click per selezione multipla · Le tratte selezionate genereranno una nuova pratica Nulla Osta</div>
+          </div>
+          <div style="grid-column:span 2">
+            <div style="display:flex;align-items:center;gap:10px">
+              <label style="margin:0">Note <span style="color:var(--danger)">*</span></label>
+              <button type="button" class="btn btn-xs" id="noteHistBtn" data-testid="note-hist-btn"
+                style="background:var(--retelit-teal);gap:5px">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                Registro note
+              </button>
+            </div>
+            <textarea id="fld-note" placeholder="Seleziona prima il nuovo stato…" data-testid="fld-note"
+              disabled style="background:var(--gray-100);color:var(--muted);cursor:not-allowed;resize:none"></textarea>
+            <div id="noteHistPanel" style="display:none;margin-top:8px;border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--gray-50);max-height:260px;overflow-y:auto">
+              <div style="font-weight:700;font-size:11.5px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.02em">Note precedenti</div>
+              <div id="noteHistList"></div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn btn-ghost" id="cancelEditBtn">Annulla</button>
+          <button class="btn" id="addToQueueBtn" data-testid="add-to-queue">Aggiungi alla coda</button>
+        </div>
+      </div>
+
+      <div id="updateQueue" style="margin-top:14px;display:none">
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px">Modifiche in coda da inviare (<span id="qCount">0</span>)</div>
+        <table>
+          <thead><tr><th>Tratta</th><th>Lunghezza</th><th>Ente</th><th>Modifiche</th><th></th></tr></thead>
+          <tbody id="queueBody"></tbody>
+        </table>
+        <div style="margin-top:12px;display:flex;justify-content:flex-end;gap:10px">
+          <button class="btn btn-ghost" id="clearQueueBtn">Svuota</button>
+          <button class="btn" id="submitUpdatesBtn" data-testid="submit-updates">Invia per approvazione</button>
+        </div>
+      </div>
+
+      <div class="msg" id="msgUpd"></div>
+    </div>
+
+    <!-- NUOVA -->
+    <div class="panel" id="panel-nuova">
+      <p style="color:var(--muted);font-size:13px;margin-bottom:14px">Compila i campi della nuova pratica. Lo stato iniziale è <b>IN REDAZIONE</b> (automatico). Dopo l'invio l'amministratore approverà l'inserimento nella dashboard.</p>
+      <form id="newForm">
+        <div class="grid2">
+          <div>
+            <label>Lotto *</label>
+            <select id="new-lotto" required data-testid="new-lotto"></select>
+          </div>
+          <div>
+            <label>Ente *</label>
+            <select id="new-ente" required data-testid="new-ente">
+              <option value="">— seleziona ente —</option>
+            </select>
+          </div>
+          <div>
+            <label>Tipo permesso *</label>
+            <select id="new-tipo" required data-testid="new-tipo">
+              <option value="">—</option>
+              <option>AUTORIZZAZIONE</option>
+              <option>NULLA OSTA</option>
+            </select>
+          </div>
+          <div>
+            <label>Numero progressivo pratica (automatico)</label>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="new-pratica-prefix" style="font-family:var(--font-mono);font-size:13px;color:var(--muted);white-space:nowrap">—/</span>
+              <input type="number" id="new-pratica" required readonly
+                     data-testid="new-pratica" style="max-width:100px;background:var(--gray-100);color:var(--muted);cursor:not-allowed">
+              <span id="new-pratica-suffix" style="font-family:var(--font-mono);font-size:13px;color:var(--muted);white-space:nowrap">/—</span>
+            </div>
+            <div style="margin-top:4px;font-size:11px;color:var(--muted)">Calcolato come ultimo progressivo del lotto selezionato + 1</div>
+            <div style="margin-top:4px;font-family:var(--font-mono);font-size:11px;color:var(--accent)" id="new-pratica-preview"></div>
+          </div>
+          <div style="grid-column:span 2">
+            <label>Tratte *</label>
+            <select id="new-tratta" multiple required size="6" data-testid="new-tratta"
+                    style="height:auto;min-height:110px;font-family:var(--font-mono);font-size:12px">
+              <option value="" disabled>— seleziona prima il lotto —</option>
+            </select>
+            <div style="font-size:10.5px;color:var(--muted);margin-top:3px">Ctrl+click per selezionare più tratte</div>
+          </div>
+          <div>
+            <label>N_SED</label>
+            <input type="text" id="new-nsed" placeholder="es. SED-127 oppure 0">
+          </div>
+          <div>
+            <label>Data prevista rilascio</label>
+            <input type="date" id="new-prev-rilascio">
+          </div>
+          <div id="wrap-no-nec" style="display:none">
+            <label>Nulla Osta Necessario</label>
+            <select id="new-no-nec"><option value=""></option><option>SI</option><option>NO</option></select>
+          </div>
+          <div style="grid-column:span 2">
+            <label>Note</label>
+            <textarea id="new-note"></textarea>
+          </div>
+        </div>
+        <div style="margin-top:14px;display:flex;justify-content:flex-end">
+          <button type="submit" class="btn" data-testid="submit-new">Invia nuova pratica</button>
+        </div>
+        <div class="msg" id="msgNew"></div>
+      </form>
+    </div>
+
+    <!-- SOLLECITI -->
+    <div class="panel" id="panel-solleciti">
+      <p style="color:var(--muted);font-size:13px;margin-bottom:14px">Registra i solleciti inviati agli enti per le pratiche in corso. La registrazione è immediata e non richiede approvazione.</p>
+
+      <!-- Form nuovo sollecito -->
+      <div class="card" style="margin-bottom:16px;padding:16px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:12px">Nuovo sollecito — seleziona la pratica</div>
+
+        <div class="search"><input type="text" id="searchSolPratiche" placeholder="Cerca per codice, ente, tipo, stato…"></div>
+        <div class="scroll" style="margin-bottom:16px">
+          <table>
+            <thead><tr>
+              <th>Pratica</th><th>Ente</th><th>Tipo</th><th>Stato</th>
+              <th>Data ultimo sollecito</th>
+              <th style="text-align:center">Tratte</th>
+            </tr></thead>
+            <tbody id="solPratBody"><tr><td colspan="6" class="empty">Caricamento pratiche…</td></tr></tbody>
+          </table>
+        </div>
+
+        <div id="solSelectedForm" style="display:none;border-top:1px dashed var(--border);padding-top:16px">
+          <div style="font-weight:700;margin-bottom:10px;font-size:13px">Sollecito per — <span id="solEditRowSub" class="mono" style="color:var(--muted);font-size:12px"></span></div>
+
+          <div class="grid2">
+            <div>
+              <label>Tipo sollecito *</label>
+              <select id="sol-tipo">
+                <option value="">—</option>
+                <option value="PEC">PEC</option>
+                <option value="MAIL">Mail</option>
+                <option value="TELEFONICO">Telefonico</option>
+              </select>
+            </div>
+            <div>
+              <label>Data sollecito *</label>
+              <input type="date" id="sol-data">
+            </div>
+            <div>
+              <label>N° sollecito (automatico)</label>
+              <input type="number" id="sol-numero" min="1" value="1" readonly
+                     style="max-width:120px;background:var(--gray-100);color:var(--muted);cursor:not-allowed">
+            </div>
+            <div style="grid-column:span 2">
+              <label>Note</label>
+              <textarea id="sol-note" placeholder="Note opzionali (es. numero protocollo, nominativo contattato…)"></textarea>
+            </div>
+          </div>
+          <div style="margin-top:12px;display:flex;justify-content:flex-end;gap:10px">
+            <button class="btn btn-ghost" id="sol-cancel">Annulla selezione</button>
+            <button class="btn" id="sol-submit">Registra sollecito</button>
+          </div>
+          <div class="msg" id="msgSol"></div>
+        </div>
+      </div>
+
+      <!-- Tabella solleciti -->
+      <div style="font-weight:700;font-size:13px;margin-bottom:8px">Storico solleciti</div>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">
+        <div class="search" style="flex:1;margin-bottom:0"><input type="text" id="searchSolleciti" placeholder="Cerca per codice, tratta, ente, stato, tipo sollecito…"></div>
+        <button class="btn btn-ghost btn-xs" id="sol-refresh">Aggiorna</button>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead><tr>
+            <th>Pratica</th><th>Tratta</th><th>Ente</th><th>Tipo</th><th>Stato</th>
+            <th>Data richiesta</th><th>Data agg.</th><th>Data ultimo sollecito</th>
+            <th style="text-align:right">Lung. (m)</th>
+            <th style="text-align:center">N°</th><th>Tipo sollecito</th><th>Data sollecito</th><th>Note sollecito</th><th></th>
+          </tr></thead>
+          <tbody id="solBody"><tr><td colspan="14" class="empty">—</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- MIE SUBMISSION -->
+    <div class="panel" id="panel-mie">
+      <p style="color:var(--muted);font-size:13px;margin-bottom:12px">Storico delle tue richieste — vedi lo stato di approvazione.</p>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Codice pratica</th><th>Quando</th><th>Tipo</th><th>Modifiche</th><th>Stato</th><th>Note revisione</th></tr></thead>
+          <tbody id="mineBody"><tr><td colspan="6" class="empty">—</td></tr></tbody>
+    </table>
+          <div style="margin-top:10px;display:flex;justify-content:flex-end">
+        <button class="btn btn-ghost btn-xs" id="refreshMineBtn">Aggiorna</button>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+window.addEventListener('pageshow', (e) => {
+  if (e.persisted) location.reload();
+});
+</script>
+<script>
+(() => {
+  // Palette stati canonica (allineata a index.html / mappa_impresa_caricamento.html)
+  const STATO_COLORS = {
+    'IN ATTESA':                  '#6B7685',
+    'IN REDAZIONE':               '#6B7685',
+    'IN FIRMA RDS':               '#D08A1A',
+    'INVIO PRELIMINARE':          '#043F75',
+    'INVIATO':                    '#41BBD9',
+    'PROTOCOLLATO':               '#41BBD9',
+    'NECESSARIA INTEGRAZIONE':    '#C0392B',
+    'IN REDAZIONE INTEGRAZIONE':  '#436A93',
+    'PROTOCOLLATO INTEGRAZIONE':  '#436A93',
+    'OTTENUTO':                   '#1E9E6A'
+  };
+  const statoColor = (s) => STATO_COLORS[(s||'').trim()] || '#6B7685';
+  const $ = (id) => document.getElementById(id);
+  const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || '';
+  const nome = (localStorage.getItem('_enri_user') || '').trim();
+  const sessionToken = (localStorage.getItem('_enri_session') || '').trim();
+
+  $('userPill').innerHTML = nome ? `<b>${escapeHtml(nome)}</b>` : '(non loggato)';
+
+  if (!nome || !sessionToken) return showGuard('Devi loggarti prima', 'Apri il portale e accedi con le tue credenziali.');
+  if (!apiBase) return showGuard('Endpoint API non configurato', 'Contatta l\'amministratore: l\'API endpoint non risulta impostato in questa pagina.');
+
+  let MY_LOTTI = [];
+  let PRATICHE = [];
+  const QUEUE = []; // [{tratta_id, ente, tipo_permesso, fields, _row}]
+  let SIBLINGS = []; // tratte della stessa pratica (ENTE+TIPO_PERMESSO+PRATICA) diverse da SELECTED
+  let SELECTED = null;
+
+  // ─── boot ───────────────────────────────────────────
+  (async () => {
+    try {
+      const me = await api(`/api/imprese/me?nome=${encodeURIComponent(nome)}`);
+      MY_LOTTI = me.lotti || [];
+      $('welcomeTitle').textContent = `Benvenuta, ${nome}`;
+      $('lottiPills').innerHTML = MY_LOTTI.length
+        ? MY_LOTTI.map(l => `<span class="pill">${escapeHtml(l)}</span>`).join('')
+        : '<span class="pill" style="background:var(--danger-bg);color:var(--danger)">nessun lotto assegnato</span>';
+      const sel = $('new-lotto');
+      sel.innerHTML = MY_LOTTI.map(l => `<option value="${escapeHtml(l)}.xlsx">${escapeHtml(l)}</option>`).join('');
+      $('app').style.display = '';
+      await loadPratiche();
+      loadMine();
+    } catch(e) {
+      if(String(e.message).includes('401')) {
+        localStorage.removeItem('_enri_session');
+        return showGuard('Sessione scaduta', 'La tua sessione non è più valida. Torna al portale e accedi di nuovo.', false);
+      }
+      if(String(e.message).includes('404')) return showGuard('Impresa non autorizzata', 'Il tuo nome non è ancora stato assegnato a un lotto dall\'amministratore.', false);
+      // Errore di rete (es. Render in avvio): mostra pannello con retry, non solo "torna al login"
+      showGuard('Server non raggiungibile', 'Il server si sta avviando (può richiedere 20-30 secondi). Attendi qualche istante e riprova.', true);
+    }
+  })();
+
+  function _retryBoot() {
+    $('guard').style.display = 'none';
+    (async () => {
+      try {
+        const me = await api(`/api/imprese/me?nome=${encodeURIComponent(nome)}`);
+        MY_LOTTI = me.lotti || [];
+        $('welcomeTitle').textContent = `Benvenuta, ${nome}`;
+        $('lottiPills').innerHTML = MY_LOTTI.length
+          ? MY_LOTTI.map(l => `<span class="pill">${escapeHtml(l)}</span>`).join('')
+          : '<span class="pill" style="background:var(--danger-bg);color:var(--danger)">nessun lotto assegnato</span>';
+        const sel = $('new-lotto');
+        sel.innerHTML = MY_LOTTI.map(l => `<option value="${escapeHtml(l)}.xlsx">${escapeHtml(l)}</option>`).join('');
+        $('app').style.display = '';
+        loadPratiche();
+        loadMine();
+      } catch(e2) {
+        if(String(e2.message).includes('401')) {
+          localStorage.removeItem('_enri_session');
+          return showGuard('Sessione scaduta', 'La tua sessione non è più valida. Torna al portale e accedi di nuovo.', false);
+        }
+        if(String(e2.message).includes('404')) return showGuard('Impresa non autorizzata', 'Il tuo nome non è ancora stato assegnato a un lotto dall\'amministratore.', false);
+        showGuard('Server non raggiungibile', 'Il server si sta avviando. Riprova tra qualche secondo.', true);
+      }
+    })();
+  }
+  window._retryBoot = _retryBoot;
+
+  function showGuard(title, msg, showRetry){
+    $('guardTitle').textContent = title;
+    $('guardMsg').textContent = msg;
+    // Bottone Riprova: visibile solo per errori di rete, non per 404/accesso negato
+    const retryBtn = document.getElementById('guardRetryBtn');
+    if (retryBtn) retryBtn.style.display = showRetry ? '' : 'none';
+    $('guard').style.display = 'block';
+    $('app').style.display = 'none';
+  }
+
+  // ─── helpers ───────────────────────────────────────
+  async function api(path, opts={}){
+    const headers = { ...(opts.headers || {}), 'x-session-token': localStorage.getItem('_enri_session') || '' };
+    const r = await fetch(apiBase + path, { ...opts, headers });
+    const text = await r.text();
+    let data; try { data = text ? JSON.parse(text) : {}; } catch { data = { raw: text }; }
+    if(!r.ok) throw new Error(data.detail || data.raw || ('HTTP ' + r.status));
+    return data;
+  }
+  function setMsg(el, txt, ok){ el.className = 'msg ' + (ok ? 'ok' : 'err'); el.textContent = txt; }
+  function escapeHtml(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  // ─── tabs ───────────────────────────────────────────
+  document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x => x.classList.remove('active'));
+    t.classList.add('active'); $('panel-' + t.dataset.tab).classList.add('active');
+    if (t.dataset.tab === 'mie') loadMine();
+    if (t.dataset.tab === 'solleciti') { loadSolleciti(); renderSolPratiche(''); }
+  }));
+
+  // ─── load pratiche ─────────────────────────────────
+  async function loadPratiche(){
+    $('pratBody').innerHTML = `<tr><td colspan="10"><div class="spinner-wrap" data-testid="pratiche-loading"><span class="spinner" aria-hidden="true"></span><span>Caricamento pratiche…</span></div></td></tr>`;
+    try {
+      const d = await api(`/api/imprese/pratiche?nome=${encodeURIComponent(nome)}`);
+      PRATICHE = (d.pratiche || []).map(p => ({...p, _codice: buildCodice(p)}));
+      renderPratiche('');
+      await _populateEntiSelect();
+      _setAutoPratica();
+    } catch(e){
+      $('pratBody').innerHTML = `<tr><td colspan="10" class="empty">Errore: ${escapeHtml(e.message)}</td></tr>`;
+    }
+  }
+  $('searchPratiche').addEventListener('input', e => renderPratiche(e.target.value));
+  $('filterPrevisioneScaduta').addEventListener('change', () => renderPratiche($('searchPratiche').value));
+  $('filterUpdateScaduto').addEventListener('change', () => renderPratiche($('searchPratiche').value));
+
+  // Popola il select degli enti con tutti i valori unici presenti in Master.csv
+  async function _populateEntiSelect() {
+    const sel = $('new-ente');
+    if (!sel || sel.tagName !== 'SELECT') return;
+    const current = sel.value;
+    let enti = [];
+    try {
+      const d = await api('/api/enti');
+      enti = d.enti || [];
+    } catch (_) {
+      // fallback: enti dalle pratiche dell'impresa
+      enti = [...new Set(
+        PRATICHE.map(p => (p.ENTE || '').trim()).filter(Boolean)
+      )].sort((a, b) => a.localeCompare(b, 'it'));
+    }
+    sel.innerHTML = '<option value="">— seleziona ente —</option>' +
+      enti.map(e => `<option value="${escapeHtml(e)}"${e === current ? ' selected' : ''}>${escapeHtml(e)}</option>`).join('') +
+      '<option value="__altro__">✏ Altro (scrivi manualmente)…</option>';
+  }
+
+  // Estrae il codice lotto da Source.Name con la stessa logica di _lotto_from_source
+  // nel backend ('Lotto 1A.xlsx' -> '1A'), per allineare i parametri di note-history.
+  function lottoFromSource(src) {
+    return String(src || '').replace(/\.xlsx?$/i, '').replace(/^Lotto\s*/i, '').trim().toUpperCase();
+  }
+
+  function _noteAuthorChip(note) {
+    if (!note) return { chip: '', txt: '' };
+    const m = /^\[(RETELIT|IMPRESA)\]\s*/.exec(note);
+    const author = m ? (m[1] === 'RETELIT' ? 'Retelit' : 'Impresa') : '';
+    const bg = m && m[1] === 'RETELIT' ? 'var(--retelit-blue)' : 'var(--retelit-teal)';
+    const txt = note.slice(m ? m[0].length : 0);
+    const chip = author ? `<span style="display:inline-block;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;margin-right:6px;background:${bg};color:#fff">${author}</span>` : '';
+    return { chip, txt };
+  }
+
+  $('noteHistBtn').addEventListener('click', async () => {
+    const panel = $('noteHistPanel');
+    if (panel.style.display !== 'none') { panel.style.display = 'none'; return; }
+    if (!SELECTED) return;
+    const list = $('noteHistList');
+    panel.style.display = '';
+    list.innerHTML = '<div style="font-size:12px;color:var(--muted)">Caricamento…</div>';
+    try {
+      const qs = new URLSearchParams({
+        ente: SELECTED.ENTE || '',
+        tipo_permesso: SELECTED.TIPO_PERMESSO || '',
+        pratica: String(SELECTED.PRATICA || ''),
+        lotto: lottoFromSource(SELECTED['Source.Name']),
+      });
+      const d = await api(`/api/imprese/pratiche/note-history?${qs.toString()}`);
+      const notes = d.notes || [];
+      if (!notes.length) {
+        list.innerHTML = '<div style="font-size:12px;color:var(--muted)">Nessuna nota precedente per questa pratica</div>';
+        return;
+      }
+      list.innerHTML = notes.map(n => {
+        const { chip, txt } = _noteAuthorChip(n.note);
+        return `<div style="border-bottom:1px solid var(--border);padding:8px 0">
+          <div style="font-size:10.5px;color:var(--muted);margin-bottom:3px">${escapeHtml(n.date || '—')}</div>
+          <div style="font-size:12.5px;line-height:1.4">${chip}${escapeHtml(txt)}</div>
+        </div>`;
+      }).join('');
+    } catch (err) {
+      list.innerHTML = `<div style="font-size:12px;color:var(--danger)">Errore: ${escapeHtml(err.message)}</div>`;
+    }
+  });
+
+  function buildCodice(p) {
+    const tipoMap = {'AUTORIZZAZIONE':'AUT','NULLA OSTA':'NO'};
+    const prefix = tipoMap[(p.TIPO_PERMESSO||'').trim()] || (p.TIPO_PERMESSO||'').trim().substring(0,3);
+    const m = String(p['Source.Name']||'').match(/Lotto\s*([\w\d]+)/i);
+    const lotto = m ? m[1] : '';
+    const prat = String(p.PRATICA||'').trim();
+    if (!prefix || !prat) return '';
+    return `${prefix}/${prat}/${lotto}`;
+  }
+
+  // Formatta una lunghezza in metri: 2 decimali, separatore migliaia/decimali italiano
+  function formatLunghezza(val) {
+    const n = parseFloat(String(val ?? '').replace(',', '.'));
+    if (!isFinite(n)) return '—';
+    return n.toLocaleString('it-IT', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  // Vero se DATA_PREVISTA_RILASCIO è nel passato rispetto a oggi
+  function _isDataPrevistaScaduta(p) {
+    const d = parseDate(p.DATA_PREVISTA_RILASCIO);
+    if (!d) return false;
+    return d < new Date().setHours(0,0,0,0);
+  }
+
+  // Vero se DATA_UPDATE è vuota o più vecchia di 5 giorni da oggi
+  function _isUpdateScaduto(p) {
+    const d = parseDate(p.DATA_UPDATE);
+    if (!d) return true; // mai aggiornata -> considerata scaduta
+    const giorni = Math.floor((new Date().setHours(0,0,0,0) - d) / 86400000);
+    return giorni > 5;
+  }
+
+  // Risolve il codice pratica (es. AUT/13/1A) per un 'change' di una submission.
+  // - type 'new': il change ha già Source.Name/TIPO_PERMESSO/PRATICA → buildCodice diretto.
+  // - type 'update': il change ha solo tratta_id/ente/tipo_permesso/original_pratica →
+  //   serve trovare la riga corrispondente in PRATICHE per recuperare il lotto (Source.Name).
+  function _codiceForChange(c, type) {
+    if (type === 'new') return buildCodice(c) || (c.PRATICA ? String(c.PRATICA) : '—');
+    const tratta = c.tratta_id || c.TRATTA_ID;
+    const ente = c.ente || c.ENTE;
+    const tipo = c.tipo_permesso || c.TIPO_PERMESSO;
+    const match = PRATICHE.find(p => p.TRATTA_ID === tratta && p.ENTE === ente && p.TIPO_PERMESSO === tipo);
+    if (match) {
+      const prat = (c.fields && c.fields.PRATICA) || c.original_pratica || match.PRATICA;
+      return buildCodice({...match, PRATICA: prat}) || tratta || '—';
+    }
+    const tipoMap = {'AUTORIZZAZIONE':'AUT','NULLA OSTA':'NO'};
+    const prefix = tipoMap[(tipo||'').trim()] || (tipo||'').trim().substring(0,3);
+    const prat = String(c.original_pratica || (c.fields && c.fields.PRATICA) || '').trim();
+    return (prefix && prat) ? `${prefix}/${prat}` : (tratta || '—');
+  }
+
+  function parseDate(s){
+    // Supports dd/mm/yyyy or yyyy-mm-dd
+    if (!s) return 0;
+    const p = s.split('/');
+    if (p.length === 3) return new Date(p[2], p[1]-1, p[0]).getTime();
+    return new Date(s).getTime() || 0;
+  }
+
+  // Conversione date YYYY-MM-DD (formato input[type=date]) → DD/MM/YYYY (formato CSV)
+  function fromInputDate(yyyymmdd) {
+    if (!yyyymmdd) return '';
+    const p = String(yyyymmdd).trim().split('-');
+    if (p.length !== 3) return '';
+    return `${p[2].padStart(2,'0')}/${p[1].padStart(2,'0')}/${p[0]}`;
+  }
+
+  const PRAT_COL_TYPES = {
+    _codice:'str', TRATTA_ID:'str', ENTE:'str', TIPO_PERMESSO:'str', STATO_PERMESSO:'str',
+    DATA_RICHIESTA:'date', DATA_ULTIMA_MODIFICA:'date', DATA_UPDATE:'date', DATA_PREVISTA_RILASCIO:'date',
+    LUNGHEZZA:'num'
+  };
+  let PRAT_SORT = { key: null, dir: 1 };
+
+  function _sortPratiche(key){
+    if (PRAT_SORT.key === key) PRAT_SORT.dir *= -1;
+    else { PRAT_SORT.key = key; PRAT_SORT.dir = 1; }
+    renderPratiche($('searchPratiche')?.value || '');
+  }
+  document.querySelectorAll('#panel-aggiorna th.sortable-th').forEach(th => {
+    th.addEventListener('click', () => _sortPratiche(th.dataset.key));
+  });
+  function _updatePratSortArrows(){
+    document.querySelectorAll('#panel-aggiorna .sort-arrow').forEach(el => {
+      const isActive = PRAT_SORT.key === el.dataset.key;
+      el.textContent = isActive ? (PRAT_SORT.dir === 1 ? '▲' : '▼') : '⇕';
+      el.classList.toggle('active', isActive);
+    });
+  }
+
+  function renderPratiche(filter){
+    const f = (filter || '').toLowerCase().trim();
+    // Per ogni TRATTA_ID tieni solo la riga con DATA_ULTIMA_MODIFICA più recente,
+    // e in parallelo l'ultima DATA_RICHIESTA non vuota vista nello storico della tratta
+    // (il pipeline dati la valorizza solo sulla riga in cui si passa a INVIATO,
+    // le righe successive della stessa tratta la lasciano vuota).
+    const latestMap = new Map();
+    const lastRichiestaMap = new Map();
+    PRATICHE.forEach(p => {
+      const key = p.TRATTA_ID + '|' + p.ENTE + '|' + p.TIPO_PERMESSO;
+      const existing = latestMap.get(key);
+      if (!existing || parseDate(p.DATA_ULTIMA_MODIFICA) >= parseDate(existing.DATA_ULTIMA_MODIFICA)) {
+        latestMap.set(key, p);
+      }
+      if ((p.DATA_RICHIESTA || '').trim()) {
+        const d = parseDate(p.DATA_ULTIMA_MODIFICA);
+        const cur = lastRichiestaMap.get(key);
+        if (!cur || d >= cur.date) lastRichiestaMap.set(key, { date: d, val: p.DATA_RICHIESTA });
+      }
+    });
+    // Escludi pratiche già ottenute o non di competenza — non hanno senso da aggiornare
+    const deduplicated = Array.from(latestMap.entries()).map(([key, p]) => {
+      if (!(p.DATA_RICHIESTA || '').trim()) {
+        const fallback = lastRichiestaMap.get(key);
+        if (fallback) return { ...p, DATA_RICHIESTA: fallback.val };
+      }
+      return p;
+    }).filter(p => {
+      const st = (p.STATO_PERMESSO || '').trim();
+      return st !== 'OTTENUTO' && st !== 'NO COMPETENZA';
+    });
+    // Raggruppa per PRATICA (stesso codice ENTE+TIPO_PERMESSO+PRATICA+lotto): l'aggiornamento
+    // si applica comunque a tutte le tratte della pratica insieme (vedi SIBLINGS più sotto),
+    // quindi in tabella mostriamo una riga per pratica e non una per singola tratta.
+    const pratMap = new Map();
+    deduplicated.forEach(p => {
+      const codice = p._codice || buildCodice(p);
+      // Tratte senza pratica associata (codice vuoto) restano singole righe
+      const key = codice || ('__t__' + p.TRATTA_ID + '|' + p.ENTE + '|' + p.TIPO_PERMESSO);
+      const len = parseFloat(String(p.LUNGHEZZA || '').replace(',', '.')) || 0;
+      const g = pratMap.get(key);
+      if (!g) {
+        pratMap.set(key, { ...p, _nTratte: 1, _lunghezzaTot: len });
+      } else {
+        const isNewer = parseDate(p.DATA_ULTIMA_MODIFICA) >= parseDate(g.DATA_ULTIMA_MODIFICA);
+        const nTratte = g._nTratte + 1;
+        const lunghezzaTot = g._lunghezzaTot + len;
+        if (isNewer) Object.assign(g, p);
+        g._nTratte = nTratte;
+        g._lunghezzaTot = lunghezzaTot;
+      }
+    });
+    const soloScadute = $('filterPrevisioneScaduta')?.checked;
+    const soloUpdateScaduto = $('filterUpdateScaduto')?.checked;
+    const rows = Array.from(pratMap.values())
+      .filter(p => !f || JSON.stringify(p).toLowerCase().includes(f))
+      .filter(p => !soloScadute || _isDataPrevistaScaduta(p))
+      .filter(p => !soloUpdateScaduto || _isUpdateScaduto(p))
+      .sort((a, b) => {
+        if (PRAT_SORT.key) {
+          const type = PRAT_COL_TYPES[PRAT_SORT.key] || 'str';
+          let av = PRAT_SORT.key === 'LUNGHEZZA' ? a._lunghezzaTot : a[PRAT_SORT.key];
+          let bv = PRAT_SORT.key === 'LUNGHEZZA' ? b._lunghezzaTot : b[PRAT_SORT.key];
+          let cmp;
+          if (type === 'date') cmp = (parseDate(av)||0) - (parseDate(bv)||0);
+          else if (type === 'num') cmp = (parseFloat(String(av).replace(',','.'))||0) - (parseFloat(String(bv).replace(',','.'))||0);
+          else cmp = String(av||'').localeCompare(String(bv||''), 'it', {numeric:true});
+          if (cmp !== 0) return cmp * PRAT_SORT.dir;
+        }
+        const ca = !!a._codice, cb = !!b._codice;
+        if (ca !== cb) return ca ? -1 : 1; // pratiche con codice prima, tratte "nude" dopo
+        if (ca && cb) return a._codice.localeCompare(b._codice, 'it', {numeric:true});
+        return String(a.TRATTA_ID||'').localeCompare(String(b.TRATTA_ID||''), 'it', {numeric:true});
+      });
+    if (!rows.length){ $('pratBody').innerHTML = '<tr><td colspan="10" class="empty">Nessuna pratica</td></tr>'; _updatePratSortArrows(); return; }
+    // Salva l'array corrente filtrato per recuperare la riga al click
+    renderPratiche._current = rows.slice(0, 500);
+    $('pratBody').innerHTML = renderPratiche._current.map((p, i) => `
+      <tr data-idx="${i}">
+        <td class="mono" style="font-weight:700;color:var(--accent);background:var(--accent-light);border-left:3px solid var(--accent)">${escapeHtml(p._codice)}</td>
+        <td class="mono">${p._nTratte > 1 ? `${p._nTratte} tratte` : escapeHtml(p.TRATTA_ID)}</td>
+        <td>${escapeHtml(p.ENTE)}</td>
+        <td>${escapeHtml(p.TIPO_PERMESSO)}</td>
+        <td class="stato-cell" style="color:${statoColor(p.STATO_PERMESSO)}">${escapeHtml(p.STATO_PERMESSO)}</td>
+        <td class="mono">${escapeHtml(p.DATA_RICHIESTA)}</td>
+        <td class="mono">${escapeHtml(p.DATA_ULTIMA_MODIFICA)}</td>
+        <td class="mono"${_isUpdateScaduto(p) ? ' style="color:var(--warn);font-weight:700"' : ''}>${escapeHtml(p.DATA_UPDATE || '—')}</td>
+        <td class="mono"${_isDataPrevistaScaduta(p) ? ' style="color:var(--danger);font-weight:700"' : ''}>${escapeHtml(p.DATA_PREVISTA_RILASCIO || '—')}</td>
+        <td style="text-align:right;background:#f0fdf4;font-family:var(--font-mono);font-size:11.5px;color:#1F7A4E;font-weight:600;border-left:2px solid #bbf7d0">${formatLunghezza(p._lunghezzaTot ?? p.LUNGHEZZA)}</td>
+      </tr>`).join('');
+    _updatePratSortArrows();
+  }
+  $('pratBody').addEventListener('click', e => {
+    const tr = e.target.closest('tr[data-idx]');
+    if (!tr) return;
+    document.querySelectorAll('#pratBody tr.selected').forEach(x => x.classList.remove('selected'));
+    tr.classList.add('selected');
+    SELECTED = (renderPratiche._current || [])[+tr.dataset.idx];
+    $('editForm').style.display = '';
+    $('editRowSub').textContent = `${SELECTED._codice || ''} · ${SELECTED.TRATTA_ID} · ${SELECTED.ENTE} · ${SELECTED.TIPO_PERMESSO}`;
+
+    // Popola select stato con le transizioni consentite
+    _populateStatoSelect(SELECTED.STATO_PERMESSO || '');
+
+    // Reset campi condizionali
+    $('fld-data-rich').value = '';
+    $('fld-data-app').value  = '';
+    $('fld-note').value = '';
+    $('fld-note').disabled = false;
+    $('fld-note').style.cssText = '';
+    $('fld-note').placeholder = 'Obbligatoria: descrivi cosa è cambiato in questo aggiornamento';
+    $('noteHistPanel').style.display = 'none';
+    $('wrap-data-rich').style.display = 'none';
+    $('wrap-data-app').style.display  = 'none';
+
+    // Nulla Osta Necessario — solo per AUTORIZZAZIONE
+    const isAut = (SELECTED.TIPO_PERMESSO || '').trim() === 'AUTORIZZAZIONE';
+    const noNecLocked = (SELECTED['NULLA OSTA NECESSARIO'] || '').trim() === 'SI';
+    $('wrap-upd-no-nec').style.display = (isAut && !noNecLocked) ? '' : 'none';
+    $('wrap-upd-no-tratte').style.display = 'none';
+    $('fld-no-nec').checked = (SELECTED['NULLA OSTA NECESSARIO'] || '').trim() === 'SI';
+    $('fld-polizza').checked = (SELECTED['POLIZZA ']?.trim() || '') === 'SI';
+    $('fld-convenzione').checked = (SELECTED['CONVENZIONE']?.trim() || '') === 'SI';
+    { // Prefill Data prevista rilascio (DD/MM/YYYY → YYYY-MM-DD per input[type=date])
+      const dpr = (SELECTED['DATA_PREVISTA_RILASCIO'] || '').trim();
+      const dm = dpr.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+      $('fld-prev-rilascio').value = dm ? `${dm[3]}-${dm[2]}-${dm[1]}` : '';
+    }
+    $('wrap-prev-rilascio').style.display = '';
+    $('prev-rilascio-req').style.display = PREV_RILASCIO_REQUIRED_STATI.includes((SELECTED.STATO_PERMESSO||'').trim()) ? '' : 'none';
+    if (isAut) {
+      const pratNum = String(SELECTED.PRATICA || '').trim();
+      const tutteTratte = pratNum ? [...new Set(PRATICHE
+        .filter(p => String(p.PRATICA||'').trim() === pratNum &&
+                     String(p.ENTE||'').trim() === String(SELECTED.ENTE||'').trim() &&
+                     String(p.TIPO_PERMESSO||'').trim() === 'AUTORIZZAZIONE')
+        .map(p => p.TRATTA_ID).filter(Boolean)
+      )].sort() : [];
+      $('fld-no-tratte').innerHTML = tutteTratte.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+    }
+
+    // Trova le altre tratte che appartengono alla stessa pratica
+    // (stesso ENTE + TIPO_PERMESSO + numero PRATICA)
+    const pratNum = String(SELECTED.PRATICA || '').trim();
+    const siblingsRaw = pratNum ? PRATICHE.filter(p =>
+      p.TRATTA_ID !== SELECTED.TRATTA_ID &&
+      String(p.ENTE||'').trim() === String(SELECTED.ENTE||'').trim() &&
+      String(p.TIPO_PERMESSO||'').trim() === String(SELECTED.TIPO_PERMESSO||'').trim() &&
+      String(p.PRATICA||'').trim() === pratNum
+    ) : [];
+    // Dedup per TRATTA_ID: tieni solo la riga con DATA_ULTIMA_MODIFICA più recente
+    const siblingsMap = new Map();
+    siblingsRaw.forEach(p => {
+      const existing = siblingsMap.get(p.TRATTA_ID);
+      if (!existing || parseDate(p.DATA_ULTIMA_MODIFICA) >= parseDate(existing.DATA_ULTIMA_MODIFICA)) {
+        siblingsMap.set(p.TRATTA_ID, p);
+      }
+    });
+    SIBLINGS = Array.from(siblingsMap.values());
+
+    const panel = $('siblingsPanel');
+    if (SIBLINGS.length) {
+      $('siblingsList').textContent = `Verranno aggiornate insieme: ${SIBLINGS.map(s => s.TRATTA_ID).join(', ')} (${SIBLINGS.length + 1} tratte totali in questa pratica)`;
+      panel.style.display = '';
+    } else {
+      panel.style.display = 'none';
+    }
+
+    $('editForm').scrollIntoView({behavior:'smooth', block:'nearest'});
+  });
+
+  $('cancelEditBtn').onclick = () => { $('editForm').style.display = 'none'; $('siblingsPanel').style.display = 'none'; SELECTED = null; SIBLINGS = []; document.querySelectorAll('#pratBody tr.selected').forEach(x => x.classList.remove('selected')); };
+
+  // Mappa delle transizioni consentite per ogni stato
+  const STATO_TRANSITIONS = {
+    'IN REDAZIONE':              ['IN FIRMA RDS', 'NO COMPETENZA'],
+    'IN FIRMA RDS':              ['INVIATO', 'NO COMPETENZA'],
+    'INVIO PRELIMINARE':         ['INVIATO', 'NO COMPETENZA'],
+    'INVIATO':                   ['PROTOCOLLATO', 'OTTENUTO', 'NECESSARIA INTEGRAZIONE', 'NO COMPETENZA'],
+    'PROTOCOLLATO':              ['NECESSARIA INTEGRAZIONE', 'OTTENUTO', 'NO COMPETENZA'],
+    'NECESSARIA INTEGRAZIONE':   ['IN REDAZIONE INTEGRAZIONE', 'NO COMPETENZA'],
+    'IN REDAZIONE INTEGRAZIONE': ['PROTOCOLLATO INTEGRAZIONE', 'NO COMPETENZA'],
+    'PROTOCOLLATO INTEGRAZIONE': ['NECESSARIA INTEGRAZIONE', 'OTTENUTO', 'NO COMPETENZA'],
+    'OTTENUTO':                  ['NO COMPETENZA'],
+    'NO COMPETENZA':             [],
+  };
+
+  // Stati dallo INVIATO in poi (incluso) per cui la Data prevista rilascio è obbligatoria
+  const PREV_RILASCIO_REQUIRED_STATI = ['INVIATO', 'PROTOCOLLATO', 'NECESSARIA INTEGRAZIONE', 'IN REDAZIONE INTEGRAZIONE', 'PROTOCOLLATO INTEGRAZIONE'];
+
+  function _populateStatoSelect(statoCorrente) {
+    const sel = $('fld-stato');
+    let allowed = STATO_TRANSITIONS[statoCorrente.trim()] || Object.keys(STATO_TRANSITIONS);
+    // INVIO PRELIMINARE selezionabile da IN FIRMA RDS solo per pratiche AUTORIZZAZIONE con ENTE Comune di Milano
+    if (statoCorrente.trim() === 'IN FIRMA RDS' &&
+        (SELECTED?.TIPO_PERMESSO||'').trim() === 'AUTORIZZAZIONE' &&
+        (SELECTED?.ENTE||'').trim() === 'COMUNE DI MILANO') {
+      allowed = ['INVIO PRELIMINARE', ...allowed];
+    }
+    sel.innerHTML = '<option value="">— seleziona stato —</option>' +
+      allowed.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+    sel.value = '';
+    $('fld-stato-hint').textContent = statoCorrente
+      ? `Stato attuale: ${statoCorrente}`
+      : '';
+  }
+
+  $('fld-no-nec').addEventListener('change', function() {
+    const show = this.checked;
+    $('wrap-upd-no-tratte').style.display = show ? '' : 'none';
+    if (!show) Array.from($('fld-no-tratte').options).forEach(o => o.selected = false);
+  });
+
+  $('fld-stato').addEventListener('change', function() {
+    const v = this.value;
+    if (!v) {
+      $('wrap-data-rich').style.display = 'none';
+      $('wrap-data-app').style.display  = 'none';
+    } else {
+      $('wrap-data-rich').style.display = (v === 'INVIATO')   ? '' : 'none';
+      $('wrap-data-app').style.display  = (v === 'OTTENUTO')  ? '' : 'none';
+      $('wrap-prev-rilascio').style.display = (v === 'OTTENUTO' || v === 'NO COMPETENZA') ? 'none' : '';
+      $('prev-rilascio-req').style.display = PREV_RILASCIO_REQUIRED_STATI.includes(v) ? '' : 'none';
+
+      // NO COMPETENZA: non richiede Nulla Osta/Polizza/Convenzione, solo note
+      const isAut = (SELECTED?.TIPO_PERMESSO || '').trim() === 'AUTORIZZAZIONE';
+      const noNecLocked = (SELECTED?.['NULLA OSTA NECESSARIO'] || '').trim() === 'SI';
+      if (v === 'NO COMPETENZA' || v === 'OTTENUTO') {
+        $('wrap-checkboxes').style.display = 'none';
+        $('wrap-upd-no-nec').style.display = 'none';
+        $('wrap-upd-no-tratte').style.display = 'none';
+        $('wrap-polizza').style.display = 'none';
+        $('wrap-convenzione').style.display = 'none';
+        $('fld-no-nec').checked = false;
+        Array.from($('fld-no-tratte').options).forEach(o => o.selected = false);
+        $('fld-polizza').checked = false;
+        $('fld-convenzione').checked = false;
+      } else {
+        $('wrap-checkboxes').style.display = '';
+        $('wrap-upd-no-nec').style.display = (isAut && !noNecLocked) ? '' : 'none';
+        $('wrap-polizza').style.display = '';
+        $('wrap-convenzione').style.display = '';
+      }
+    }
+  });
+
+  function _pushToQueue(row, fields) {
+    QUEUE.push({
+      tratta_id: row.TRATTA_ID,
+      ente: row.ENTE,
+      tipo_permesso: row.TIPO_PERMESSO,
+      original_pratica: row.PRATICA || '',
+      lunghezza: row.LUNGHEZZA || '—',
+      fields: { ...fields },
+    });
+  }
+
+  function _finalizeAdd(fields, includeSiblings) {
+    _pushToQueue(SELECTED, fields);
+    if (includeSiblings) {
+      SIBLINGS.forEach(s => _pushToQueue(s, fields));
+    }
+    renderQueue();
+    $('editForm').style.display = 'none';
+    $('siblingsPanel').style.display = 'none';
+    document.querySelectorAll('#pratBody tr.selected').forEach(x => x.classList.remove('selected'));
+    const n = includeSiblings ? (1 + SIBLINGS.length) : 1;
+    setMsg($('msgUpd'), n > 1 ? `Aggiunte ${n} tratte alla coda` : `Aggiunto alla coda (${QUEUE.length} modifiche totali)`, true);
+  }
+
+  $('addToQueueBtn').onclick = () => {
+    if (!SELECTED) return;
+    const stato = $('fld-stato').value;
+    const noteVal = $('fld-note').value.trim();
+    const prevRilascio = (stato === 'OTTENUTO' || stato === 'NO COMPETENZA') ? '' : $('fld-prev-rilascio').value;
+    const checksVisibleGuard = $('wrap-convenzione').style.display !== 'none';
+    const polizzaChanged = checksVisibleGuard && $('fld-polizza').checked !== ((SELECTED['POLIZZA ']?.trim() || '') === 'SI');
+    const convenzioneChanged = checksVisibleGuard && $('fld-convenzione').checked !== ((SELECTED['CONVENZIONE']?.trim() || '') === 'SI');
+    if (!stato && !noteVal && !prevRilascio && !polizzaChanged && !convenzioneChanged) return setMsg($('msgUpd'), 'Seleziona un nuovo stato, imposta una data prevista rilascio, inserisci una nota, oppure aggiorna Polizza/Convenzione', false);
+    // La nota è sempre obbligatoria per ogni aggiornamento — non deve mai essere
+    // ereditata implicitamente da quella precedente (vedi anche fix backend).
+    if (!noteVal) return setMsg($('msgUpd'), 'Inserisci una nota: è obbligatoria per ogni aggiornamento', false);
+
+    // Data prevista rilascio obbligatoria da INVIATO in poi (anche su sola-nota, se la pratica è già in quello stato)
+    const effStato = stato || (SELECTED.STATO_PERMESSO || '').trim();
+    if (PREV_RILASCIO_REQUIRED_STATI.includes(effStato) && !prevRilascio) {
+      return setMsg($('msgUpd'), `Inserisci la data prevista rilascio: obbligatoria per lo stato ${effStato}`, false);
+    }
+
+    const fields = {};
+    if (stato) fields.STATO_PERMESSO = stato;
+
+    if (stato === 'INVIATO') {
+      const dr = $('fld-data-rich').value;
+      if (!dr) return setMsg($('msgUpd'), 'Inserisci la data richiesta per lo stato INVIATO', false);
+      fields.DATA_RICHIESTA = fromInputDate(dr);
+    }
+    if (stato === 'OTTENUTO') {
+      const da = $('fld-data-app').value;
+      if (!da) return setMsg($('msgUpd'), 'Inserisci la data ottenimento per lo stato OTTENUTO', false);
+      fields.DATA_APPROVAZIONE = fromInputDate(da);
+    }
+
+    fields.NOTE = noteVal;
+
+    // Nulla Osta: solo se si sta cambiando stato (non richiesto per NO COMPETENZA/OTTENUTO/sola nota)
+    const skipChecks = !stato || stato === 'NO COMPETENZA' || stato === 'OTTENUTO';
+
+    // Polizza/Convenzione: indipendenti dallo stato, vanno inviati ogni volta che i campi sono visibili (wrap non 'none')
+    const checksVisible = $('wrap-convenzione').style.display !== 'none';
+    const polizza = checksVisible ? ($('fld-polizza').checked ? 'SI' : 'NO') : '';
+    if (polizza) fields['POLIZZA '] = polizza;
+    const convenzione = checksVisible ? ($('fld-convenzione').checked ? 'SI' : 'NO') : '';
+    if (convenzione) fields['CONVENZIONE'] = convenzione;
+
+    if (prevRilascio) fields['DATA_PREVISTA_RILASCIO'] = fromInputDate(prevRilascio);
+
+    // Nulla Osta Necessario (solo per AUTORIZZAZIONE, non richiesto per NO COMPETENZA/OTTENUTO/sola nota).
+    // Una volta confermato SI resta definitivo: non si invia piu' (il backend copia il valore
+    // esistente dalla riga precedente, quindi resta SI per sempre senza bisogno del campo).
+    const noNecAlreadySi = (SELECTED?.['NULLA OSTA NECESSARIO'] || '').trim() === 'SI';
+    const noNec = (skipChecks || noNecAlreadySi) ? '' : ($('fld-no-nec').checked ? 'SI' : 'NO');
+    if (noNec) {
+      fields['NULLA OSTA NECESSARIO'] = noNec;
+      if (noNec === 'SI') {
+        const tratte = Array.from($('fld-no-tratte').selectedOptions).map(o => o.value).filter(Boolean);
+        if (tratte.length) fields['TRATTE_NO'] = tratte.join(', ');
+      }
+    }
+
+    _finalizeAdd(fields, SIBLINGS.length > 0);
+  };
+
+  function renderQueue(){
+    if (!QUEUE.length){ $('updateQueue').style.display = 'none'; return; }
+    $('updateQueue').style.display = '';
+    $('qCount').textContent = QUEUE.length;
+    $('queueBody').innerHTML = QUEUE.map((q, i) => `
+      <tr>
+        <td class="mono">${escapeHtml(q.tratta_id)}</td>
+        <td class="mono">${escapeHtml(String(q.lunghezza ?? '—'))}</td>
+        <td>${escapeHtml(q.ente)}</td>
+        <td><span class="mono" style="font-size:11px">${Object.entries(q.fields).map(([k,v]) => `${k}=${escapeHtml(v)}`).join(' · ')}</span></td>
+        <td><button class="btn btn-ghost btn-xs" data-rem="${i}">Rimuovi</button></td>
+      </tr>`).join('');
+  }
+  $('queueBody').addEventListener('click', e => {
+    const b = e.target.closest('button[data-rem]');
+    if (!b) return; QUEUE.splice(+b.dataset.rem, 1); renderQueue();
+  });
+  $('clearQueueBtn').onclick = () => { QUEUE.length = 0; renderQueue(); };
+
+  $('submitUpdatesBtn').onclick = async () => {
+    if (!QUEUE.length) return;
+    const btn = $('submitUpdatesBtn');
+    const originalHTML = btn.innerHTML;
+    btn.disabled = true;
+    btn.setAttribute('aria-busy', 'true');
+    btn.innerHTML = '<span class="spinner spinner-sm" aria-hidden="true"></span>Invio in corso…';
+    try {
+      const res = await api('/api/imprese/submit', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ nome, type: 'update', changes: QUEUE }),
+      });
+      setMsg($('msgUpd'), `Inviate ${res.count} modifiche per approvazione`, true);
+      QUEUE.length = 0; renderQueue(); loadMine();
+    } catch(e){ setMsg($('msgUpd'), 'Errore: ' + e.message, false); }
+    finally {
+      btn.disabled = false;
+      btn.removeAttribute('aria-busy');
+      btn.innerHTML = originalHTML;
+    }
+  };
+
+  // ─── nuova ─────────────────────────────────────────
+  $('newForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const pratica = String($('new-pratica').value).trim();
+    if (!pratica || isNaN(parseInt(pratica))) return setMsg($('msgNew'), 'Il numero progressivo pratica è obbligatorio', false);
+
+    const selectedTratte = Array.from($('new-tratta').selectedOptions).map(o => o.value).filter(Boolean);
+    if (!selectedTratte.length) return setMsg($('msgNew'), 'Seleziona almeno una tratta', false);
+
+
+    const ente = $('new-ente').value === '__altro__'
+      ? ($('new-ente-custom') ? $('new-ente-custom').value.trim() : '')
+      : $('new-ente').value.trim();
+
+    const changes = selectedTratte.map(tratta => ({
+      "Source.Name":          $('new-lotto').value,
+      "TRATTA_ID":            tratta,
+      "ENTE":                 ente,
+      "TIPO_PERMESSO":        $('new-tipo').value,
+      "STATO_PERMESSO":       "IN REDAZIONE",
+      "DATA_ULTIMA_MODIFICA": new Date().toLocaleDateString('it-IT'),
+      "DATA_APPROVAZIONE":    "",
+      "NULLA OSTA NECESSARIO": $('new-tipo').value === 'AUTORIZZAZIONE' ? $('new-no-nec')?.value || '' : '',
+      "PRATICA":              pratica,
+      "N_SED":                $('new-nsed').value.trim(),
+      "NOTE":                 $('new-note').value.trim(),
+      "DATA_PREVISTA_RILASCIO": fromInputDate($('new-prev-rilascio').value),
+    }));
+
+    const originalHTML = submitBtn ? submitBtn.innerHTML : '';
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.setAttribute('aria-busy', 'true');
+      submitBtn.innerHTML = '<span class="spinner spinner-sm" aria-hidden="true"></span>Invio in corso…';
+    }
+    try {
+      const res = await api('/api/imprese/submit', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ nome, type: 'new', changes }),
+      });
+      setMsg($('msgNew'), `Inviat${changes.length === 1 ? 'a 1 nuova pratica' : 'e ' + changes.length + ' nuove pratiche'} per approvazione (ID ${res.id.slice(-8)})`, true);
+      $('newForm').reset();
+      $('new-tratta').innerHTML = '<option value="" disabled>— seleziona prima il lotto —</option>';
+      $('wrap-no-nec').style.display = 'none';
+      loadMine();
+    } catch(e){ setMsg($('msgNew'), 'Errore: ' + e.message, false); }
+    finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.removeAttribute('aria-busy');
+        submitBtn.innerHTML = originalHTML;
+      }
+    }
+  });
+
+  // ─── le mie ────────────────────────────────────────
+  async function loadMine(){
+    try {
+      const d = await api(`/api/imprese/my-submissions?nome=${encodeURIComponent(nome)}`);
+      if (!d.submissions || !d.submissions.length){ $('mineBody').innerHTML = '<tr><td colspan="6" class="empty">Nessuna submission ancora</td></tr>'; return; }
+      $('mineBody').innerHTML = d.submissions.map(s => {
+        const payload = JSON.stringify(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const nMod = (s.changes||[]).length;
+        const codici = [...new Set((s.changes||[]).map(c => _codiceForChange(c, s.type)).filter(c => c && c !== '—'))];
+        const codiceCell = !codici.length ? '—'
+          : codici.length === 1 ? escapeHtml(codici[0])
+          : `${escapeHtml(codici[0])} <span style="color:var(--muted);font-weight:400">+${codici.length - 1}</span>`;
+        return `<tr data-sub="${payload}" style="cursor:pointer" title="Clicca per vedere i dettagli">
+          <td class="mono" style="font-weight:700;color:var(--accent)" title="${escapeHtml(codici.join(', '))}">${codiceCell}</td>
+          <td class="mono">${new Date(s.submitted_at).toLocaleString('it-IT')}</td>
+          <td>${s.type === 'update' ? 'Aggiornamento' : 'Nuova pratica'}</td>
+          <td>${nMod === 1 ? '1 modifica' : nMod + ' modifiche'}</td>
+          <td><span class="tag ${s.status}">${s.status}</span></td>
+          <td>${escapeHtml(s.reviewed_note || s.note || '')}</td>
+        </tr>`;
+      }).join('');
+    } catch(e){ $('mineBody').innerHTML = `<tr><td colspan="6" class="empty">Errore: ${escapeHtml(e.message)}</td></tr>`; }
+  }
+  $('refreshMineBtn').onclick = loadMine;
+
+  // Preview codice pratica — si aggiorna al cambio di tipo, lotto e numero
+  function _updatePraticaPreview() {
+    const tipoMap = {'AUTORIZZAZIONE':'AUT','NULLA OSTA':'NO'};
+    const tipo   = $('new-tipo').value;
+    const prefix = tipoMap[tipo] || '—';
+    // Estrai la sigla lotto da "Lotto 2A.xlsx" → "2A"
+    const lottoVal = $('new-lotto').value || '';
+    const m = lottoVal.match(/Lotto\s*([\w\d]+)/i);
+    const lotto = m ? m[1] : (lottoVal.replace('.xlsx','').replace('Lotto','').trim() || '—');
+    const num   = $('new-pratica').value || '—';
+    $('new-pratica-prefix').textContent = prefix + '/';
+    $('new-pratica-suffix').textContent = '/' + lotto;
+    const preview = $('new-pratica-preview');
+    if (prefix !== '—' && lotto !== '—' && num !== '—') {
+      preview.textContent = '→ ' + prefix + '/' + num + '/' + lotto;
+      preview.style.opacity = '1';
+    } else {
+      preview.textContent = '';
+    }
+  }
+  // Calcola e imposta automaticamente il prossimo numero progressivo
+  // (ultimo PRATICA esistente per il lotto selezionato + 1)
+  function _populateTrattaSelects(lottoVal) {
+    const tratte = [...new Set(
+      PRATICHE
+        .filter(p => String(p['Source.Name']||'').trim() === lottoVal)
+        .map(p => (p.TRATTA_ID||'').trim())
+        .filter(Boolean)
+    )].sort();
+    const opts = tratte.length
+      ? tratte.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('')
+      : '<option value="" disabled>Nessuna tratta trovata per questo lotto</option>';
+    $('new-tratta').innerHTML = opts;
+  }
+
+  function _setAutoPratica() {
+    const lottoVal = $('new-lotto').value || '';
+    const nums = PRATICHE
+      .filter(p => String(p['Source.Name']||'').trim() === lottoVal)
+      .map(p => parseInt(String(p.PRATICA||'').trim(), 10))
+      .filter(n => !isNaN(n));
+    $('new-pratica').value = nums.length ? Math.max(...nums) + 1 : 1;
+    _updatePraticaPreview();
+    _populateTrattaSelects(lottoVal);
+  }
+
+  function _toggleNoNec() {
+    const isAut = $('new-tipo').value === 'AUTORIZZAZIONE';
+    $('wrap-no-nec').style.display = isAut ? '' : 'none';
+    if (!isAut) $('new-no-nec').value = '';
+  }
+
+  $('new-tipo').addEventListener('change', () => { _updatePraticaPreview(); _toggleNoNec(); });
+  $('new-lotto').addEventListener('change', _setAutoPratica);
+  // Inizializza al caricamento
+  _updatePraticaPreview();
+  _toggleNoNec();
+
+  // Campo libero per "Altro" ente
+  $('new-ente').addEventListener('change', function() {
+    let custom = $('new-ente-custom');
+    if (this.value === '__altro__') {
+      if (!custom) {
+        custom = document.createElement('input');
+        custom.type = 'text';
+        custom.id = 'new-ente-custom';
+        custom.placeholder = 'Scrivi il nome dell\'ente…';
+        custom.style.marginTop = '6px';
+        custom.required = true;
+        this.parentNode.appendChild(custom);
+        custom.focus();
+      }
+    } else {
+      if (custom) { custom.remove(); }
+    }
+  });
+
+  // Click su riga submission → mostra dettagli
+  $('mineBody').addEventListener('click', e => {
+    const tr = e.target.closest('tr[data-sub]');
+    if (!tr) return;
+    try {
+      const s = JSON.parse(tr.dataset.sub.replace(/&quot;/g,'"').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>'));
+      showSubDetail(s);
+    } catch(_) {}
+  });
+
+  function showSubDetail(s) {
+    const fieldLabels = {
+      STATO_PERMESSO:'Nuovo stato', DATA_RICHIESTA:'Data richiesta',
+      DATA_APPROVAZIONE:'Data approvazione', PRATICA:'Pratica', NOTE:'Note',
+      DATA_ULTIMA_MODIFICA:'Ultima modifica', N_SED:'N. SED',
+      'NULLA OSTA NECESSARIO':'Nulla osta necessario', DATA_PREVISTA_RILASCIO:'Data prevista rilascio'
+    };
+    const excludeKeys = new Set(['Source.Name','TRATTA_ID','ENTE','TIPO_PERMESSO']);
+    const statusColor = {pending:'#f59e0b',approved:'#10b981',rejected:'#ef4444'}[s.status]||'#6b7280';
+    const typeLabel = s.type === 'update' ? 'Aggiornamento' : 'Nuova pratica';
+    const nMod = (s.changes||[]).length;
+    const codici = [...new Set((s.changes||[]).map(c => _codiceForChange(c, s.type)).filter(c => c && c !== '—'))];
+
+    const changesHtml = (s.changes||[]).map(c => {
+      const tratta = c.tratta_id || c.TRATTA_ID || '—';
+      const ente   = c.ente   || c.ENTE   || '';
+      const tipo   = c.tipo_permesso || c.TIPO_PERMESSO || '';
+      const codice = _codiceForChange(c, s.type);
+      // 'update': i campi modificati sono in c.fields. 'new': il change è già il record completo.
+      const fields = s.type === 'new'
+        ? Object.fromEntries(Object.entries(c).filter(([k]) => !excludeKeys.has(k)))
+        : (c.fields || {});
+      const cols   = Object.entries(fields).map(([k,v]) => `
+        <div class="sub-field">
+          <span class="sub-field-key">${escapeHtml(fieldLabels[k]||k)}</span>
+          <span class="sub-field-val">${escapeHtml(String(v||'—'))}</span>
+        </div>`).join('');
+      return `<div class="sub-change">
+        <div class="sub-change-header">
+          ${codice && codice !== '—' ? `<span style="font-family:var(--font-mono);font-weight:700;color:var(--accent)">${escapeHtml(codice)}</span>` : ''}
+          <span style="font-family:var(--font-mono)">${escapeHtml(tratta)}</span>
+          ${c.lunghezza != null && c.lunghezza !== '—' ? `<span style="color:var(--muted);font-weight:400;font-size:11px">${escapeHtml(String(c.lunghezza))} m</span>` : ''}
+          ${ente ? `<span style="color:var(--muted);font-weight:400;font-size:11px">${escapeHtml(ente)}</span>` : ''}
+          ${tipo ? `<span style="padding:1px 7px;border-radius:20px;font-size:10px;font-weight:600;background:var(--retelit-ice);color:var(--retelit-blue)">${escapeHtml(tipo)}</span>` : ''}
+        </div>
+        ${cols||'<span style="color:var(--muted);font-size:11px">Nessun campo</span>'}
+      </div>`;
+    }).join('');
+
+    const noteHtml = (s.reviewed_note||s.note) ? `
+      <div style="margin-top:12px">
+        <div class="sub-section-label">Note revisione</div>
+        <div style="background:var(--warn-bg);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--warn)">${escapeHtml(s.reviewed_note||s.note)}</div>
+      </div>` : '';
+
+    const overlay = document.createElement('div');
+    overlay.className = 'sub-modal-overlay';
+    overlay.innerHTML = `
+      <div class="sub-modal">
+        <div class="sub-modal-head">
+          <div>
+            <div class="sub-modal-title">${typeLabel}</div>
+            <div class="sub-modal-sub">
+              ${new Date(s.submitted_at).toLocaleString('it-IT')}
+              &nbsp;<span style="display:inline-block;padding:1px 8px;border-radius:20px;font-size:10px;font-weight:600;background:${statusColor}22;color:${statusColor}">${s.status}</span>
+              ${codici.length ? `<br><span style="font-family:var(--font-mono);margin-top:4px;display:inline-block">${escapeHtml(codici.join(', '))}</span>` : ''}
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            ${s.status === 'pending' ? `<button id="_subDelete" style="padding:4px 12px;border-radius:6px;border:1px solid var(--danger);background:transparent;color:var(--danger);font-size:12px;cursor:pointer;font-weight:600;display:inline-flex;align-items:center;gap:5px"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>Elimina richiesta</button>` : ''}
+            <button class="sub-modal-close" id="_subClose" aria-label="Chiudi" title="Chiudi">&times;</button>
+          </div>
+        </div>
+        <div class="sub-modal-body">
+          <div class="sub-section-label">${nMod === 1 ? '1 modifica' : nMod + ' modifiche'}</div>
+          ${changesHtml}
+          ${noteHtml}
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#_subClose').onclick = () => overlay.remove();
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    if (s.status === 'pending') {
+      overlay.querySelector('#_subDelete').onclick = async () => {
+        if (!confirm('Eliminare questa richiesta? L\'operazione non è reversibile.')) return;
+        try {
+          await api(`/api/imprese/submissions/${s._id}?nome=${encodeURIComponent(nome)}`, { method: 'DELETE' });
+          overlay.remove();
+          await loadMine();
+        } catch(e) { alert('Errore: ' + e.message); }
+      };
+    }
+  }
+
+  function _openHelp(){
+    const overlay = document.createElement('div');
+    overlay.className = 'sub-modal-overlay';
+    overlay.innerHTML = `
+      <div class="sub-modal">
+        <div class="sub-modal-head">
+          <div>
+            <div class="sub-modal-title">Guida rapida</div>
+            <div class="sub-modal-sub">Come aggiornare le pratiche</div>
+          </div>
+          <button class="sub-modal-close" id="_helpClose" aria-label="Chiudi" title="Chiudi">&times;</button>
+        </div>
+        <div class="sub-modal-body">
+          <ol style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:12px;font-size:13px;color:var(--gray-700);line-height:1.5">
+            <li><b>Cerca la pratica</b> che vuoi aggiornare nell'elenco, oppure filtra per lotto.</li>
+            <li><b>Modifica i campi</b> necessari (stato, date, note). Le modifiche restano in bozza finché non le invii.</li>
+            <li><b>Controlla il riepilogo</b> delle modifiche in coda prima di inviarle.</li>
+            <li><b>Invia per approvazione</b>: l'amministratore riceve la richiesta e la valida. Solo dopo l'approvazione la pratica risulta aggiornata.</li>
+            <li>Nel tab <b>Solleciti</b> registri i solleciti che hai già inviato agli enti per una pratica, con relativa data. Serve solo a tenere traccia, la registrazione è immediata e non richiede approvazione.</li>
+            <li>Usa i tasti in alto per passare a <b>Scavi</b>, alla <b>Mappa</b> o per tornare all'<b>Hub</b>.</li>
+          </ol>
+          <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gray-600);margin-bottom:8px">Guide scaricabili</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <a href="docs/guide/Dashboard_ENRI_Guida.pdf" download
+                style="display:flex;align-items:center;gap:10px;text-decoration:none;border:1px solid var(--border);border-radius:var(--radius-md, 8px);padding:10px 12px;color:var(--text)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--retelit-blue, #043F75)"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                <div>
+                  <div style="font-size:12.5px;font-weight:700">Guida rapida per le Imprese (PDF)</div>
+                  <div style="font-size:10.5px;color:var(--muted)">Testuale, sintetica — con rimandi alle pagine dell'allegato illustrato</div>
+                </div>
+              </a>
+              <a href="docs/guide/ENRI_Guida_Illustrata_Area_Impresa.pdf" download
+                style="display:flex;align-items:center;gap:10px;text-decoration:none;border:1px solid var(--border);border-radius:var(--radius-md, 8px);padding:10px 12px;color:var(--text)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;color:var(--retelit-blue, #043F75)"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                <div>
+                  <div style="font-size:12.5px;font-weight:700">Dashboard Impresa — Guida Illustrata (PDF)</div>
+                  <div style="font-size:10.5px;color:var(--muted)">Con schermate per ogni sezione: Hub, Pratiche, Cantiere, Mappa</div>
+                </div>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#_helpClose').onclick = () => overlay.remove();
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  }
+  window._openHelp = _openHelp;
+
+  // ─── SOLLECITI ──────────────────────────────────────────────────────────────
+
+  let SOL_SELECTED = null;
+  let SOL_SIBLINGS = [];
+
+  const SOL_STATI_ESCLUSI = new Set([
+    'IN REDAZIONE', 'IN FIRMA RDS',
+    'OTTENUTO',
+    'NECESSARIA INTEGRAZIONE', 'IN REDAZIONE INTEGRAZIONE',
+    'NO COMPETENZA'
+  ]);
+
+  function renderSolPratiche(filter) {
+    const tbody = $('solPratBody');
+    if (!tbody) return;
+    const f = (filter || '').toLowerCase().trim();
+    // Dedup: per ogni tratta tieni solo la riga più recente (Master.csv è append-only,
+    // PRATICHE contiene tutta la storia degli stati) — stessa logica di renderPratiche()
+    const latestMap = new Map();
+    PRATICHE.forEach(p => {
+      const tKey = p.TRATTA_ID + '|' + p.ENTE + '|' + p.TIPO_PERMESSO;
+      const existing = latestMap.get(tKey);
+      if (!existing || parseDate(p.DATA_ULTIMA_MODIFICA) >= parseDate(existing.DATA_ULTIMA_MODIFICA)) {
+        latestMap.set(tKey, p);
+      }
+    });
+    const praticaMap = new Map();
+    Array.from(latestMap.values()).forEach(p => {
+      const stato = (p.STATO_PERMESSO || '').trim();
+      if (SOL_STATI_ESCLUSI.has(stato)) return;
+      const pNum = String(p.PRATICA || '').trim();
+      if (!pNum) return;
+      const key = (p._codice || pNum) + '|' + String(p.ENTE||'').trim() + '|' + String(p.TIPO_PERMESSO||'').trim();
+      if (!praticaMap.has(key)) {
+        praticaMap.set(key, { rep: p, tratte: [p] });
+      } else {
+        const entry = praticaMap.get(key);
+        entry.tratte.push(p);
+        if (parseDate(p.DATA_ULTIMA_MODIFICA) >= parseDate(entry.rep.DATA_ULTIMA_MODIFICA)) entry.rep = p;
+      }
+    });
+    const all   = Array.from(praticaMap.values());
+    const rows  = all.filter(({ rep }) => !f ||
+      [rep._codice, rep.ENTE, rep.TIPO_PERMESSO, rep.STATO_PERMESSO].join(' ').toLowerCase().includes(f));
+    renderSolPratiche._current = rows;
+    if (!rows.length) { tbody.innerHTML = '<tr><td colspan="6" class="empty">Nessuna pratica disponibile per il sollecito</td></tr>'; return; }
+    tbody.innerHTML = rows.map(({ rep, tratte }, i) => {
+      const tIds = new Set(tratte.map(t => t.TRATTA_ID));
+      const dataUltSol = SOLLECITI
+        .filter(s => tIds.has(s.tratta_id) && s.data_sollecito)
+        .reduce((max, s) => (!max || parseDate(s.data_sollecito) > parseDate(max)) ? s.data_sollecito : max, null) || '—';
+      return `
+      <tr data-idx="${i}">
+        <td class="mono" style="font-weight:700;color:var(--accent);background:var(--accent-light);border-left:3px solid var(--accent)">${escapeHtml(rep._codice || String(rep.PRATICA||''))}</td>
+        <td>${escapeHtml(rep.ENTE)}</td>
+        <td>${escapeHtml(rep.TIPO_PERMESSO)}</td>
+        <td class="stato-cell" style="color:${statoColor(rep.STATO_PERMESSO)}">${escapeHtml(rep.STATO_PERMESSO)}</td>
+        <td class="mono">${escapeHtml(dataUltSol)}</td>
+        <td class="mono" style="text-align:center">${tratte.length}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  $('searchSolPratiche')?.addEventListener('input', e => renderSolPratiche(e.target.value));
+
+  $('solPratBody')?.addEventListener('click', e => {
+    const tr = e.target.closest('tr[data-idx]');
+    if (!tr) return;
+    document.querySelectorAll('#solPratBody tr.selected').forEach(x => x.classList.remove('selected'));
+    tr.classList.add('selected');
+    const { rep, tratte } = (renderSolPratiche._current || [])[+tr.dataset.idx];
+    SOL_SELECTED = rep;
+    const siblingsMap = new Map();
+    tratte.forEach(p => {
+      if (p.TRATTA_ID === rep.TRATTA_ID) return;
+      const ex = siblingsMap.get(p.TRATTA_ID);
+      if (!ex || parseDate(p.DATA_ULTIMA_MODIFICA) >= parseDate(ex.DATA_ULTIMA_MODIFICA)) siblingsMap.set(p.TRATTA_ID, p);
+    });
+    SOL_SIBLINGS = Array.from(siblingsMap.values());
+    $('solSelectedForm').style.display = '';
+    const tot = tratte.length;
+    $('solEditRowSub').textContent = `${rep._codice || String(rep.PRATICA||'')} · ${rep.ENTE} · ${rep.TIPO_PERMESSO} · ${tot} tratt${tot === 1 ? 'a' : 'e'}`;
+    const pratCode = rep._codice || String(rep.PRATICA || '').trim();
+    const distinctSol = new Set(SOLLECITI.filter(s => s.pratica === pratCode).map(s => s.numero_sollecito || s.data_sollecito));
+    const numEl = $('sol-numero'); if (numEl) numEl.value = distinctSol.size + 1;
+    try { $('solSelectedForm').scrollIntoView({behavior:'smooth', block:'nearest'}); } catch(_) {}
+  });
+
+  $('sol-cancel')?.addEventListener('click', () => {
+    SOL_SELECTED = null; SOL_SIBLINGS = [];
+    $('solSelectedForm').style.display = 'none';
+    document.querySelectorAll('#solPratBody tr.selected').forEach(x => x.classList.remove('selected'));
+  });
+
+  // Modale di conferma generico (stesso stile di warn-modal usato sopra)
+  function showConfirm(title, msg, okLabel, okStyle) {
+    return new Promise(resolve => {
+      const overlay = document.createElement('div');
+      overlay.className = 'warn-modal-overlay';
+      overlay.innerHTML = `
+        <div class="warn-modal">
+          <div class="warn-modal-icon warn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></div>
+          <div class="warn-modal-title">${escapeHtml(title)}</div>
+          <div class="warn-modal-body">${escapeHtml(msg)}</div>
+          <div style="display:flex;gap:10px;justify-content:flex-end">
+            <button class="btn btn-ghost" id="_confCancel">Annulla</button>
+            <button class="btn" id="_confOk" style="${okStyle || ''}">${escapeHtml(okLabel || 'Conferma')}</button>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      overlay.querySelector('#_confCancel').onclick = () => { overlay.remove(); resolve(false); };
+      overlay.querySelector('#_confOk').onclick     = () => { overlay.remove(); resolve(true); };
+    });
+  }
+
+  let SOLLECITI = [];
+
+  function _praticaPerSollecito(s) {
+    const candidates = PRATICHE.filter(p => p.TRATTA_ID === s.tratta_id);
+    if (!candidates.length) return null;
+    // 1. Match completo: codice + ente + tipo + stato
+    if (s.pratica && s.ente && s.tipo_permesso && s.stato_permesso) {
+      const full = candidates.find(p =>
+        (p._codice === s.pratica || String(p.PRATICA) === String(s.pratica)) &&
+        p.ENTE === s.ente &&
+        p.TIPO_PERMESSO === s.tipo_permesso &&
+        p.STATO_PERMESSO === s.stato_permesso
+      );
+      if (full) return full;
+    }
+    // 2. Match codice + ente + tipo
+    if (s.pratica && s.ente && s.tipo_permesso) {
+      const byAll = candidates.find(p =>
+        (p._codice === s.pratica || String(p.PRATICA) === String(s.pratica)) &&
+        p.ENTE === s.ente &&
+        p.TIPO_PERMESSO === s.tipo_permesso
+      );
+      if (byAll) return byAll;
+    }
+    // 3. Match solo ente + tipo + stato
+    if (s.ente && s.tipo_permesso && s.stato_permesso) {
+      const byETS = candidates.find(p =>
+        p.ENTE === s.ente &&
+        p.TIPO_PERMESSO === s.tipo_permesso &&
+        p.STATO_PERMESSO === s.stato_permesso
+      );
+      if (byETS) return byETS;
+    }
+    // 4. Match codice
+    if (s.pratica) {
+      const byCode = candidates.find(p => p._codice === s.pratica || String(p.PRATICA) === String(s.pratica));
+      if (byCode) return byCode;
+    }
+    return candidates[0];
+  }
+
+  async function loadSolleciti() {
+    $('solBody').innerHTML = `<tr><td colspan="14"><div class="spinner-wrap"><span class="spinner"></span><span>Caricamento…</span></div></td></tr>`;
+    try {
+      const d = await api('/api/imprese/solleciti');
+      SOLLECITI = d.solleciti || [];
+      renderSolleciti('');
+      renderSolPratiche($('searchSolPratiche')?.value || '');
+    } catch(e) {
+      $('solBody').innerHTML = `<tr><td colspan="14" class="empty">Errore: ${escapeHtml(e.message)}</td></tr>`;
+    }
+  }
+
+  function renderSolleciti(filter) {
+    const f = (filter || '').toLowerCase().trim();
+    if (!SOLLECITI.length) { $('solBody').innerHTML = '<tr><td colspan="14" class="empty">Nessun sollecito registrato</td></tr>'; return; }
+    const enriched = SOLLECITI.map(s => ({ s, p: _praticaPerSollecito(s) }));
+    const rows = enriched.filter(({s, p}) => !f || JSON.stringify({s, p}).toLowerCase().includes(f));
+    if (!rows.length) { $('solBody').innerHTML = '<tr><td colspan="14" class="empty">Nessun risultato</td></tr>'; return; }
+    $('solBody').innerHTML = rows.map(({s, p}) => {
+      const ente   = s.ente                 || p?.ENTE          || '—';
+      const tipo   = s.tipo_permesso        || p?.TIPO_PERMESSO || '—';
+      const stato  = p?.STATO_PERMESSO      || s.stato_permesso || '—';
+      const dataRich = s.data_richiesta     || p?.DATA_RICHIESTA       || '—';
+      const dataAgg  = p?.DATA_ULTIMA_MODIFICA || s.data_ultima_modifica || '—';
+      const dataUltSol = SOLLECITI
+        .filter(x => x.tratta_id === s.tratta_id && x.data_sollecito)
+        .reduce((max, x) => (!max || parseDate(x.data_sollecito) > parseDate(max)) ? x.data_sollecito : max, null) || '—';
+      const lungh  = s.lunghezza            || p?.LUNGHEZZA     || '—';
+      const codice = p?._codice || s.pratica || '—';
+      const nSol   = s.numero_sollecito != null ? String(s.numero_sollecito) : '—';
+      return `
+      <tr>
+        <td class="mono" style="font-weight:700;color:var(--accent);background:var(--accent-light);border-left:3px solid var(--accent)">${escapeHtml(codice)}</td>
+        <td class="mono">${escapeHtml(s.tratta_id)}</td>
+        <td>${escapeHtml(ente)}</td>
+        <td>${escapeHtml(tipo)}</td>
+        <td class="stato-cell" style="color:${stato !== '—' ? statoColor(stato) : ''}">${escapeHtml(stato)}</td>
+        <td class="mono">${escapeHtml(dataRich)}</td>
+        <td class="mono">${escapeHtml(dataAgg)}</td>
+        <td class="mono">${escapeHtml(dataUltSol)}</td>
+        <td style="text-align:right;background:#f0fdf4;font-family:var(--font-mono);font-size:11.5px;color:#1F7A4E;font-weight:600;border-left:2px solid #bbf7d0">${escapeHtml(String(lungh))}</td>
+        <td class="mono" style="text-align:center;font-weight:700">${escapeHtml(nSol)}</td>
+        <td><span style="padding:2px 8px;border-radius:5px;font-size:10.5px;font-weight:700;background:var(--retelit-ice);color:var(--accent)">${escapeHtml(s.tipo_sollecito)}</span></td>
+        <td class="mono">${escapeHtml(s.data_sollecito)}</td>
+        <td style="font-size:12px;color:var(--muted)">${escapeHtml(s.note || '—')}</td>
+        <td><button class="btn btn-ghost btn-xs" style="color:var(--danger);border-color:var(--danger)" data-sol-del="${escapeHtml(s._id)}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button></td>
+      </tr>`;
+    }).join('');
+  }
+
+  $('searchSolleciti').addEventListener('input', e => renderSolleciti(e.target.value));
+  $('sol-refresh').addEventListener('click', loadSolleciti);
+
+  $('solBody').addEventListener('click', async e => {
+    const btn = e.target.closest('[data-sol-del]');
+    if (!btn) return;
+    const solId   = btn.dataset.solDel;
+    const clicked = SOLLECITI.find(s => s._id === solId);
+    if (!clicked) return;
+
+    const siblings = SOLLECITI.filter(s =>
+      s._id !== solId &&
+      s.pratica        === clicked.pratica &&
+      s.data_sollecito === clicked.data_sollecito &&
+      s.tipo_sollecito === clicked.tipo_sollecito
+    );
+
+    let deleteAll = false;
+    if (siblings.length) {
+      const tratte = [clicked.tratta_id, ...siblings.map(s => s.tratta_id)].join(', ');
+      const ok = await showConfirm(
+        'Elimina sollecito',
+        `Ci sono ${siblings.length} tratt${siblings.length === 1 ? 'a collegata' : 'e collegate'} con lo stesso sollecito (${tratte}).\nVuoi eliminare tutti i solleciti insieme?`,
+        'Elimina tutti',
+        'background:var(--danger);border-color:var(--danger)'
+      );
+      if (ok === null) return; // annullato
+      deleteAll = ok;
+      if (!deleteAll) {
+        // chiede conferma per solo questo
+        const single = await showConfirm('Elimina sollecito', 'Eliminare solo questo sollecito?', 'Elimina', 'background:var(--danger);border-color:var(--danger)');
+        if (!single) return;
+      }
+    } else {
+      const ok = await showConfirm('Elimina sollecito', 'Eliminare definitivamente questo sollecito?', 'Elimina', 'background:var(--danger);border-color:var(--danger)');
+      if (!ok) return;
+    }
+
+    try {
+      const toDelete = deleteAll ? [solId, ...siblings.map(s => s._id)] : [solId];
+      if (toDelete.length > 1) {
+        await api('/api/imprese/solleciti/bulk-delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: toDelete })
+        });
+      } else {
+        await api(`/api/imprese/solleciti/${toDelete[0]}`, { method: 'DELETE' });
+      }
+      await loadSolleciti();
+    } catch(e) { setMsg($('msgSol'), 'Errore: ' + e.message, false); }
+  });
+
+  async function _postSollecito(tratta_id, pratica_codice, tipo, data, note, row, numero_sollecito) {
+    return api('/api/imprese/solleciti', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tratta_id,
+        pratica:           pratica_codice,
+        tipo_sollecito:    tipo,
+        data_sollecito:    data,
+        note,
+        numero_sollecito:     numero_sollecito,
+        ente:                 row?.ENTE                  || '',
+        tipo_permesso:        row?.TIPO_PERMESSO         || '',
+        stato_permesso:       row?.STATO_PERMESSO        || '',
+        lunghezza:            row?.LUNGHEZZA             || '',
+        data_richiesta:       row?.DATA_RICHIESTA        || '',
+        data_ultima_modifica: row?.DATA_ULTIMA_MODIFICA  || '',
+      })
+    });
+  }
+
+  function _resetSolForm() {
+    SOL_SELECTED = null; SOL_SIBLINGS = [];
+    $('solSelectedForm').style.display = 'none';
+    $('sol-tipo').value = ''; $('sol-data').value = ''; $('sol-note').value = '';
+    const numEl = $('sol-numero'); if (numEl) numEl.value = 1;
+    document.querySelectorAll('#solPratBody tr.selected').forEach(x => x.classList.remove('selected'));
+  }
+
+  async function _submitSollecito() {
+    const msgEl   = $('msgSol');
+    const tipo    = $('sol-tipo').value;
+    const dataRaw = $('sol-data').value;
+    const data    = fromInputDate(dataRaw);
+    const note    = $('sol-note').value.trim();
+    const nSol    = parseInt($('sol-numero')?.value || '1', 10) || 1;
+    if (!tipo)    return setMsg(msgEl, 'Seleziona il tipo di sollecito', false);
+    if (!dataRaw) return setMsg(msgEl, 'Inserisci la data del sollecito', false);
+
+    const targets = [SOL_SELECTED, ...SOL_SIBLINGS];
+    $('sol-submit').disabled = true;
+    try {
+      if (targets.length > 1) {
+        const items = targets.map(t => ({
+          tratta_id:            t.TRATTA_ID,
+          pratica:              t._codice || t.PRATICA || '',
+          tipo_sollecito:       tipo,
+          data_sollecito:       data,
+          note,
+          numero_sollecito:     nSol,
+          ente:                 t.ENTE                  || '',
+          tipo_permesso:        t.TIPO_PERMESSO         || '',
+          stato_permesso:       t.STATO_PERMESSO        || '',
+          lunghezza:            t.LUNGHEZZA             || '',
+          data_richiesta:       t.DATA_RICHIESTA        || '',
+          data_ultima_modifica: t.DATA_ULTIMA_MODIFICA  || '',
+        }));
+        await api('/api/imprese/solleciti/bulk-insert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items })
+        });
+      } else {
+        await _postSollecito(targets[0].TRATTA_ID, targets[0]._codice || targets[0].PRATICA || '', tipo, data, note, targets[0], nSol);
+      }
+      setMsg(msgEl, targets.length > 1 ? `Registrati ${targets.length} solleciti (N° ${nSol})` : `Sollecito N° ${nSol} registrato`, true);
+      _resetSolForm();
+      await loadSolleciti();
+    } catch(e) {
+      setMsg(msgEl, 'Errore: ' + e.message, false);
+    } finally {
+      $('sol-submit').disabled = false;
+    }
+  }
+
+  $('sol-submit').addEventListener('click', async () => {
+    if (!SOL_SELECTED) return setMsg($('msgSol'), 'Seleziona prima una pratica dalla tabella', false);
+    await _submitSollecito();
+  });
+
+  // Carica solleciti quando si passa al tab — gestito nel listener globale tab sopra
+
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="it" translate="no">
+<head>
+<link rel="icon" type="image/x-icon" href="assets/favicon.ico"><link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png"><link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ENRI — Polizze &amp; Convenzioni</title>
+<script src="js/api-config.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --retelit-blue:#043F75;--retelit-blue-75:#436A93;--retelit-blue-50:#819FB9;--retelit-blue-25:#C0CFDC;
+    --retelit-sky:#41BBD9;--retelit-teal:#1A7D99;--retelit-mist:#ADCAD6;--retelit-ice:#D3DEEA;
+    --gray-50:#F7F8FA;--gray-100:#EEF1F5;--gray-200:#DFE4EB;--gray-300:#C4CDD8;
+    --gray-400:#9AA5B4;--gray-500:#6B7685;--gray-700:#363D48;
+    --font-display:"Raleway","Calibri",system-ui,sans-serif;
+    --font-mono:"JetBrains Mono",ui-monospace,monospace;
+    --bg:var(--gray-50);--surface:#fff;--border:var(--gray-200);
+    --text:var(--gray-700);--muted:var(--gray-500);--accent:var(--retelit-blue);
+    --font-body:\"Raleway\",\"Calibri\",system-ui,-apple-system,\"Segoe UI\",sans-serif;
+    --ok:#1E9E6A;--ok-bg:#EBFAF3;--warn:#D08A1A;--warn-bg:#FEF7E7;
+    --danger:#C0392B;--danger-bg:#FEECEB;
+    --radius-xs:2px;--radius-sm:4px;--radius-md:8px;--radius-lg:12px;--radius-xl:20px;--radius-2xl:28px;--radius-pill:999px;
+    --shadow-sm:0 1px 2px rgba(4,63,117,.06),0 1px 1px rgba(4,63,117,.04);
+    --shadow-md:0 4px 12px rgba(4,63,117,.08),0 2px 4px rgba(4,63,117,.04);
+    --shadow-lg:0 12px 32px rgba(4,63,117,.12),0 4px 12px rgba(4,63,117,.06);
+    --shadow-xl:0 24px 56px rgba(4,63,117,.18),0 8px 20px rgba(4,63,117,.08);
+    --shadow-focus:0 0 0 3px rgba(65,187,217,.35);
+    --shadow-inset:inset 0 1px 2px rgba(4,63,117,.06);
+    --ease-out:cubic-bezier(.22,1,.36,1);--ease-in:cubic-bezier(.55,0,1,.45);--ease-inout:cubic-bezier(.65,0,.35,1);
+    --dur-fast:120ms;--dur-base:200ms;--dur-slow:360ms;--dur-xslow:600ms;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:var(--font-display);background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+
+  /* TOPBAR */
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:0 28px;height:58px;background:var(--retelit-blue);position:sticky;top:0;z-index:100}
+  .topbar-left{display:flex;align-items:center;gap:16px}
+  .topbar-title{font-size:13px;font-weight:600;letter-spacing:.04em;color:var(--retelit-ice);text-transform:uppercase}
+  .topbar-back{font-size:12px;color:var(--retelit-sky);font-weight:600;text-decoration:none;display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:8px;border:1px solid var(--retelit-sky);transition:background .15s}
+  .topbar-back:hover{background:rgba(65,187,217,.1)}
+
+  /* LAYOUT */
+  .main{max-width:1600px;margin:0 auto;padding:28px 24px;display:flex;flex-direction:column;gap:20px}
+  .hdr{border-bottom:1px solid var(--border);padding-bottom:14px}
+  .eyebrow{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.15em;color:var(--retelit-teal);margin-bottom:6px}
+  .title{font-family:var(--font-display);font-size:26px;font-weight:700;letter-spacing:-.02em}
+
+  /* KPI globali */
+  .kpi-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:10px 14px}
+  .kpi-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+  .kpi-val{font-size:20px;font-weight:700;letter-spacing:-.02em;line-height:1}
+  .kpi-lbl{font-size:9.5px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap}
+  .kpi-bar{display:flex;height:5px;border-radius:3px;overflow:hidden;margin-top:9px;background:var(--gray-100)}
+  .kpi-bar-seg{height:100%}
+  .kpi-legend{font-size:10px;color:var(--muted);margin-top:5px;line-height:1.3}
+
+  /* DUE TABELLE IMPILATE VERTICALMENTE */
+  .split{display:flex;flex-direction:column;gap:20px}
+
+  /* PANEL */
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-md);overflow:hidden}
+  .panel-head{padding:16px 20px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+  .panel-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .panel-icon svg{width:18px;height:18px;stroke:currentColor}
+  .panel-icon.conv{background:var(--retelit-ice);color:var(--retelit-blue)}
+  .panel-icon.pol{background:var(--retelit-mist);color:var(--retelit-teal)}
+  .panel-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)}
+  .panel-title{font-size:16px;font-weight:700;letter-spacing:-.01em}
+  .panel-count{margin-left:auto;font-family:var(--font-mono);font-size:11px;color:var(--muted)}
+
+  /* FILTRI */
+  .filterbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--gray-50)}
+  .filterbar select,.filterbar input{padding:6px 9px;border:1px solid var(--border);border-radius:7px;background:var(--surface);font-family:inherit;font-size:11.5px;color:var(--text)}
+  .filterbar select:focus,.filterbar input:focus{outline:none;border-color:var(--retelit-sky)}
+
+  /* TABELLA */
+  .scroll{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;padding:8px 10px;border-bottom:2px solid var(--border);text-align:left;white-space:nowrap}
+  td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:rgba(4,63,117,.03)}
+  .empty{padding:36px;text-align:center;color:var(--muted);font-size:12px}
+  .loading-row{padding:28px;text-align:center;color:var(--muted);font-size:12px}
+
+  /* EDIT INLINE — §7.1 Button, §5.2 radius, §5.4 motion */
+  .edit-btn{
+    background:none;border:none;cursor:pointer;
+    padding:3px 5px;border-radius:var(--radius-md);
+    color:var(--gray-400);opacity:0;
+    transition:opacity var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out);
+    vertical-align:middle;line-height:1
+  }
+  tr:hover .edit-btn{opacity:1}
+  .edit-btn:hover{color:var(--retelit-teal)}
+  .edit-btn:focus-visible{outline:2px solid var(--retelit-sky);outline-offset:2px}
+
+  .edit-select{
+    padding:4px 8px;
+    border:1.5px solid var(--retelit-sky);
+    border-radius:var(--radius-md);
+    font-family:var(--font-display);font-size:12px;
+    background:var(--surface);color:var(--text);cursor:pointer
+  }
+  .edit-select:focus{outline:none;box-shadow:var(--shadow-focus)}
+
+  .date-input{
+    width:92px;padding:3px 6px;
+    border:1.5px solid var(--retelit-sky);
+    border-radius:var(--radius-md);
+    font-family:var(--font-mono);font-size:11px;
+    background:var(--surface);color:var(--text)
+  }
+  .date-input:focus{outline:none;box-shadow:var(--shadow-focus)}
+  .date-cell{white-space:nowrap}
+  .date-cell .edit-btn{padding:2px 4px}
+
+  /* Bottoni inline — variante sm §7.1 */
+  .btn-save{
+    padding:4px 12px;height:28px;
+    background:var(--retelit-teal);color:#fff;
+    border:none;border-radius:var(--radius-md);
+    font-family:var(--font-display);font-size:11px;font-weight:600;
+    cursor:pointer;transition:background var(--dur-base) var(--ease-out)
+  }
+  .btn-save:hover{background:var(--retelit-blue-75)}
+  .btn-save:focus-visible{outline:2px solid var(--retelit-sky);outline-offset:2px}
+  .btn-save:disabled{opacity:.5;cursor:not-allowed}
+
+  .btn-ghost-sm{
+    padding:4px 10px;height:28px;
+    background:transparent;color:var(--gray-500);
+    border:1px solid var(--border);border-radius:var(--radius-md);
+    font-family:var(--font-display);font-size:11px;font-weight:500;
+    cursor:pointer;transition:border-color var(--dur-base) var(--ease-out),color var(--dur-base) var(--ease-out)
+  }
+  .btn-ghost-sm:hover{border-color:var(--gray-400);color:var(--text)}
+  .btn-ghost-sm:focus-visible{outline:2px solid var(--retelit-sky);outline-offset:2px}
+
+  .btn-excel{
+    display:inline-flex;align-items:center;gap:6px;
+    padding:4px 12px;height:28px;
+    background:#217346;color:#fff;
+    border:none;border-radius:var(--radius-md);
+    font-family:var(--font-display);font-size:11px;font-weight:600;
+    cursor:pointer;transition:background var(--dur-base) var(--ease-out)
+  }
+  .btn-excel:hover{background:#1a5c38}
+  .btn-excel:focus-visible{outline:2px solid var(--retelit-sky);outline-offset:2px}
+
+  /* TOAST — §7.7 top-right, auto-dismiss 5s — no emoji, solo testo */
+  #toast{
+    position:fixed;bottom:24px;right:24px;
+    padding:10px 18px;border-radius:var(--radius-lg);
+    font-family:var(--font-display);font-size:13px;font-weight:600;
+    z-index:9999;opacity:0;transform:translateY(6px);
+    transition:opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
+    pointer-events:none;max-width:360px
+  }
+  #toast.show{opacity:1;transform:translateY(0)}
+  #toast.ok{background:var(--ok-bg);color:var(--ok);border:1px solid #bbf7d0}
+  #toast.err{background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger)}
+
+  /* TOKEN MODAL — §7.2 Input, §7.3 Card, §5.4 motion */
+  #tokenModal{
+    display:none;position:fixed;inset:0;
+    background:rgba(4,63,117,.3);
+    z-index:200;align-items:center;justify-content:center
+  }
+  #tokenModal.open{display:flex}
+  #tokenBox{
+    background:var(--surface);border-radius:var(--radius-lg);
+    padding:28px;width:360px;
+    border:1px solid var(--border);
+    box-shadow:var(--shadow-lg)
+  }
+  #tokenBox .r-eyebrow{
+    font-family:var(--font-mono);font-size:10px;
+    text-transform:uppercase;letter-spacing:.15em;
+    color:var(--retelit-teal);margin-bottom:6px
+  }
+  #tokenBox h3{
+    font-family:var(--font-display);font-size:17px;font-weight:700;
+    color:var(--retelit-blue);margin-bottom:8px;letter-spacing:-.01em
+  }
+  #tokenBox p{font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.5}
+  #tokenInput{
+    width:100%;padding:9px 12px;
+    border:1.5px solid var(--border);
+    border-radius:var(--radius-md);
+    font-family:var(--font-mono);font-size:13px;
+    color:var(--text);background:var(--surface);
+    margin-bottom:16px;
+    transition:border-color var(--dur-fast) var(--ease-out),box-shadow var(--dur-fast) var(--ease-out)
+  }
+  #tokenInput:focus{outline:none;border-color:var(--retelit-sky);box-shadow:var(--shadow-focus)}
+  .token-actions{display:flex;gap:8px;justify-content:flex-end}
+  .btn-primary-sm{
+    padding:8px 18px;height:36px;
+    background:var(--retelit-blue);color:#fff;
+    border:none;border-radius:var(--radius-md);
+    font-family:var(--font-display);font-size:13px;font-weight:600;
+    cursor:pointer;transition:background var(--dur-base) var(--ease-out)
+  }
+  .btn-primary-sm:hover{background:var(--retelit-blue-75)}
+  .btn-primary-sm:focus-visible{outline:2px solid var(--retelit-sky);outline-offset:2px}
+  .btn-secondary-sm{
+    padding:8px 16px;height:36px;
+    background:transparent;color:var(--retelit-blue);
+    border:1px solid var(--retelit-blue);border-radius:var(--radius-md);
+    font-family:var(--font-display);font-size:13px;font-weight:600;
+    cursor:pointer;transition:background var(--dur-base) var(--ease-out)
+  }
+  .btn-secondary-sm:hover{background:var(--retelit-ice)}
+  .btn-secondary-sm:focus-visible{outline:2px solid var(--retelit-sky);outline-offset:2px}
+
+  /* BADGE */
+  .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:var(--radius-pill);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap}
+  #authGuard{
+    position:fixed;inset:0;background:rgba(11,25,70,.55);
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    z-index:9999;display:flex;align-items:center;justify-content:center;
+  }
+  .guard-box{
+    background:var(--surface);border-radius:16px;padding:36px 40px;
+    text-align:center;max-width:340px;
+    box-shadow:0 32px 80px rgba(11,49,130,.22);
+  }
+  .guard-box svg{color:var(--retelit-teal);margin-bottom:14px;}
+  .guard-box h2{font-family:var(--font-display);font-size:18px;font-weight:700;margin-bottom:8px;}
+  .guard-box p{font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.6;}
+  .guard-box a{
+    display:inline-block;padding:10px 24px;border-radius:8px;
+    background:var(--accent);color:#fff;text-decoration:none;
+    font-size:13px;font-weight:700;
+  }
+</style>
+</head>
+<body>
+
+<div id="authGuard" style="display:none">
+  <div class="guard-box">
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    <h2>Accesso richiesto</h2>
+    <p>Devi effettuare l'accesso al portale per utilizzare questa pagina.</p>
+    <a href="hub.html">Vai al portale</a>
+  </div>
+</div>
+
+
+<div class="topbar">
+  <div class="topbar-left">
+    <img src="data:image/png;base64,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" alt="Retelit" style="height:50px;display:block" onerror="this.style.display="none"">
+    <div style="width:1px;height:20px;background:var(--retelit-blue-50)"></div>
+    <div class="topbar-title">Polizze &amp; Convenzioni</div>
+  </div>
+  <a href="hub.html" class="topbar-back">← Hub</a>
+</div>
+
+<div class="main">
+  <div class="hdr">
+    <div class="eyebrow">ENRI · Progetto 2025_17</div>
+    <div class="title">Polizze &amp; Convenzioni</div>
+    <div style="font-size:13px;color:var(--muted);margin-top:6px">Pratiche estratte dal Master CSV che richiedono convenzione e/o polizza assicurativa.</div>
+  </div>
+
+  <!-- KPI globali -->
+  <div class="kpi-row" id="kpiRow" style="display:none">
+    <div class="kpi-card">
+      <div class="kpi-top"><div class="kpi-val" id="kpiTot">—</div><div class="kpi-lbl">Totale</div></div>
+      <div id="kpiTotBreak"></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-top"><div class="kpi-val" style="color:var(--retelit-teal)" id="kpiConv">—</div><div class="kpi-lbl">Convenzione</div></div>
+      <div id="kpiConvBreak"></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-top"><div class="kpi-val" style="color:var(--retelit-blue-75)" id="kpiPol">—</div><div class="kpi-lbl">Polizza</div></div>
+      <div id="kpiPolBreak"></div>
+    </div>
+  </div>
+
+  <!-- Due colonne -->
+  <div class="split">
+
+    <!-- CONVENZIONI -->
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-icon conv">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M9 12h6M9 16h6M17 21H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z"/></svg>
+        </div>
+        <div>
+          <div class="panel-label">Contrattuale</div>
+          <div class="panel-title">Convenzioni</div>
+        </div>
+        <div class="panel-count" id="convCount">—</div>
+      </div>
+      <div class="filterbar">
+        <select id="convFiltLotto" onchange="renderConv()">
+          <option value="">Tutti i lotti</option>
+          <option value="1A">Lotto 1A</option><option value="1B">Lotto 1B</option>
+          <option value="2A">Lotto 2A</option><option value="2B">Lotto 2B</option>
+        </select>
+        <select id="convFiltStato" onchange="renderConv()">
+          <option value="">Tutti gli stati convenzione</option>
+        </select>
+        <input id="convSearch" placeholder="Cerca..." style="min-width:130px;flex:1" oninput="renderConv()">
+        <button class="btn-excel" onclick="exportPolConvExcel('conv')" title="Esporta la vista filtrata in Excel">
+          <svg width="14" height="14" viewBox="0 0 24 24"><path d="M6 2h8l5 5v14a1 1 0 01-1 1H6a1 1 0 01-1-1V3a1 1 0 011-1z" fill="#fff"/><path d="M14 2v5h5" fill="none" stroke="#8fbfa8" stroke-width="1"/><path d="M8.5 10.5l6 6M14.5 10.5l-6 6" stroke="#217346" stroke-width="1.8" stroke-linecap="round"/></svg>
+          Export Excel
+        </button>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th style="text-align:right">Pratica</th>
+              <th>Lotto</th>
+              <th>Ente</th>
+              <th>Stato permesso</th>
+              <th>Convenzione</th>
+              <th>Data Richiesta</th>
+              <th>Data Richiesta RDS</th>
+              <th>Data Invio</th>
+              <th>Data Emissione</th>
+            </tr>
+          </thead>
+          <tbody id="convBody"><tr><td colspan="9" class="loading-row">Caricamento in corso...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- POLIZZE -->
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-icon pol">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.25C17.25 22.15 21 17.25 21 12V7L12 2z"/><path d="M9 12l2 2 4-4"/></svg>
+        </div>
+        <div>
+          <div class="panel-label">Assicurativa</div>
+          <div class="panel-title">Polizze</div>
+        </div>
+        <div class="panel-count" id="polCount">—</div>
+      </div>
+      <div class="filterbar">
+        <select id="polFiltLotto" onchange="renderPol()">
+          <option value="">Tutti i lotti</option>
+          <option value="1A">Lotto 1A</option><option value="1B">Lotto 1B</option>
+          <option value="2A">Lotto 2A</option><option value="2B">Lotto 2B</option>
+        </select>
+        <select id="polFiltStato" onchange="renderPol()">
+          <option value="">Tutti gli stati polizza</option>
+        </select>
+        <input id="polSearch" placeholder="Cerca..." style="min-width:130px;flex:1" oninput="renderPol()">
+        <button class="btn-excel" onclick="exportPolConvExcel('pol')" title="Esporta la vista filtrata in Excel">
+          <svg width="14" height="14" viewBox="0 0 24 24"><path d="M6 2h8l5 5v14a1 1 0 01-1 1H6a1 1 0 01-1-1V3a1 1 0 011-1z" fill="#fff"/><path d="M14 2v5h5" fill="none" stroke="#8fbfa8" stroke-width="1"/><path d="M8.5 10.5l6 6M14.5 10.5l-6 6" stroke="#217346" stroke-width="1.8" stroke-linecap="round"/></svg>
+          Export Excel
+        </button>
+      </div>
+      <div class="scroll">
+        <table>
+          <thead>
+            <tr>
+              <th style="text-align:right">Pratica</th>
+              <th>Lotto</th>
+              <th>Ente</th>
+              <th>Stato permesso</th>
+              <th>Polizza</th>
+              <th>Data Richiesta</th>
+              <th>Data Richiesta RDS</th>
+              <th>Data Invio</th>
+              <th>Data Emissione</th>
+            </tr>
+          </thead>
+          <tbody id="polBody"><tr><td colspan="9" class="loading-row">Caricamento in corso...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- Token modal -->
+<div id="tokenModal" role="dialog" aria-modal="true" aria-labelledby="tokenModalTitle">
+  <div id="tokenBox">
+    <div class="r-eyebrow">Amministrazione</div>
+    <h3 id="tokenModalTitle">Token di accesso</h3>
+    <p>Inserisci l'upload token per salvare le modifiche su MongoDB e GitHub.</p>
+    <input id="tokenInput" type="password" placeholder="Upload token" autocomplete="off" aria-label="Upload token">
+    <div class="token-actions">
+      <button class="btn-secondary-sm" onclick="closeTokenModal()">Annulla</button>
+      <button class="btn-primary-sm" onclick="confirmToken()">Conferma</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const IMPRESE = { '1':'Valtellina','1A':'Valtellina','1B':'Soleto','2':'Sertori','2A':'Sielte','2B':'Telebit','3':'Valtellina','4':'Sielte','5':'Circet','6':'Sertori','7':'Valtellina','8':'Sielte' };
+  const STATI_COLORS = {
+    'OTTENUTO':                  { bg:'var(--ok-bg)',       color:'var(--ok)' },
+    'EMESSA':                    { bg:'var(--ok-bg)',       color:'var(--ok)' },
+    'INVIATO':                   { bg:'var(--retelit-ice)', color:'var(--retelit-teal)' },
+    'INVIATA':                   { bg:'var(--retelit-ice)', color:'var(--retelit-teal)' },
+    'PROTOCOLLATO':              { bg:'var(--retelit-ice)', color:'var(--retelit-blue)' },
+    'NECESSARIA INTEGRAZIONE':   { bg:'var(--danger-bg)',   color:'var(--danger)' },
+    'NECESSARIA':                { bg:'var(--warn-bg)',     color:'var(--warn)' },
+    'IN REDAZIONE INTEGRAZIONE': { bg:'var(--warn-bg)',     color:'var(--warn)' },
+    'PROTOCOLLATO INTEGRAZIONE': { bg:'var(--retelit-blue-25)', color:'var(--retelit-blue)' },
+    'IN FIRMA RDS':              { bg:'var(--warn-bg)',     color:'var(--warn)' },
+    'RICHIESTA RDS':             { bg:'var(--warn-bg)',     color:'var(--warn)' },
+    'COORDINAMENTO':             { bg:'var(--retelit-blue-25)', color:'var(--retelit-blue-75)' },
+  };
+
+  let CONV_ROWS = [];
+  let POL_ROWS  = [];
+  let DATE_MAP  = {};
+  let DATE_INVIO_MAP = {};
+  let DATE_RDS_MAP = {};
+  let DATE_EMISSIONE_MAP = {};
+
+  async function loadDates() {
+    try {
+      const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || '';
+      if (!apiBase) return;
+      const r = await fetch(apiBase + '/api/admin/polizze-convenzioni/data-richiesta', { cache: 'no-cache', headers: { 'x-session-token': localStorage.getItem('_enri_session') || '' } });
+      if (r.ok) {
+        const data = await r.json();
+        DATE_MAP = data.date || {};
+        DATE_INVIO_MAP = data.date_invio || {};
+        DATE_RDS_MAP = data.date_richiesta_rds || {};
+        DATE_EMISSIONE_MAP = data.date_emissione || {};
+      }
+    } catch(e) { console.warn('[Polizze&Convenzioni] date non caricate:', e); }
+  }
+
+  async function loadData() {
+    await loadDates();
+    const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || '';
+    let text = '';
+    try {
+      if (apiBase) {
+        const r = await fetch(apiBase + '/api/data-text/Master.csv', { cache:'no-cache', headers: { 'x-session-token': localStorage.getItem('_enri_session') || '' } });
+        if (r.ok) text = await r.text();
+      }
+      if (!text) {
+        const ghBase = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '/');
+        const r = await fetch(ghBase + 'Master.csv', { cache:'no-cache' });
+        if (r.ok) text = await r.text();
+      }
+    } catch(e) {
+      setError('Impossibile caricare il Master CSV: ' + e.message);
+      return;
+    }
+    if (!text.trim()) { setError('File Master.csv vuoto o non trovato.'); return; }
+    parseAndRender(text);
+  }
+
+  function setError(msg) {
+    console.warn('[Polizze&Convenzioni]', msg);
+    let banner = document.getElementById('_errBanner');
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = '_errBanner';
+      banner.style.cssText = 'background:var(--danger-bg);color:var(--danger);border:1px solid var(--danger-bg);border-radius:var(--radius-lg);padding:12px 18px;font-size:13px;font-weight:600;margin-bottom:4px';
+      document.querySelector('.main').insertBefore(banner, document.querySelector('.split'));
+    }
+    banner.textContent = msg;
+    document.getElementById('convBody').innerHTML = '<tr><td colspan="9" class="empty">' + msg + '</td></tr>';
+    document.getElementById('polBody').innerHTML  = '<tr><td colspan="9" class="empty">' + msg + '</td></tr>';
+  }
+
+  function parseAndRender(text) {
+    const lines = text.trim().split(/\r?\n/);
+    const sep = lines[0].includes('\t') ? '\t' : lines[0].includes(';') ? ';' : ',';
+
+    function splitLine(l) {
+      const res = []; let cur = ''; let inQ = false;
+      for (const ch of l) {
+        if (ch === '"') { inQ = !inQ; }
+        else if (ch === sep && !inQ) { res.push(cur.trim()); cur = ''; }
+        else cur += ch;
+      }
+      res.push(cur.trim()); return res;
+    }
+
+    const hdr  = splitLine(lines[0]).map(h => h.replace(/^"|"$/g,'').trim());
+    const idx  = k => hdr.findIndex(h => h.toUpperCase() === k.toUpperCase());
+
+    const iTratta = idx('TRATTA_ID');
+    const iPrat   = idx('PRATICA');
+    const iTipo   = idx('TIPO_PERMESSO');
+    const iStato  = idx('STATO_PERMESSO');
+    const iEnte   = idx('ENTE');
+    const iSrc    = idx('SOURCE.NAME');
+    const iConv   = hdr.findIndex(h => h.toUpperCase().trim() === 'CONVENZIONE');
+    const iPol    = hdr.findIndex(h => h.toUpperCase().trim() === 'POLIZZA');
+    const iDum    = idx('DATA_ULTIMA_MODIFICA');
+
+    // DATA_ULTIMA_MODIFICA è testo DD/MM/YYYY — non ordinabile come stringa
+    // (stesso bug già corretto in server.py _compute_tratta_summary / pending-updates).
+    function parseDum(s) {
+      const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec((s||'').trim());
+      return m ? new Date(+m[3], +m[2]-1, +m[1]).getTime() : -Infinity;
+    }
+
+    console.log('[Polizze&Convenzioni] Colonne CSV trovate:', hdr.join(', '));
+    console.log('[Polizze&Convenzioni] iConv=', iConv, ' iPol=', iPol);
+    if (iConv === -1 && iPol === -1) {
+      setError('Colonne CONVENZIONE e POLIZZA non trovate nel Master CSV. Verificare che il file Excel contenga queste colonne prima di caricarlo.');
+      return;
+    }
+
+    const seenConv = {}, seenPol = {};
+    const convRows = [], polRows = [];
+
+    // BUG FIX: il loop sotto salta (`continue`) le righe dove CONVENZIONE e
+    // POLIZZA sono entrambe vuote — ma se una pratica riceve un aggiornamento
+    // di STATO_PERMESSO senza ripetere il valore CONVENZIONE/POLIZZA nella
+    // stessa riga (comune quando lo stato viene aggiornato da un altro punto
+    // del workflow), quella riga veniva ignorata e lo stato mostrato qui
+    // restava quello della riga più vecchia in cui CONVENZIONE era stata
+    // valorizzata — disallineato rispetto a index.html, che invece considera
+    // sempre la riga più recente in assoluto per pratica (stessa logica già
+    // corretta lato server in _compute_tratta_summary). Pre-pass su TUTTE le
+    // righe per trovare lo stato davvero più recente per ogni pratica.
+    const latestStato = {};
+    for (let i = 1; i < lines.length; i++) {
+      if (!lines[i].trim()) continue;
+      const cols = splitLine(lines[i]);
+      const prat0  = iPrat >= 0 ? (cols[iPrat] || '').trim() : '';
+      const src0   = iSrc  >= 0 ? (cols[iSrc]  || '').trim() : '';
+      const lotto0 = src0.replace(/\.xlsx$/i,'').replace(/^Lotto\s*/i,'').trim().toUpperCase() || '';
+      const key0 = lotto0 + '|' + prat0;
+      const dum0 = iDum >= 0 ? (cols[iDum] || '').trim() : '';
+      const ts0  = parseDum(dum0);
+      const stato0 = iStato >= 0 ? (cols[iStato] || '').trim() : '';
+      if (stato0 && (!latestStato[key0] || ts0 >= latestStato[key0].ts)) {
+        latestStato[key0] = { ts: ts0, stato: stato0 };
+      }
+    }
+
+    for (let i = 1; i < lines.length; i++) {
+      if (!lines[i].trim()) continue;
+      const cols = splitLine(lines[i]);
+      const conv0 = iConv >= 0 ? (cols[iConv] || '').trim() : '';
+      const pol0  = iPol  >= 0 ? (cols[iPol]  || '').trim() : '';
+      // L'impresa scrive SI/NO (checkbox "è necessaria?"): SI equivale a NECESSARIA nel
+      // workflow admin (entra in questa pagina), NO significa "non necessaria" e non deve
+      // comparire qui. I valori di workflow già impostati dall'admin (NECESSARIA/RICHIESTA
+      // RDS/INVIATA/EMESSA) passano invariati.
+      const conv = conv0.toUpperCase() === 'SI' ? 'NECESSARIA' : (conv0.toUpperCase() === 'NO' ? '' : conv0);
+      const pol  = pol0.toUpperCase()  === 'SI' ? 'NECESSARIA' : (pol0.toUpperCase()  === 'NO' ? '' : pol0);
+      if (!conv && !pol) continue;
+
+      const tratta = iTratta >= 0 ? (cols[iTratta] || '').trim() : '';
+      const prat   = iPrat   >= 0 ? (cols[iPrat]   || '').trim() : '';
+      const tipo   = iTipo   >= 0 ? (cols[iTipo]   || '').trim() : '';
+      const src    = iSrc    >= 0 ? (cols[iSrc]    || '').trim() : '';
+      const lotto  = src.replace(/\.xlsx$/i,'').replace(/^Lotto\s*/i,'').trim().toUpperCase() || '';
+      const tipoMap  = { 'AUTORIZZAZIONE': 'AUT', 'NULLA OSTA': 'NO' };
+      const prefix   = tipoMap[tipo] || tipo.substring(0,3);
+      const codicePratica = (prefix && prat) ? `${prefix}/${prat}/${lotto}` : (prat || '—');
+      const entry  = {
+        tratta, pratica: prat, codicePratica, tipo,
+        stato:  latestStato[lotto + '|' + prat] ? latestStato[lotto + '|' + prat].stato : (iStato >= 0 ? (cols[iStato] || '').trim() : ''),
+        ente:   iEnte     >= 0 ? (cols[iEnte]     || '').trim() : '',
+        lotto,  impresa: IMPRESE[lotto] || '',
+      };
+      const key = lotto + '|' + prat;
+      const dum = iDum >= 0 ? (cols[iDum] || '').trim() : '';
+      const dumTs = parseDum(dum);
+      if (conv && (!seenConv[key] || dumTs >= seenConv[key])) {
+        seenConv[key] = dumTs;
+        const rowEntry = {...entry, convStato: conv, dataRichiesta: DATE_MAP[`${lotto}|${prat}|CONVENZIONE`] || '', dataInvio: DATE_INVIO_MAP[`${lotto}|${prat}|CONVENZIONE`] || '', dataRichiestaRds: DATE_RDS_MAP[`${lotto}|${prat}|CONVENZIONE`] || '', dataEmissione: DATE_EMISSIONE_MAP[`${lotto}|${prat}|CONVENZIONE`] || ''};
+        const existingIdx = convRows.findIndex(r => r.lotto === lotto && r.pratica === prat);
+        if (existingIdx >= 0) convRows[existingIdx] = rowEntry; else convRows.push(rowEntry);
+      }
+      if (pol && (!seenPol[key] || dumTs >= seenPol[key])) {
+        seenPol[key] = dumTs;
+        const rowEntry = {...entry, polStato: pol, dataRichiesta: DATE_MAP[`${lotto}|${prat}|POLIZZA`] || '', dataInvio: DATE_INVIO_MAP[`${lotto}|${prat}|POLIZZA`] || '', dataRichiestaRds: DATE_RDS_MAP[`${lotto}|${prat}|POLIZZA`] || '', dataEmissione: DATE_EMISSIONE_MAP[`${lotto}|${prat}|POLIZZA`] || ''};
+        const existingIdx = polRows.findIndex(r => r.lotto === lotto && r.pratica === prat);
+        if (existingIdx >= 0) polRows[existingIdx] = rowEntry; else polRows.push(rowEntry);
+      }
+    }
+
+    CONV_ROWS = convRows;
+    POL_ROWS  = polRows;
+
+    buildStatoFilter(convRows, 'convFiltStato', 'convStato');
+    buildStatoFilter(polRows,  'polFiltStato',  'polStato');
+
+    document.getElementById('kpiTot').textContent  = new Set([...Object.keys({}), ...convRows.map(r=>r.pratica), ...polRows.map(r=>r.pratica)]).size;
+    document.getElementById('kpiConv').textContent = convRows.length;
+    document.getElementById('kpiPol').textContent  = polRows.length;
+    // kpiTot = unione pratiche uniche
+    const allPrat = new Set([...convRows.map(r=>r.tratta+'|'+r.pratica), ...polRows.map(r=>r.tratta+'|'+r.pratica)]);
+    document.getElementById('kpiTot').textContent = allPrat.size;
+    document.getElementById('kpiRow').style.display = '';
+
+    const convCounts = countByStato(convRows, 'convStato');
+    const polCounts  = countByStato(polRows,  'polStato');
+    const totCounts  = {};
+    [convCounts, polCounts].forEach(c => Object.entries(c).forEach(([k, n]) => { totCounts[k] = (totCounts[k]||0) + n; }));
+    renderKpiBreakdown('kpiTotBreak',  totCounts);
+    renderKpiBreakdown('kpiConvBreak', convCounts);
+    renderKpiBreakdown('kpiPolBreak',  polCounts);
+
+    renderConv();
+    renderPol();
+  }
+
+  function countByStato(rows, key) {
+    const counts = {};
+    rows.forEach(r => {
+      const v = (r[key] || '').toUpperCase();
+      if (!v) return;
+      counts[v] = (counts[v] || 0) + 1;
+    });
+    return counts;
+  }
+
+  function renderKpiBreakdown(elId, counts) {
+    const el = document.getElementById(elId);
+    const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+    const total = entries.reduce((s, [, n]) => s + n, 0);
+    if (!total) { el.innerHTML = ''; return; }
+    const bar = entries.map(([stato, n]) => {
+      const c = STATI_COLORS[stato] || { color: 'var(--gray-400)' };
+      return `<div class="kpi-bar-seg" style="width:${(n / total * 100).toFixed(1)}%;background:${c.color}"></div>`;
+    }).join('');
+    const legend = entries.map(([stato, n]) => `${n} ${stato}`).join(' · ');
+    el.innerHTML = `<div class="kpi-bar">${bar}</div><div class="kpi-legend">${legend}</div>`;
+  }
+
+  function buildStatoFilter(rows, selId, statoKey) {
+    const stati = [...new Set(rows.map(r => r[statoKey]).filter(Boolean))].sort();
+    const sel = document.getElementById(selId);
+    stati.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = s; sel.appendChild(o); });
+  }
+
+  function filter(rows, lotto, stato, search, statoKey) {
+    let r = rows;
+    if (lotto)  r = r.filter(x => x.lotto === lotto);
+    if (stato)  r = r.filter(x => (x[statoKey] || '') === stato);
+    if (search) r = r.filter(x => (x.codicePratica+x.ente+x.tratta+x.lotto).toLowerCase().includes(search));
+    return r;
+  }
+
+  // ── VALORI AMMESSI ────────────────────────────────────────────────────────
+  const CONV_VALUES = ['', 'NECESSARIA', 'RICHIESTA RDS', 'INVIATA', 'EMESSA'];
+  const POL_VALUES  = ['', 'NECESSARIA', 'RICHIESTA RDS', 'INVIATA', 'EMESSA'];
+
+  function _dateCellHtml(dateKey, value) {
+    return `<td class="date-cell" data-date-key="${dateKey}">
+      <span class="date-value" style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">${value || '—'}</span>
+      <button class="edit-btn" title="Modifica data" onclick="startDateEdit(this)" aria-label="Modifica data">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      </button>
+      <span class="edit-controls-date" style="display:none;gap:5px;align-items:center">
+        <input type="text" class="date-input" placeholder="GG/MM/AAAA" value="${value || ''}">
+        <button class="btn-save" onclick="saveDateEdit(this)">Salva</button>
+        <button class="btn-ghost-sm" onclick="cancelDateEdit(this)">Annulla</button>
+      </span>
+    </td>`;
+  }
+
+  function buildRows(rows, statoKey, colSpan, field) {
+    if (!rows.length) return '<tr><td colspan="' + colSpan + '" class="empty">Nessuna pratica trovata.</td></tr>';
+    const values = field === 'CONVENZIONE' ? CONV_VALUES : POL_VALUES;
+    return rows.map((r, i) => {
+      const st  = STATI_COLORS[r.stato]                      || { bg:'var(--gray-100)', color:'var(--gray-500)' };
+      const stS = STATI_COLORS[(r[statoKey]||'').toUpperCase()] || { bg:'var(--gray-100)', color:'var(--gray-500)' };
+      const statoVal = r[statoKey] || '';
+      const opts = values.map(v =>
+        `<option value="${v}" ${v === statoVal ? 'selected' : ''}>${v || '(vuoto)'}</option>`
+      ).join('')
+      + (statoVal && !values.includes(statoVal)
+          ? `<option value="${statoVal}" selected>${statoVal} (valore precedente)</option>`
+          : '');
+      return `<tr data-idx="${i}" data-field="${field}" data-lotto="${r.lotto}" data-pratica="${r.pratica}">
+        <td style="font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--accent);text-align:right">${r.codicePratica||'—'}</td>
+        <td style="font-size:11px">${r.lotto||'—'}</td>
+        <td style="font-size:11.5px">${r.ente||'—'}</td>
+        <td><span class="badge" style="background:${st.bg};color:${st.color}">${r.stato||'—'}</span></td>
+        <td class="stato-cell">
+          <span class="badge stato-badge" style="background:${stS.bg};color:${stS.color}">${statoVal||'—'}</span>
+          <button class="edit-btn" title="Modifica stato" onclick="startEdit(this)" aria-label="Modifica stato">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <span class="edit-controls" style="display:none;gap:5px;align-items:center">
+            <select class="edit-select">${opts}</select>
+            <button class="btn-save" onclick="saveEdit(this)">Salva</button>
+            <button class="btn-ghost-sm" onclick="cancelEdit(this)">Annulla</button>
+          </span>
+        </td>
+        ${_dateCellHtml('richiesta', r.dataRichiesta)}
+        ${_dateCellHtml('richiesta_rds', r.dataRichiestaRds)}
+        ${_dateCellHtml('invio', r.dataInvio)}
+        ${_dateCellHtml('emissione', r.dataEmissione)}
+      </tr>`;
+    }).join('');
+  }
+
+  // ── EDIT INLINE ────────────────────────────────────────────────────────────
+  window.startEdit = function(btn) {
+    const cell = btn.closest('.stato-cell');
+    cell.querySelector('.stato-badge').style.display = 'none';
+    btn.style.display = 'none';
+    const ctrl = cell.querySelector('.edit-controls');
+    ctrl.style.display = 'inline-flex';
+    ctrl.querySelector('select').focus();
+  };
+
+  window.cancelEdit = function(btn) {
+    const cell = btn.closest('.stato-cell');
+    cell.querySelector('.stato-badge').style.display = '';
+    cell.querySelector('.edit-btn').style.display = '';
+    cell.querySelector('.edit-controls').style.display = 'none';
+  };
+
+  window.saveEdit = function(btn) {
+    const row   = btn.closest('tr');
+    const cell  = btn.closest('.stato-cell');
+    const lotto   = row.dataset.lotto;
+    const pratica = row.dataset.pratica;
+    const field   = row.dataset.field;
+    const val     = cell.querySelector('.edit-select').value;
+    _doSave(lotto, pratica, field, val, btn, cell);
+  };
+
+  function _doSave(lotto, pratica, field, val, btn, cell) {
+    const token = localStorage.getItem('enri_upload_token') || '';
+    if (!token) {
+      _pendingSave = { lotto, pratica, field, val, btn, cell };
+      openTokenModal();
+      return;
+    }
+    _execSave(lotto, pratica, field, val, token, btn, cell);
+  }
+
+  async function _execSave(lotto, pratica, field, val, token, btn, cell) {
+    const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || '';
+    if (!apiBase) { showToast('API base non configurata.', 'err'); return; }
+    btn.disabled = true;
+    try {
+      const r = await fetch(apiBase + '/api/admin/polizze-convenzioni/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-upload-token': token },
+        body: JSON.stringify({ lotto, pratica, fields: { [field]: val } })
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || r.statusText);
+      // Aggiorna badge visivo senza reload
+      const stS = STATI_COLORS[(val||'').toUpperCase()] || { bg:'var(--gray-100)', color:'var(--gray-500)' };
+      const badge = cell.querySelector('.stato-badge');
+      badge.textContent = val || '—';
+      badge.style.background = stS.bg;
+      badge.style.color = stS.color;
+      cancelEdit(btn);
+      showToast('Operazione completata. Righe aggiornate: ' + d.rows_updated + '.', 'ok');
+    } catch(e) {
+      if (e.message && e.message.includes('401')) {
+        localStorage.removeItem('enri_upload_token');
+        showToast('Token non valido. Riprovare.', 'err');
+      } else {
+        showToast('Si è verificato un problema. ' + e.message, 'err');
+      }
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  window.startDateEdit = function(btn) {
+    const cell = btn.closest('.date-cell');
+    cell.querySelector('.date-value').style.display = 'none';
+    btn.style.display = 'none';
+    const ctrl = cell.querySelector('.edit-controls-date');
+    ctrl.style.display = 'inline-flex';
+    const input = ctrl.querySelector('.date-input');
+    input.focus();
+    input.select();
+  };
+
+  window.cancelDateEdit = function(btn) {
+    const cell = btn.closest('.date-cell');
+    cell.querySelector('.date-value').style.display = '';
+    cell.querySelector('.edit-btn').style.display = '';
+    cell.querySelector('.edit-controls-date').style.display = 'none';
+  };
+
+  const DATE_RE = /^\d{2}\/\d{2}\/\d{4}$/;
+
+  window.saveDateEdit = function(btn) {
+    const row  = btn.closest('tr');
+    const cell = btn.closest('.date-cell');
+    const val  = cell.querySelector('.date-input').value.trim();
+    if (val && !DATE_RE.test(val)) {
+      showToast('Formato data non valido: usare GG/MM/AAAA (o lasciare vuoto per cancellare).', 'err');
+      return;
+    }
+    const lotto    = row.dataset.lotto;
+    const pratica  = row.dataset.pratica;
+    const field    = row.dataset.field;
+    const dateKey  = cell.dataset.dateKey;
+    _doSaveDate(lotto, pratica, field, dateKey, val, btn, cell);
+  };
+
+  function _doSaveDate(lotto, pratica, field, dateKey, val, btn, cell) {
+    const token = localStorage.getItem('enri_upload_token') || '';
+    if (!token) {
+      _pendingSave = { kind: 'date', lotto, pratica, field, dateKey, val, btn, cell };
+      openTokenModal();
+      return;
+    }
+    _execSaveDate(lotto, pratica, field, dateKey, val, token, btn, cell);
+  }
+
+  async function _execSaveDate(lotto, pratica, field, dateKey, val, token, btn, cell) {
+    const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || '';
+    if (!apiBase) { showToast('API base non configurata.', 'err'); return; }
+    btn.disabled = true;
+    try {
+      const r = await fetch(apiBase + '/api/admin/polizze-convenzioni/set-date', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-upload-token': token },
+        body: JSON.stringify({ lotto, pratica, field, date_key: dateKey, value: val })
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.detail || r.statusText);
+      cell.querySelector('.date-value').textContent = val || '—';
+      cancelDateEdit(btn);
+      showToast(val ? 'Data aggiornata.' : 'Data cancellata.', 'ok');
+    } catch(e) {
+      if (e.message && e.message.includes('401')) {
+        localStorage.removeItem('enri_upload_token');
+        showToast('Token non valido. Riprovare.', 'err');
+      } else {
+        showToast('Si è verificato un problema. ' + e.message, 'err');
+      }
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // ── TOKEN MODAL ────────────────────────────────────────────────────────────
+  let _pendingSave = null;
+
+  function openTokenModal() {
+    document.getElementById('tokenModal').classList.add('open');
+    setTimeout(() => document.getElementById('tokenInput').focus(), 50);
+  }
+  window.closeTokenModal = function() {
+    document.getElementById('tokenModal').classList.remove('open');
+    document.getElementById('tokenInput').value = '';
+    if (_pendingSave) {
+      if (_pendingSave.kind === 'date') cancelDateEdit(_pendingSave.btn);
+      else cancelEdit(_pendingSave.btn);
+      _pendingSave = null;
+    }
+  };
+  window.confirmToken = function() {
+    const t = document.getElementById('tokenInput').value.trim();
+    if (!t) return;
+    localStorage.setItem('enri_upload_token', t);
+    document.getElementById('tokenModal').classList.remove('open');
+    document.getElementById('tokenInput').value = '';
+    if (_pendingSave) {
+      const p = _pendingSave;
+      _pendingSave = null;
+      if (p.kind === 'date') _execSaveDate(p.lotto, p.pratica, p.field, p.dateKey, p.val, t, p.btn, p.cell);
+      else _execSave(p.lotto, p.pratica, p.field, p.val, t, p.btn, p.cell);
+    }
+  };
+  document.getElementById('tokenInput').addEventListener('keydown', e => { if (e.key === 'Enter') window.confirmToken(); });
+  document.getElementById('tokenModal').addEventListener('click', e => { if (e.target === e.currentTarget) window.closeTokenModal(); });
+
+  // ── TOAST ──────────────────────────────────────────────────────────────────
+  let _toastTimer;
+  function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'show ' + type;
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => { t.className = ''; }, 3500);
+  }
+
+  window.exportPolConvExcel = function(kind) {
+    if (typeof XLSX === 'undefined') {
+      showToast('Libreria di export non disponibile: verificare la connessione (cdn.sheetjs.com).', 'err');
+      return;
+    }
+    const isConv = kind === 'conv';
+    const rows = filter(
+      isConv ? CONV_ROWS : POL_ROWS,
+      document.getElementById(isConv ? 'convFiltLotto' : 'polFiltLotto').value,
+      document.getElementById(isConv ? 'convFiltStato' : 'polFiltStato').value,
+      document.getElementById(isConv ? 'convSearch' : 'polSearch').value.toLowerCase(),
+      isConv ? 'convStato' : 'polStato'
+    );
+    const statoKey = isConv ? 'convStato' : 'polStato';
+    const label = isConv ? 'Convenzione' : 'Polizza';
+    const aoa = [['Pratica', 'Lotto', 'Ente', 'Stato permesso', label, 'Data Richiesta', 'Data Richiesta RDS', 'Data Invio', 'Data Emissione']];
+    rows.forEach(r => aoa.push([
+      r.codicePratica || '', r.lotto || '', r.ente || '', r.stato || '',
+      r[statoKey] || '', r.dataRichiesta || '', r.dataRichiestaRds || '', r.dataInvio || '', r.dataEmissione || ''
+    ]));
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws['!cols'] = [{ wch: 12 }, { wch: 7 }, { wch: 26 }, { wch: 22 }, { wch: 18 }, { wch: 13 }, { wch: 16 }, { wch: 13 }, { wch: 14 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, label);
+    const oggi = new Date();
+    const stamp = oggi.getFullYear() + ('0' + (oggi.getMonth() + 1)).slice(-2) + ('0' + oggi.getDate()).slice(-2);
+    XLSX.writeFile(wb, (isConv ? 'Convenzioni' : 'Polizze') + '_' + stamp + '.xlsx');
+  }
+
+  window.renderConv = function() {
+    const rows = filter(CONV_ROWS,
+      document.getElementById('convFiltLotto').value,
+      document.getElementById('convFiltStato').value,
+      document.getElementById('convSearch').value.toLowerCase(),
+      'convStato'
+    );
+    document.getElementById('convCount').textContent = rows.length + ' pratiche';
+    document.getElementById('convBody').innerHTML = buildRows(rows, 'convStato', 9, 'CONVENZIONE');
+  };
+
+  window.renderPol = function() {
+    const rows = filter(POL_ROWS,
+      document.getElementById('polFiltLotto').value,
+      document.getElementById('polFiltStato').value,
+      document.getElementById('polSearch').value.toLowerCase(),
+      'polStato'
+    );
+    document.getElementById('polCount').textContent = rows.length + ' pratiche';
+    document.getElementById('polBody').innerHTML = buildRows(rows, 'polStato', 9, 'POLIZZA');
+  };
+
+  window.addEventListener('pageshow', (e) => {
+    if (e.persisted) location.reload();
+  });
+
+  // Guardia login — stesso pattern di scavi.html/sopralluoghi.html
+  if (!localStorage.getItem('_enri_user')) {
+    document.getElementById('authGuard').style.display = 'flex';
+  } else {
+    loadData();
+  }
+})();
+</script>
+</body>
+</html>

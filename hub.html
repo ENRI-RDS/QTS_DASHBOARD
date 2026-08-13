@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="it" translate="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="google" content="notranslate">
+<meta http-equiv="Content-Language" content="it">
+<title>Retelit — Portale</title>
+<script src="js/api-config.js"></script>
+<!-- Caricamento del Font Ufficiale Raleway e JetBrains Mono per dati tecnici -->
+<link href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,100..900;1,100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet">
+<style>
+  @view-transition { navigation: auto; }
+
+  /* ── TOKEN UFFICIALI BRAND KIT RETELIT (§3.8) ── */
+  :root {
+    --retelit-blue: #043F75;
+    --retelit-blue-75: #436A93;
+    --retelit-blue-50: #819FB9;
+    --retelit-blue-25: #C0CFDC;
+    --retelit-sky:  #41BBD9;
+    --retelit-teal: #1A7D99;
+    --retelit-mist: #ADCAD6;
+    --retelit-ice:  #D3DEEA;
+    --retelit-black:#000000;
+    --retelit-white:#FFFFFF;
+
+    --gray-50:#F7F8FA; 
+    --gray-100:#EEF1F5; 
+    --gray-200:#DFE4EB;
+    --gray-300:#C4CDD8; 
+    --gray-400:#9AA5B4; 
+    --gray-500:#6B7685;
+    --gray-600:#4E5866; 
+    --gray-700:#363D48; 
+    --gray-800:#22272E; 
+    --gray-900:#12161B;
+
+    --fg-1: var(--retelit-blue); 
+    --fg-2: var(--gray-700); 
+    --fg-3: var(--gray-500);
+    --fg-inverse:#FFFFFF;
+    
+    --bg-1:#FFFFFF; 
+    --bg-2: var(--gray-50); 
+    --bg-3: var(--retelit-ice);
+    --bg-dark: var(--retelit-blue); 
+    --bg-darker:#02284B;
+    
+    --border-1: var(--gray-200); 
+    --border-2: var(--gray-300); 
+    --border-focus: var(--retelit-sky);
+
+    --ok:#1E9E6A; 
+    --warn:#D08A1A; 
+    --err:#C0392B; 
+    --info: var(--retelit-sky);
+
+    /* Blue-tinted restrained shadows (§5.3) */
+    --shadow-sm:  0 1px 2px rgba(4,63,117,.06), 0 1px 1px rgba(4,63,117,.04);
+    --shadow-md:  0 4px 12px rgba(4,63,117,.08), 0 2px 4px rgba(4,63,117,.04);
+    --shadow-lg:  0 12px 32px rgba(4,63,117,.12), 0 4px 12px rgba(4,63,117,.06);
+    --shadow-focus: 0 0 0 3px rgba(65,187,217,.35);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: var(--Raleway, "Raleway"), "Calibri", sans-serif;
+    background: var(--bg-2);
+    color: var(--fg-2);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 24px; height:64px;
+    background:var(--bg-1);
+    border-bottom:1px solid var(--border-1);
+    box-shadow: var(--shadow-sm);
+    position:sticky; top:0; z-index:50;
+  }
+  .topbar-left { display:flex; align-items:center; gap:12px; }
+  .topbar-right { display:flex; align-items:center; gap:12px; }
+  
+  .logo {
+    font-family: var(--Raleway, "Raleway"), sans-serif;
+    font-size: 16px; font-weight: 700;
+    letter-spacing: 0.04em; color: var(--fg-1);
+  }
+  .divider-v { width:1px; height:20px; background:var(--border-2); }
+  .page-title { font-size:14px; color:var(--fg-3); font-weight:500; }
+
+  .btn-sm {
+    font-size:14px; padding:8px 16px; border-radius:var(--radius-md, 8px);
+    background:transparent; color:var(--fg-1); border:1px solid var(--retelit-blue);
+    cursor:pointer; font-family:inherit; font-weight:600;
+    transition: all 200ms cubic-bezier(.22, 1, .36, 1);
+  }
+  .btn-sm:hover { background:var(--retelit-ice); color:var(--fg-1); }
+
+  /* ── MAIN ── */
+  .main {
+    max-width:1200px; margin:0 auto;
+    padding:40px 24px;
+    display:flex; flex-direction:column; gap:32px;
+  }
+  .main.impresa-mode {
+    min-height:calc(100vh - 64px);
+    justify-content:center;
+    align-items:center;
+  }
+
+  /* ── HEADER SECTION ── */
+  .hub-header {
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    flex-wrap:wrap;
+    border-bottom: 1px solid var(--border-1);
+    padding-bottom: 24px;
+  }
+  .hub-header-left { display:flex; flex-direction:column; gap:4px; }
+  
+  /* Class .r-eyebrow (§4.4) */
+  .hub-eyebrow {
+    font-family: var(--Raleway, "Raleway"), sans-serif;
+    font-size:12px; font-weight:600;
+    letter-spacing:.12em; text-transform:uppercase;
+    color:var(--retelit-teal);
+  }
+  /* Class .r-h2 (§4.4) */
+  .hub-title {
+    font-family: var(--Raleway, "Raleway"), sans-serif;
+    font-size:32px; font-weight:700;
+    letter-spacing:-.02em; color:var(--fg-1); line-height:1.2;
+  }
+  .hub-user-chip {
+    display:inline-flex; align-items:center; gap:8px;
+    padding:6px 14px; border-radius:var(--radius-md, 8px);
+    background:var(--bg-1); border:1px solid var(--border-1);
+    box-shadow:var(--shadow-sm);
+    font-size:14px; color:var(--fg-2); font-weight:500;
+  }
+  .hub-user-chip span { color:var(--fg-3); font-size:13px; }
+
+  /* ── CARDS GRID ── */
+  .cards-grid {
+    display:grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap:24px;
+  }
+  @media(max-width:960px) { .cards-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media(max-width:640px) { .cards-grid { grid-template-columns:1fr; } }
+
+  /* ── NAV CARD (§7.3) ── */
+  .nav-card {
+    background:var(--bg-1);
+    border:1px solid var(--border-1);
+    border-radius: 12px; /* --radius-lg */
+    padding:24px;
+    cursor:pointer;
+    text-decoration:none;
+    display:flex; flex-direction:column; gap:16px;
+    transition: box-shadow 200ms cubic-bezier(.22, 1, .36, 1), border-color 200ms;
+    box-shadow:var(--shadow-sm);
+    position:relative; overflow:hidden;
+  }
+  /* Cards: ombra o bordo, mai entrambi insieme dopo l'hover (§7.3) */
+  .nav-card:hover {
+    box-shadow:var(--shadow-md);
+    border-color: transparent;
+    transform: none;
+  }
+
+  /* Riga decorativa sinistra basata su tinte del brand per coerenza */
+  .nav-card::before {
+    content:'';
+    position:absolute; top:0; left:0; bottom:0; width:4px;
+    background: var(--retelit-blue-50);
+  }
+  .card-prog::before   { background: var(--retelit-blue); }
+  .card-lav::before    { background: var(--retelit-blue-75); }
+  .card-sopr::before   { background: var(--retelit-teal); }
+  .card-mappa::before  { background: var(--retelit-sky); }
+  .card-mile::before   { background: var(--retelit-mist); }
+  .card-ai::before     { background: var(--retelit-sky); }
+  .card-pol::before    { background: var(--retelit-teal); }
+  .card-admin::before  { background: var(--gray-600); }
+
+  .card-top-row {
+    display:flex; align-items:flex-start; justify-content:space-between; gap:8px;
+  }
+  .card-icon {
+    width:40px; height:40px; border-radius:8px; /* --radius-md */
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+    background: var(--gray-100);
+  }
+  .card-icon svg { width:20px; height:20px; color: var(--retelit-blue); }
+
+  .card-body { flex:1; min-width:0; }
+  
+  .card-label {
+    font-family: var(--JetBrains Mono, "JetBrains Mono"), monospace;
+    font-size:11px; font-weight:500;
+    letter-spacing:.08em; text-transform:uppercase;
+    margin-bottom:4px;
+    color: var(--retelit-teal);
+  }
+
+  /* Class .r-h4 (§4.4) */
+  .card-title {
+    font-family: var(--Raleway, "Raleway"), sans-serif;
+    font-size:20px; font-weight:600;
+    color:var(--fg-1); line-height:1.3;
+    margin-bottom:6px;
+  }
+  .card-desc {
+    font-size:14px; color:var(--fg-2); line-height:1.5;
+    text-wrap: pretty;
+  }
+
+  .card-arrow {
+    width:32px; height:32px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    background:var(--gray-50); border:1px solid var(--border-1);
+    transition: all 200ms cubic-bezier(.22, 1, .36, 1); flex-shrink:0;
+  }
+  .card-arrow svg { width:14px; height:14px; color:var(--fg-3); transition:color .2s; }
+  
+  /* Interazione conforme a Linee Guida Retelit */
+  .nav-card:hover .card-arrow { background:var(--retelit-blue); border-color:var(--retelit-blue); }
+  .nav-card:hover .card-arrow svg { color:var(--retelit-white); }
+
+  /* ── BADGE INTERFACCE ── */
+  .card-badge {
+    position:absolute; top:12px; right:54px;
+    font-size:11px; font-weight:600; letter-spacing:.04em; text-transform:uppercase;
+    padding:2px 8px; border-radius:999px; /* --radius-pill per piccoli tag */
+    background: var(--retelit-ice); color: var(--retelit-blue);
+    border: 1px solid var(--retelit-blue-25);
+  }
+
+  /* ── CARD BLOCCATA ── */
+  .nav-card.card-locked {
+    cursor: not-allowed;
+    opacity: .5;
+    filter: grayscale(1);
+    pointer-events: none;
+  }
+  .nav-card.card-locked::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      -45deg,
+      transparent, transparent 7px,
+      rgba(4,63,117,.03) 7px, rgba(4,63,117,.03) 8px
+    );
+  }
+
+  /* ── LOGIN OVERLAY ── */
+  #loginOverlay {
+    position:fixed; inset:0;
+    background: var(--gray-100);
+    z-index:9999; display:flex; align-items:center; justify-content:center;
+  }
+  #_loginCard {
+    display:flex;
+    width:720px; max-width:96vw;
+    background:var(--bg-1);
+    border-radius:12px; overflow:hidden;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--border-1);
+  }
+  #_loginLeft {
+    flex:0 0 240px;
+    background: var(--bg-darker);
+    padding:40px 28px;
+    display:flex; flex-direction:column; justify-content:space-between;
+    position:relative;
+  }
+  ._loginAccentLine {
+    width:32px; height:3px;
+    background: var(--retelit-sky);
+    margin:16px 0;
+  }
+  #_loginRight {
+    flex:1; padding:48px 40px; display:flex; flex-direction:column; justify-content:center;
+  }
+  .login-input {
+    width:100%; padding:12px;
+    border:1px solid var(--border-1); border-radius:8px;
+    font-family:inherit; font-size:14px; color:var(--fg-2);
+    background:var(--bg-1); outline:none;
+    transition: border-color 200ms, box-shadow 200ms;
+  }
+  .login-input:focus {
+    border-color: var(--border-focus);
+    box-shadow: var(--shadow-focus);
+  }
+  
+  /* Bottone primario conforme a §7.1 */
+  #_loginBtn {
+    width:100%; padding:12px; border-radius:8px;
+    background: var(--retelit-blue); color: var(--retelit-white); border:none; cursor:pointer;
+    font-family:inherit; font-size:16px; font-weight:600;
+    transition: background 200ms;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+  }
+  #_loginBtn:hover:not(:disabled) {
+    background: #033059; /* Scurito ~8% */
+  }
+  #_loginBtn:focus-visible { box-shadow: var(--shadow-focus); }
+  #_loginBtn:disabled { opacity:.5; cursor:not-allowed; }
+  
+  #_loginError {
+    font-size:13px; color: var(--err); margin-top:8px; display:none;
+    padding:8px 12px; background: rgba(192,57,43,.05);
+    border:1px solid rgba(192,57,43,.2); border-radius:8px;
+  }
+
+  /* ── SPIN CONFORME NEUTRO ── */
+  #initSpinner {
+    position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+    background:var(--bg-2); z-index:200;
+  }
+  .spinner {
+    width:32px; height:32px; border:3px solid var(--border-1);
+    border-top-color: var(--retelit-blue); border-radius:50%;
+    animation:spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div id="initSpinner"><div class="spinner"></div></div>
+
+<!-- ── TOPBAR ── -->
+<div class="topbar">
+  <div class="topbar-left">
+    <img src="data:image/png;base64,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" alt="Retelit" style="height:50px;display:block">
+    <div class="divider-v"></div>
+    <span class="page-title">Progetto ENRI</span>
+  </div>
+  <div class="topbar-right">
+    <span id="topbarUser" style="font-size:13px; color:var(--fg-3); font-family:var(--font-mono); display:none"></span>
+    <button class="btn-sm" id="logoutBtn" style="display:none" onclick="_doLogout()">Esci</button>
+  </div>
+</div>
+
+<!-- ── MAIN HUB CONTENT ── -->
+<div class="main" id="hubContent" style="display:none">
+
+  <div class="hub-header">
+    <div class="hub-header-left">
+      <div class="hub-eyebrow">Born to B2B</div>
+      <div class="hub-title">Seleziona una sezione operativa</div>
+    </div>
+    <div class="hub-user-chip">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--retelit-blue)"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      <span>Connesso come:</span>
+      <strong id="welcomeName" style="color:var(--fg-1); font-weight:600"></strong>
+    </div>
+  </div>
+
+  <!-- CARDS GRID -->
+  <div class="cards-grid">
+
+    <!-- Progettazione -->
+    <a href="index.html?direct=1" class="nav-card card-prog">
+      <div class="card-top-row">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+            <rect x="9" y="3" width="6" height="4" rx="1"/>
+            <path d="M9 12h6M9 16h4"/>
+          </svg>
+        </div>
+        <div class="card-arrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-label">Fase 1</div>
+        <div class="card-title">Progettazione</div>
+        <div class="card-desc">Monitoraggio dell'iter autorizzativo per cluster e lotto: scadenze, pratiche bloccate e avanzamento verso la cantierizzazione.</div>
+      </div>
+    </a>
+
+    <!-- Avanzamento Lavori -->
+    <a id="scaviCard" href="scavi.html" class="nav-card card-lav">
+      <div id="scaviBadge" class="card-badge">In arrivo</div>
+      <div class="card-top-row">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M12 22v-4M17 22v-7M7 22v-11M2 22V7M22 22V2"/>
+          </svg>
+        </div>
+        <div class="card-arrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-label">Fase 2</div>
+        <div class="card-title">Avanzamento Lavori</div>
+        <div class="card-desc">Supervisione dei cantieri attivi: stato di avanzamento per lotto e area, segnalazioni operative e criticità in corso.</div>
+      </div>
+    </a>
+
+    <!-- Mappa -->
+    <a href="mappa.html" class="nav-card card-mappa">
+      <div class="card-top-row">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
+            <line x1="9" y1="3" x2="9" y2="18"/>
+            <line x1="15" y1="6" x2="15" y2="21"/>
+          </svg>
+        </div>
+        <div class="card-arrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-label">Geospaziale</div>
+        <div class="card-title">Mappa Infrastruttura</div>
+        <div class="card-desc">Distribuzione territoriale dei lotti su mappa georeferenziata, con filtri per area, stato autorizzativo e fase di avanzamento.</div>
+      </div>
+    </a>
+
+<a href="polizze_convenzioni.html" class="nav-card card-pol">
+      <div class="card-top-row">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.25C17.25 22.15 21 17.25 21 12V7L12 2z"/>
+            <path d="M9 12l2 2 4-4"/>
+          </svg>
+        </div>
+        <div class="card-arrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-label">Autorizzazioni</div>
+        <div class="card-title">Polizze &amp; Convenzioni</div>
+        <div class="card-desc">Pratiche che richiedono convenzione e/o polizza assicurativa, filtrabili per lotto, impresa e stato del permesso.</div>
+      </div>
+    </a>
+
+    <!-- Sopralluoghi -->
+    <a id="soprCard" href="sopralluoghi.html" class="nav-card card-sopr">
+      <div class="card-top-row">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M11 17a6 6 0 1 0 0-12 6 6 0 0 0 0 12z"/>
+            <path d="M11 11V8M11 14h.01"/>
+            <path d="M16.5 16.5 21 21"/>
+          </svg>
+        </div>
+        <div class="card-arrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-label">Infrastruttura</div>
+        <div class="card-title">Verbale di Sopralluogo</div>
+        <div class="card-desc">Redazione e download del verbale di sopralluogo: segnalazioni, azioni richieste all'impresa e firme.</div>
+      </div>
+    </a>
+
+    <!-- Milestone di Progetto -->
+    <a href="https://enri-rds.github.io/dashboard/milestone.html" class="nav-card card-mile" id="milestoneCard">
+      <div class="card-top-row">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+        </div>
+        <div class="card-arrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-label">Pianificazione</div>
+        <div class="card-title">Milestone di Progetto</div>
+        <div class="card-desc">Scadenze contrattuali e milestone per lotto e cluster: permitting, avvio cantieri e percentuali di completamento.</div>
+      </div>
+    </a>
+
+    <!-- RISERVATO / BETA — ora dentro lo stesso grid per allineamento coerente -->
+    <a href="ai_alerts.html" class="nav-card card-ai" id="aiAlertsCard">
+      <div class="card-badge" style="background:var(--retelit-blue); color:var(--retelit-white); border-color:var(--retelit-blue);">Beta</div>
+      <div class="card-top-row">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+          </svg>
+        </div>
+        <div class="card-arrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-label">AI · Sperimentale</div>
+        <div class="card-title">Alert Predittivi</div>
+        <div class="card-desc">Analisi automatica dell'avanzamento scavi: anomalie, ritardi previsti e report settimanale.</div>
+      </div>
+    </a>
+
+    <!-- ADMIN -->
+    <a id="adminCard" href="admin.html" class="nav-card card-admin" style="display:none;">
+      <div class="card-badge" style="background:var(--gray-900); color:var(--retelit-white);">Riservato</div>
+      <div class="card-top-row">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </div>
+        <div class="card-arrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-label">Amministrazione</div>
+        <div class="card-title">Pannello Gestione</div>
+        <div class="card-desc">Caricamento file Excel / CSV / GeoJSON con conversione automatica e sincronizzazione dei dati della dashboard.</div>
+      </div>
+    </a>
+
+    <a id="ganttCard" href="gantt.html" class="nav-card card-mile" style="display:none;">
+      <div class="card-badge" style="background:var(--gray-900); color:var(--retelit-white);">Riservato</div>
+      <div class="card-top-row">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h5M7 12h9M7 15h6"/>
+          </svg>
+        </div>
+        <div class="card-arrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-label">Pianificazione</div>
+        <div class="card-title">Gantt di Progetto</div>
+        <div class="card-desc">Fasi, permessi e opere civili per lotto — attualmente disponibile per il Lotto 1A.</div>
+      </div>
+    </a>
+
+  </div>
+
+  <!-- AREA IMPRESA -->
+  <div id="impresaCardsWrap" style="display:none; width:100%; max-width:960px; gap:24px; justify-content:center; flex-wrap:wrap;">
+    <a id="impresaCard" href="imprese.html" class="nav-card card-admin" style="display:none; flex:1 1 380px; max-width:440px;">
+      <div class="card-badge">Impresa</div>
+      <div class="card-top-row">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M3 21h18M5 21V8l7-5 7 5v13M9 9h.01M15 9h.01M9 13h.01M15 13h.01M9 17h.01M15 17h.01"/>
+          </svg>
+        </div>
+        <div class="card-arrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-label">Area Impresa</div>
+        <div class="card-title">Aggiorna Pratiche</div>
+        <div class="card-desc">Inserisci o aggiorna le pratiche dei lotti assegnati. Le modifiche entrano in dashboard dopo l'approvazione.</div>
+      </div>
+    </a>
+
+    <a id="impresaScaviCard" href="imprese_scavi.html" class="nav-card card-lav" style="display:none; flex:1 1 380px; max-width:440px;">
+      <div class="card-badge">Impresa</div>
+      <div class="card-top-row">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M2 20h20M4 20V10l8-7 8 7v10M9 20v-6h6v6"/>
+          </svg>
+        </div>
+        <div class="card-arrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-label">Cantiere</div>
+        <div class="card-title">Avanzamento Scavi</div>
+        <div class="card-desc">Aggiornamento giornaliero dei cantieri: stati di avanzamento, metri realizzati e storico tratta.</div>
+      </div>
+    </a>
+
+    <a id="impresaMapUpdCard" href="mappa_impresa_caricamento.html" class="nav-card card-admin" style="display:none; flex:1 1 380px; max-width:440px;">
+      <div class="card-badge">Impresa</div>
+      <div class="card-top-row">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M9 20l-6-3V4l6 3m0 13l6-3m-6 3V7m6 10l6 3V7l-6-3m0 13V4m0 3L9 4"/>
+          </svg>
+        </div>
+        <div class="card-arrow">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-label">Mappa Impresa</div>
+        <div class="card-title">Aggiorna Pratiche e Scavi da Mappa</div>
+        <div class="card-desc">Aggiorna pratiche e scavi, o inserisci nuove pratiche, direttamente dalla mappa dei lotti assegnati.</div>
+      </div>
+    </a>
+  </div>
+
+</div>
+
+<script>
+window.addEventListener('pageshow', (e) => {
+  if (e.persisted) location.reload();
+});
+window.addEventListener('DOMContentLoaded', () => {
+  const savedUser = localStorage.getItem('_enri_user');
+  const token     = localStorage.getItem('_enri_session');
+  const apiBase   = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || '';
+
+  function showLogin() {
+    _buildLoginModal();
+    document.getElementById('initSpinner').style.opacity = '0';
+    setTimeout(() => { document.getElementById('initSpinner').style.display = 'none'; }, 300);
+  }
+
+  if (savedUser && token && apiBase) {
+    // Rivalida il token col backend: non fidarsi del solo nome salvato in localStorage.
+    fetch(apiBase + '/api/auth/verify', { headers: { 'x-session-token': token } })
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(d => {
+        if (!d || !d.ok) return Promise.reject();
+        localStorage.setItem('_enri_role', d.ruolo || 'user'); // ruolo sempre dal server, non dal client
+        _showHub(d.nome || savedUser);
+      })
+      .catch(() => {
+        localStorage.removeItem('_enri_user');
+        localStorage.removeItem('_enri_role');
+        localStorage.removeItem('_enri_session');
+        showLogin();
+      });
+  } else if (savedUser) {
+    // Nome salvato ma token/apiBase assenti: niente accesso senza verifica.
+    localStorage.removeItem('_enri_user');
+    localStorage.removeItem('_enri_role');
+    localStorage.removeItem('_enri_session');
+    showLogin();
+  } else {
+    showLogin();
+  }
+});
+
+const SCAVI_ALLOWED_ROLES = ['admin', 'admin2', 'user', 'dl'];
+const ADMIN_ALLOWED_ROLES = ['admin', 'admin2'];
+const IMPRESA_ROLES      = ['impresa'];
+
+function _showHub(nome) {
+  document.getElementById('welcomeName').textContent = nome;
+  document.getElementById('topbarUser').textContent  = nome;
+  document.getElementById('topbarUser').style.display = '';
+  document.getElementById('logoutBtn').style.display  = '';
+
+  const ruolo = (localStorage.getItem('_enri_role') || '').toLowerCase();
+  const scaviCard  = document.getElementById('scaviCard');
+  const scaviBadge = document.getElementById('scaviBadge');
+
+  if (!SCAVI_ALLOWED_ROLES.includes(ruolo)) {
+    scaviCard.removeAttribute('href');
+    scaviCard.classList.add('card-locked');
+    scaviCard.style.pointerEvents = 'none';
+    scaviBadge.innerHTML = 'In arrivo';
+    scaviBadge.className = 'card-badge';
+  }
+
+  const adminCard   = document.getElementById('adminCard');
+  const ganttCard   = document.getElementById('ganttCard');
+  const impresaCard = document.getElementById('impresaCard');
+  const milestoneCard = document.getElementById('milestoneCard');
+  const aiAlertsCard = document.getElementById('aiAlertsCard');
+  const isAdmin     = ADMIN_ALLOWED_ROLES.includes(ruolo);
+  const isImpresa   = IMPRESA_ROLES.includes(ruolo);
+  if (adminCard && isAdmin) adminCard.style.display = '';
+  if (ganttCard && isAdmin) ganttCard.style.display = '';
+  if (milestoneCard && ruolo === 'dl') {
+    milestoneCard.removeAttribute('href');
+    milestoneCard.style.display = 'none';
+  }
+  if (aiAlertsCard && ruolo === 'dl') {
+    aiAlertsCard.removeAttribute('href');
+    aiAlertsCard.style.display = 'none';
+  }
+
+  function _reveal() {
+    document.getElementById('initSpinner').style.opacity = '0';
+    setTimeout(() => { document.getElementById('initSpinner').style.display = 'none'; }, 300);
+    document.getElementById('hubContent').style.display = '';
+  }
+
+  const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || '';
+
+  if (isImpresa && apiBase) {
+    let _autoRetryCount = 0;
+    const _MAX_AUTO_RETRY = 12;
+    function _doImpresaCheck(retryBtn) {
+      if (retryBtn) retryBtn.disabled = true;
+      const controller = new AbortController();
+      const timeoutId  = setTimeout(() => controller.abort(), 12000);
+      fetch(apiBase + '/api/imprese/me?nome=' + encodeURIComponent(nome), {
+        signal: controller.signal,
+        headers: { 'x-session-token': localStorage.getItem('_enri_session') || '' }
+      })
+        .then(r => { clearTimeout(timeoutId); return r.ok ? r.json() : Promise.reject('not-ok'); })
+        .then(d => {
+          _autoRetryCount = 0;
+          const err = document.getElementById('_impresaCheckError');
+          if (err) err.remove();
+          if (d && d.active !== false) {
+            document.querySelectorAll('.nav-card').forEach(card => {
+              card.style.display = (card.id === 'impresaCard' || card.id === 'impresaMapUpdCard' || card.id === 'impresaScaviCard') ? '' : 'none';
+            });
+            document.querySelectorAll('[data-section-title]').forEach(s => s.style.display = 'none');
+            const wrap = document.getElementById('impresaCardsWrap');
+            if (wrap) wrap.style.display = 'flex';
+            document.getElementById('hubContent').classList.add('impresa-mode');
+          }
+          _reveal();
+        })
+        .catch(() => {
+          clearTimeout(timeoutId);
+          _autoRetryCount++;
+          if (_autoRetryCount <= _MAX_AUTO_RETRY) {
+            const spinner = document.getElementById('initSpinner');
+            if (spinner) {
+              spinner.style.display = '';
+              const remaining = (_MAX_AUTO_RETRY - _autoRetryCount + 1) * 5;
+              const p = spinner.querySelector('p');
+              if (p) p.textContent = `Avvio server in corso… (${remaining}s)`;
+            }
+            setTimeout(() => _doImpresaCheck(null), 5000);
+          } else {
+            document.getElementById('initSpinner').style.display = 'none';
+            let err = document.getElementById('_impresaCheckError');
+            if (!err) {
+              err = document.createElement('div');
+              err.id = '_impresaCheckError';
+              err.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);' +
+                'background:#fff;border-radius:8px;padding:2rem 2.5rem;box-shadow:var(--shadow-lg);' +
+                'text-align:center;z-index:9999;font-family:inherit;max-width:340px;border:1px solid var(--border-1)';
+              err.innerHTML = '<p style="margin:0 0 .5rem;font-size:1.1rem;font-weight:600;color:var(--fg-1)">Server non raggiungibile</p>' +
+                '<p style="margin:0 0 1.5rem;color:var(--fg-3);font-size:.9rem">Il server non risponde. Controlla la connessione o riprova tra qualche minuto.</p>' +
+                '<button id="_impresaRetryBtn" style="background:var(--retelit-blue);color:#fff;border:none;border-radius:8px;' +
+                'padding:.6rem 1.6rem;font-size:.95rem;cursor:pointer;font-weight:600">Riprova</button>';
+              document.body.appendChild(err);
+            }
+            const btn = document.getElementById('_impresaRetryBtn');
+            if (btn) btn.addEventListener('click', () => { _autoRetryCount = 0; _doImpresaCheck(btn); });
+            if (retryBtn) retryBtn.disabled = false;
+          }
+        });
+    }
+    _doImpresaCheck(null);
+  } else if (isImpresa && !apiBase) {
+    document.getElementById('initSpinner').style.display = 'none';
+    const err = document.createElement('div');
+    err.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);' +
+      'background:#fff;border-radius:8px;padding:2rem 2.5rem;box-shadow:var(--shadow-lg);' +
+      'text-align:center;z-index:9999;font-family:inherit;max-width:340px;border:1px solid var(--border-1)';
+    err.innerHTML = '<p style="margin:0 0 .5rem;font-size:1.1rem;font-weight:600;color:var(--fg-1)">Configurazione mancante</p>' +
+      '<p style="margin:0 0 1.5rem;color:var(--fg-3);font-size:.9rem">Accedi tramite il link ufficiale fornito dall\'amministratore di sistema.</p>';
+    document.body.appendChild(err);
+  } else {
+    // admin, admin2, user: vedono tutto — admin card già mostrata sopra per admin/admin2
+    _reveal();
+  }
+}
+
+function _doLogout() {
+  localStorage.removeItem('_enri_user');
+  localStorage.removeItem('_enri_role');
+  localStorage.removeItem('_enri_session');
+  location.reload();
+}
+
+function _buildLoginModal() {
+  const savedUser   = localStorage.getItem('_enri_user');
+  const isReturning = !!savedUser;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'loginOverlay';
+  overlay.innerHTML = `
+    <div id="_loginCard">
+      <div id="_loginLeft">
+        <div style="position:relative;z-index:1">
+          <div style="font-size:11px;font-weight:600;
+            letter-spacing:.12em;text-transform:uppercase;color:var(--retelit-sky);margin-bottom:12px">Retelit</div>
+          <div style="font-size:32px;font-weight:700;
+            letter-spacing:-.03em;color:#fff;line-height:1">DASHBOARD ENRI</div>
+          <div class="_loginAccentLine"></div>
+          <div style="font-size:13px;color:var(--retelit-blue-25);line-height:1.6;">
+            Piattaforma interna<br>di governance e monitoraggio<br>del progetto.
+          </div>
+        </div>
+      </div>
+      <div id="_loginRight">
+        <div style="margin-bottom:30px">
+          <div style="font-size:22px;font-weight:700;
+            color:var(--fg-1);letter-spacing:-.025em;line-height:1.2;margin-bottom:8px">
+            ${isReturning ? 'Accesso verificato' : 'Autenticazione richiesta'}
+          </div>
+          <div style="font-size:14px;color:var(--fg-3);line-height:1.5">
+            ${isReturning
+              ? `Utente memorizzato: <strong style="color:var(--fg-2);font-weight:600">${savedUser}</strong>. Inserisci le credenziali.`
+              : 'Inserisci nome e codice identificativo aziendale.'}
+          </div>
+        </div>
+        <div style="margin-bottom:16px">
+          <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+            color:var(--fg-3);display:block;margin-bottom:8px">Nome e Cognome o Nome Impresa</label>
+          <input id="_loginInput" class="login-input" type="text"
+            placeholder="${isReturning ? savedUser : ''}"
+            value="${isReturning ? savedUser : ''}"
+            onkeydown="if(event.key==='Enter')document.getElementById('_loginCodice').focus()"
+          />
+        </div>
+        <div style="margin-bottom:24px">
+          <label style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;
+            color:var(--fg-3);display:block;margin-bottom:8px">Codice accesso personale</label>
+          <input id="_loginCodice" class="login-input" type="password"
+            placeholder="••••••••"
+            onkeydown="if(event.key==='Enter')document.getElementById('_loginBtn').click()"
+          />
+          <div id="_loginError"></div>
+        </div>
+        <button id="_loginBtn">
+          <span id="_loginBtnText">${isReturning ? 'Conferma e accedi' : 'Accedi'}</span>
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+  setTimeout(() => {
+    const inp = document.getElementById('_loginInput');
+    if (inp) { inp.focus(); if (inp.value) inp.select(); }
+  }, 200);
+  document.getElementById('_loginBtn').addEventListener('click', _handleLogin);
+}
+
+async function _handleLogin() {
+  const input   = document.getElementById('_loginInput');
+  const codEl   = document.getElementById('_loginCodice');
+  const errEl   = document.getElementById('_loginError');
+  const btn     = document.getElementById('_loginBtn');
+  const btnText = document.getElementById('_loginBtnText');
+  const nome    = (input?.value || '').trim();
+  const codice  = (codEl?.value  || '').trim();
+
+  if (errEl) errEl.style.display = 'none';
+
+  if (!nome || nome.length < 2) {
+    if (errEl) { errEl.textContent = 'Inserisci nome e cognome validi.'; errEl.style.display = 'block'; }
+    input.focus(); return;
+  }
+  if (!codice) {
+    if (errEl) { errEl.textContent = 'Inserisci il codice personale.'; errEl.style.display = 'block'; }
+    codEl.focus(); return;
+  }
+
+  if (btnText) btnText.textContent = 'Verifica in corso…';
+  btn.disabled = true;
+
+  try {
+    const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('enri_api_base') || '';
+    if (!apiBase) throw new Error('API non configurata');
+    const res = await fetch(apiBase + '/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nome, codice })
+    });
+    const risposta = await res.json().catch(() => ({}));
+
+    if (!res.ok || !risposta.ok) {
+      if (errEl) {
+        errEl.textContent = risposta.detail || risposta.msg || 'Credenziali non riconosciute. Riprova.';
+        errEl.style.display = 'block';
+      }
+      if (btnText) btnText.textContent = 'Accedi';
+      btn.disabled = false;
+      if (codEl) { codEl.value = ''; codEl.focus(); }
+      return;
+    }
+
+    const ruolo         = (risposta.ruolo || 'user').toLowerCase();
+    const nomeCanonical = risposta.nome;
+    localStorage.setItem('_enri_user', nomeCanonical);
+    localStorage.setItem('_enri_role', ruolo);
+    localStorage.setItem('_enri_session', risposta.token);
+    document.getElementById('loginOverlay').remove();
+    _showHub(nomeCanonical);
+
+  } catch(err) {
+    if (errEl) {
+      errEl.textContent = 'Errore di connessione con il sistema. Riprova.';
+      errEl.style.display = 'block';
+    }
+    if (btnText) btnText.textContent = 'Accedi';
+    btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
+
+```
