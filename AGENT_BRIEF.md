@@ -110,6 +110,11 @@ definire con dati reali del progetto QTS:
   `enrich`/`enriched`. Verificata coerenza chiavi localStorage/sessione
   (nessuna incoerenza rilevata, tutto già allineato su `_qts_session` /
   `qts_api_base` / `qts_upload_token`). Creato questo file AGENT_BRIEF.md.
+- **rev.2** — Confermato repo GitHub reale (`ENRI-RDS/QTS_DASHBOARD`).
+  Creato Apps Script/Google Sheet di login dedicato QTS, separato da ENRI
+  (nessuna condivisione utenze). Deciso: backend Render separato da ENRI,
+  workspace Render dedicato "QTS" (motivo: necessità di permessi granulari
+  per membri futuri, non ottenibile con workspace condiviso).
 - **rev.3** — Web Service Render "QTS_DASHBOARD" creato (workspace "QTS",
   repo `ENRI-RDS/QTS_DASHBOARD`, root `backend`, start command
   `uvicorn server:app --host 0.0.0.0 --port $PORT`, instance Free). Env var
@@ -117,11 +122,10 @@ definire con dati reali del progetto QTS:
   `GITHUB_BRANCH=main`, `ALLOWED_ORIGINS` (GitHub Pages `enri-rds.github.io`
   + localhost dev), `SESSION_SECRET` (generato random), `GITHUB_TOKEN`
   (fine-grained, resource owner org ENRI, permesso Contents R/W su
-  QTS_DASHBOARD). Mancano ancora: `MONGO_URL` (cluster Atlas QTS in
-  creazione), `APPS_SCRIPT_URL`/`APPS_SCRIPT_SECRET` (script Code.gs creato
-  ma non ancora distribuito come Web App). TODO aperti: vedi §5. — Confermato repo GitHub reale (`ENRI-RDS/QTS_DASHBOARD`).
-  Creato Apps Script/Google Sheet di login dedicato QTS, separato da ENRI
-  (nessuna condivisione utenze). Deciso: backend Render separato da ENRI,
-  workspace Render dedicato "QTS" (motivo: necessità di permessi granulari
-  per membri futuri, non ottenibile con workspace condiviso). Web Service in
-  fase di creazione su Render. TODO aperti: vedi §5.
+  QTS_DASHBOARD).
+- **rev.4** — Creato cluster Atlas M0 free dedicato QTS (project Atlas
+  separato da ENRI, cluster `qts-cluster`, utente DB `qts_admin`, network
+  access 0.0.0.0/0). `MONGO_URL` inserito su Render. Mancano ancora:
+  `APPS_SCRIPT_URL`/`APPS_SCRIPT_SECRET` (script Code.gs creato in sessione
+  precedente ma non ancora distribuito come Web App su Google). TODO aperti:
+  vedi §5.
