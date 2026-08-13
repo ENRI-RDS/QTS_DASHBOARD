@@ -71,10 +71,23 @@ namespace JS, chiavi localStorage, log console, commenti, GITHUB_REPO
 default), preservando `enrich`/`enriched` (falsi positivi). Restano da
 definire con dati reali del progetto QTS:
 
-- [ ] **`GITHUB_REPO`** in `backend/server.py` (riga ~994): attualmente
-      `QTS-RDS/dashboard` per continuità con lo schema precedente — va
-      sostituito con l'organizzazione/repo GitHub reale del progetto QTS.
-- [ ] **Link GitHub Pages** in `hub.html` (es. `https://qts-rds.github.io/dashboard/...`) — stesso discorso.
+- [x] **`GITHUB_REPO`** confermato: repo reale è `ENRI-RDS/QTS_DASHBOARD` (non
+      `QTS-RDS/dashboard`). Da impostare come env var `GITHUB_REPO` su Render
+      (il default nel codice resta sbagliato, non modificato — si sovrascrive
+      via env var). Stesso discorso per `ALLOWED_ORIGINS` (default nel codice
+      punta a `qts-rds.github.io`, va sovrascritto con l'URL Pages reale).
+- [ ] **Link GitHub Pages** in `hub.html` (es. `https://qts-rds.github.io/dashboard/...`) — va aggiornato con l'URL Pages reale una volta pubblicato sotto `ENRI-RDS`.
+- [ ] **Auth separata da ENRI**: creato nuovo Google Sheet + Apps Script
+      dedicato QTS (Code.gs custom, contratto compatibile con
+      `/api/auth/login` in server.py). APPS_SCRIPT_URL/SECRET da inserire
+      come env var Render una volta distribuito lo script come Web App.
+- [ ] **Deploy Render**: creato nuovo workspace Render "QTS" (separato da
+      ENRI per necessità di permessi granulari tra i due progetti). Web
+      Service in creazione: repo `ENRI-RDS/QTS_DASHBOARD`, root `backend`,
+      start command `uvicorn server:app --host 0.0.0.0 --port $PORT`,
+      instance Free (carico previsto ~195h/mese, entro le 750h/mese incluse).
+      Mancano ancora: MONGO_URL (nuovo DB Atlas, DB_NAME `qts_dashboard`),
+      GITHUB_TOKEN (fine-grained, permesso Contents R/W sul repo).
 - [ ] **File sorgente dati**: i riferimenti a file Excel/CSV/QGIS del progetto
       ENRI (`Riepilogo_progettazione.csv`, `Master.csv`, `QGIS.geojson`,
       `Progetto_QTS_GANTT_Cluster_1-2.mpp` — quest'ultimo rinominato
@@ -97,4 +110,18 @@ definire con dati reali del progetto QTS:
   `enrich`/`enriched`. Verificata coerenza chiavi localStorage/sessione
   (nessuna incoerenza rilevata, tutto già allineato su `_qts_session` /
   `qts_api_base` / `qts_upload_token`). Creato questo file AGENT_BRIEF.md.
-  TODO aperti: vedi §5.
+- **rev.3** — Web Service Render "QTS_DASHBOARD" creato (workspace "QTS",
+  repo `ENRI-RDS/QTS_DASHBOARD`, root `backend`, start command
+  `uvicorn server:app --host 0.0.0.0 --port $PORT`, instance Free). Env var
+  inserite: `DB_NAME=qts_dashboard`, `GITHUB_REPO=ENRI-RDS/QTS_DASHBOARD`,
+  `GITHUB_BRANCH=main`, `ALLOWED_ORIGINS` (GitHub Pages `enri-rds.github.io`
+  + localhost dev), `SESSION_SECRET` (generato random), `GITHUB_TOKEN`
+  (fine-grained, resource owner org ENRI, permesso Contents R/W su
+  QTS_DASHBOARD). Mancano ancora: `MONGO_URL` (cluster Atlas QTS in
+  creazione), `APPS_SCRIPT_URL`/`APPS_SCRIPT_SECRET` (script Code.gs creato
+  ma non ancora distribuito come Web App). TODO aperti: vedi §5. — Confermato repo GitHub reale (`ENRI-RDS/QTS_DASHBOARD`).
+  Creato Apps Script/Google Sheet di login dedicato QTS, separato da ENRI
+  (nessuna condivisione utenze). Deciso: backend Render separato da ENRI,
+  workspace Render dedicato "QTS" (motivo: necessità di permessi granulari
+  per membri futuri, non ottenibile con workspace condiviso). Web Service in
+  fase di creazione su Render. TODO aperti: vedi §5.
