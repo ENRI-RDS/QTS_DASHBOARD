@@ -1,4 +1,4 @@
-<!DOCTYPE html> <html lang="it" translate="no"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <meta name="google" content="notranslate"> <title>ENRI — Sopralluoghi</title> <script src="js/api-config.js"></script> <link href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!DOCTYPE html> <html lang="it" translate="no"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <meta name="google" content="notranslate"> <title>QTS — Sopralluoghi</title> <script src="js/api-config.js"></script> <link href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -576,7 +576,7 @@ let _deepLinkApplied = false;
 
 async function _loadLottiCantieri() {
   try {
-    const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
+    const apiBase = (window.QTS && window.QTS.apiBase) || localStorage.getItem('qts_api_base') || '';
     const token   = localStorage.getItem('_qts_session') || '';
     const res = await fetch(apiBase + '/api/lotti-cantieri', {
       headers: { 'x-session-token': token }
@@ -642,7 +642,7 @@ async function inviaVerbale(){
   const SVG_INVIA = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
   if (btn) { btn.disabled = true; btn.innerHTML = SVG_INVIA + ' Invio in corso…'; }
   try {
-    const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
+    const apiBase = (window.QTS && window.QTS.apiBase) || localStorage.getItem('qts_api_base') || '';
     const token   = localStorage.getItem('_qts_session') || '';
     if (!apiBase) throw new Error('API endpoint non configurato — torna all\'hub e riaccedi');
     if (!token) {
@@ -778,7 +778,7 @@ async function _generatePdfCore(f, photos){
   const mainHtml = `
     <div style="background:#043F75;padding:14px 36px;display:flex;align-items:center;justify-content:space-between;">
       <div>
-        <div style="font-size:9px;color:rgba(255,255,255,.6);letter-spacing:.18em;text-transform:uppercase;margin-bottom:3px;">Progetto ENRI · Infrastruttura Fibra Ottica</div>
+        <div style="font-size:9px;color:rgba(255,255,255,.6);letter-spacing:.18em;text-transform:uppercase;margin-bottom:3px;">Progetto QTS · Infrastruttura Fibra Ottica</div>
         <div style="font-size:20px;font-weight:700;color:#fff;letter-spacing:-.025em;">Verbale di Sopralluogo</div>
       </div>
       <img src="data:image/png;base64,${RETELIT_B64}" style="height:52px;object-fit:contain;">
@@ -932,7 +932,7 @@ async function generatePdfForRecord(id){
 <!-- ── TRACKING ACCESSI (sopralluoghi) — usa proxy backend sicuro (no secret in chiaro) ── -->
 <script>
 (function(){
-  const _apiBase = () => (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
+  const _apiBase = () => (window.QTS && window.QTS.apiBase) || localStorage.getItem('qts_api_base') || '';
   const _sessionToken = () => localStorage.getItem('_qts_session') || '';
   const LOG_BIN_ID   = '69c8fbdced015c742bc8e978';
   const ACCESSI_MAX  = 500;
@@ -1027,7 +1027,7 @@ async function loadVerbali() {
   const list = document.getElementById('verbali-list');
   list.innerHTML = '<div style="color:#888;font-size:12px;padding:20px 0;text-align:center">Caricamento…</div>';
   try {
-    const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
+    const apiBase = (window.QTS && window.QTS.apiBase) || localStorage.getItem('qts_api_base') || '';
     const token   = localStorage.getItem('_qts_session') || '';
     const res = await fetch(apiBase + '/api/sopralluoghi', {
       headers: { 'x-session-token': token }
@@ -1217,7 +1217,7 @@ function _renderPreview(v) {
 async function deleteVerbale(id) {
   if (!confirm('Eliminare definitivamente questo verbale?')) return;
   try {
-    const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
+    const apiBase = (window.QTS && window.QTS.apiBase) || localStorage.getItem('qts_api_base') || '';
     const token   = localStorage.getItem('_qts_session') || '';
     const res = await fetch(apiBase + '/api/sopralluoghi/' + id, {
       method: 'DELETE', headers: { 'x-session-token': token }

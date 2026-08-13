@@ -1,7 +1,7 @@
 """
-ENRI Dashboard — Backend API
+QTS Dashboard — Backend API
 ============================
-FastAPI service for the ENRI-RDS/dashboard project.
+FastAPI service for the QTS-RDS/dashboard project.
 
 Storage model
 -------------
@@ -52,7 +52,7 @@ DB_NAME = os.environ["DB_NAME"]
 DATA_DIR = Path(os.environ.get("DATA_DIR", ROOT_DIR.parent)).resolve()
 
 _default_origins = (
-    "https://enri-rds.github.io,"
+    "https://qts-rds.github.io,"
     "http://localhost:3000,"
     "http://localhost:5500,"
     "http://127.0.0.1:5500"
@@ -91,7 +91,7 @@ gridfs = AsyncIOMotorGridFSBucket(db, bucket_name="files")
 # ─────────────────────────────────────────────────────────────────────────────
 # App
 # ─────────────────────────────────────────────────────────────────────────────
-app = FastAPI(title="ENRI Dashboard API", version="2.0.0")
+app = FastAPI(title="QTS Dashboard API", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -317,7 +317,7 @@ def _guard_sensitive_read(rel: str, sess: dict) -> None:
 @app.get("/api/")
 async def root():
     return {
-        "service": "enri-dashboard-api",
+        "service": "qts-dashboard-api",
         "status": "ok",
         "time": _now_iso(),
         "version": "2.0.0",
@@ -737,10 +737,10 @@ async def restore_upload(
 
 @app.on_event("startup")
 async def _on_startup():
-    print(f"[enri-dashboard] DATA_DIR (seed) = {DATA_DIR}")
-    print(f"[enri-dashboard] DB_NAME         = {DB_NAME}")
-    print(f"[enri-dashboard] CORS            = {ALLOWED_ORIGINS}")
-    print(f"[enri-dashboard] UPLOAD_TOKEN    = {'set' if UPLOAD_TOKEN else 'OFF (open)'}")
+    print(f"[qts-dashboard] DATA_DIR (seed) = {DATA_DIR}")
+    print(f"[qts-dashboard] DB_NAME         = {DB_NAME}")
+    print(f"[qts-dashboard] CORS            = {ALLOWED_ORIGINS}")
+    print(f"[qts-dashboard] UPLOAD_TOKEN    = {'set' if UPLOAD_TOKEN else 'OFF (open)'}")
     # Indici MongoDB — evitano full collection scan sulle query più frequenti
     try:
         await uploads_col.create_index([("filename", 1), ("deleted_at", 1), ("uploaded_at", -1)])
@@ -752,7 +752,7 @@ async def _on_startup():
         await cantieri_col.create_index("lotto")
         await sopralluoghi_col.create_index("codice_verbale")
         await gantt_rates_col.create_index("scope", unique=True)
-        print("[enri-dashboard] Indici MongoDB verificati/creati")
+        print("[qts-dashboard] Indici MongoDB verificati/creati")
     except Exception as e:
         print(f"[startup] creazione indici: {e}")
     # Backfill: ensure pre-existing upload records have a deleted_at field
@@ -783,7 +783,7 @@ async def _on_startup():
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Sessione firmata — risolve il problema per cui chiunque potesse fare
-# `localStorage.setItem('_enri_user', 'Nome Impresa')` e impersonare quel
+# `localStorage.setItem('_qts_user', 'Nome Impresa')` e impersonare quel
 # nome senza conoscere il codice di accesso (il codice era verificato SOLO
 # da Google Apps Script al login, mai dal backend sulle chiamate successive).
 #
@@ -991,7 +991,7 @@ async def _read_riepilogo_csv() -> "pd.DataFrame | None":
         return None
 
 
-GITHUB_REPO     = os.environ.get("GITHUB_REPO", "ENRI-RDS/dashboard")
+GITHUB_REPO     = os.environ.get("GITHUB_REPO", "QTS-RDS/dashboard")
 GITHUB_BRANCH   = os.environ.get("GITHUB_BRANCH", "main")
 GITHUB_CSV_PATH = os.environ.get("GITHUB_CSV_PATH", "Master.csv")
 

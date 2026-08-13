@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="google" content="notranslate">
-<title>ENRI — Avanzamento Scavi · Impresa</title>
+<title>QTS — Avanzamento Scavi · Impresa</title>
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   /* ── Retelit design tokens (§3–§5) ─────────────────────────────────────── */
@@ -563,7 +563,7 @@
 <!-- TOPBAR -->
 <header class="topbar">
   <div class="topbar-left">
-    <span style="font-family:var(--font-display);font-size:14px;font-weight:700;letter-spacing:.08em;color:#fff">ENRI</span>
+    <span style="font-family:var(--font-display);font-size:14px;font-weight:700;letter-spacing:.08em;color:#fff">QTS</span>
     <div class="topbar-divider"></div>
     <span class="topbar-title">Avanzamento Scavi</span>
   </div>
@@ -803,7 +803,7 @@ window.addEventListener('pageshow', (e) => {
   const USER_KEY    = '_qts_user';
 
   function apiBase() {
-    return (window.ENRI && window.ENRI.apiBase)
+    return (window.QTS && window.QTS.apiBase)
       || localStorage.getItem('qts_api_base') || '';
   }
   function sessionToken() {
@@ -1456,14 +1456,14 @@ window.addEventListener('pageshow', (e) => {
       <h4>📥 Guide scaricabili</h4>
       <p>Puoi scaricare le guide complete, con schermate passo-passo per tutte le sezioni (Hub, Pratiche, Mappa, Scavi):</p>
       <div class="help-downloads">
-        <a class="help-download-link" href="docs/guide/Dashboard_ENRI_Guida.pdf" download>
+        <a class="help-download-link" href="docs/guide/Dashboard_QTS_Guida.pdf" download>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
           <div>
             <div class="hd-title">Guida rapida per le Imprese (PDF)</div>
             <div class="hd-sub">Testuale, sintetica — con rimandi alle pagine dell'allegato illustrato</div>
           </div>
         </a>
-        <a class="help-download-link" href="docs/guide/ENRI_Guida_Illustrata_Area_Impresa.pdf" download>
+        <a class="help-download-link" href="docs/guide/QTS_Guida_Illustrata_Area_Impresa.pdf" download>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
           <div>
             <div class="hd-title">Dashboard Impresa — Guida Illustrata (PDF)</div>

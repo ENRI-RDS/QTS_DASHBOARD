@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#F7F8FA">
 <meta name="google" content="notranslate">
 <meta http-equiv="Content-Language" content="it">
-<title>ENRI — Dashboard Avanzamento</title>
+<title>QTS — Dashboard Avanzamento</title>
 <script src="js/api-config.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Raleway:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -1224,7 +1224,7 @@ window.loadXLSX = (function(){
 
 <script>
 (function() {
-  var LS_KEY = 'enri_sed_stati_v1';
+  var LS_KEY = 'qts_sed_stati_v1';
   var SED_STATI = ['IN ATTESA','IN REDAZIONE','INVIO PRELIMINARE','INVIATO','PROTOCOLLATO','NECESSARIA INTEGRAZIONE','IN REDAZIONE INTEGRAZIONE','PROTOCOLLATA INTEGRAZIONE','OTTENUTO'];
   // SED_COLORS risolto a runtime dopo che STATI_COLORI_MAP è definita
   function SED_COLOR(stato) { return (window.STATI_COLORI_MAP && window.STATI_COLORI_MAP[stato]) || '#6B7685'; }
@@ -1532,13 +1532,13 @@ window.loadXLSX = (function(){
 
   window.exportSedXlsx = function() {
     if (!_sedData.length) { alert('Nessun dato SED disponibile.'); return; }
-    writeSedExcel(buildSedExcelRows(_sedData), 'ENRI_SED_tutti_'+new Date().toISOString().split('T')[0]+'.xlsx');
+    writeSedExcel(buildSedExcelRows(_sedData), 'QTS_SED_tutti_'+new Date().toISOString().split('T')[0]+'.xlsx');
   };
 
   window.exportSedXlsxView = function() {
     var current = window._sedCurrentRows;
     if (!current || !current.length) { alert('Nessun dato nella vista corrente.'); return; }
-    writeSedExcel(buildSedExcelRows(current), 'ENRI_SED_vista_'+new Date().toISOString().split('T')[0]+'.xlsx');
+    writeSedExcel(buildSedExcelRows(current), 'QTS_SED_vista_'+new Date().toISOString().split('T')[0]+'.xlsx');
   };
 
   async function loadSED() {
@@ -2158,7 +2158,7 @@ function exportVistaCorrente() {
 
   if (!rows.length) { alert('Nessuna pratica corrisponde ai filtri attivi.'); return; }
   const today = new Date().toISOString().split('T')[0];
-  exportXlsx(rows, 'ENRI_Vista_' + today);
+  exportXlsx(rows, 'QTS_Vista_' + today);
 }
 
 function exportTuttiXlsx() {
@@ -2175,7 +2175,7 @@ function exportTuttiXlsx() {
   });
   if (!tutte.length) { alert('Nessuna pratica disponibile.'); return; }
   const today = new Date().toISOString().split('T')[0];
-  exportXlsx(tutte, 'ENRI_Tutte_Pratiche_' + today);
+  exportXlsx(tutte, 'QTS_Tutte_Pratiche_' + today);
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -2415,7 +2415,7 @@ function buildPratCard(p) {
 
 // ── API BASE ──────────────────────────────────────────────────────────────────
 // Tutte le chiamate auth/log passano per il backend — nessun segreto in chiaro.
-const _apiBase = () => (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
+const _apiBase = () => (window.QTS && window.QTS.apiBase) || localStorage.getItem('qts_api_base') || '';
 const _sessionToken = () => localStorage.getItem('_qts_session') || '';
 const _authHeaders = () => ({ 'Content-Type': 'application/json', 'x-session-token': _sessionToken() });
 
@@ -2584,7 +2584,7 @@ function _buildLoginModal() {
             color:rgba(26,125,153,.8);margin-bottom:12px">Progetto</div>
 
           <div style="font-family:'Raleway',sans-serif;font-size:34px;font-weight:700;
-            letter-spacing:-.03em;color:#fff;line-height:1">ENRI</div>
+            letter-spacing:-.03em;color:#fff;line-height:1">QTS</div>
 
           <div class="_loginAccentLine"></div>
 
@@ -2727,7 +2727,7 @@ async function _handleLogin() {
     localStorage.setItem('_qts_user', nomeCanonical);
     localStorage.setItem('_qts_role', ruolo);
     localStorage.setItem('_qts_session', risposta.token);
-    window._enriValidatedRole = ruolo; // ruolo validato lato server — non manipolabile da localStorage
+    window._qtsValidatedRole = ruolo; // ruolo validato lato server — non manipolabile da localStorage
 
     const _doRedirect = () => {
       document.getElementById('loginOverlay').remove();
@@ -2766,7 +2766,7 @@ document.addEventListener('DOMContentLoaded', () => {
       window.location.href = 'hub.html';
       return;
     }
-    // NON dispatchiamo _qts_role_changed qui: _enriValidatedRole non è ancora impostato
+    // NON dispatchiamo _qts_role_changed qui: _qtsValidatedRole non è ancora impostato
     // e causerebbe un flicker (admin button nascosto poi riappare). Lo dispatch avviene
     // solo dopo che la validazione ha stabilito il ruolo effettivo.
 
@@ -2780,7 +2780,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     revalidatePromise.then(risposta => {
       if (!risposta.ok) {
-        const failKey = '_enri_revalidate_fails';
+        const failKey = '_qts_revalidate_fails';
         const fails = parseInt(localStorage.getItem(failKey) || '0', 10) + 1;
         if (fails >= 2) {
           localStorage.removeItem('_qts_user');
@@ -2791,19 +2791,19 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           localStorage.setItem(failKey, String(fails));
           const cachedRole = localStorage.getItem('_qts_role') || 'user';
-          window._enriValidatedRole = (cachedRole === 'admin') ? 'user' : cachedRole;
+          window._qtsValidatedRole = (cachedRole === 'admin') ? 'user' : cachedRole;
           window.dispatchEvent(new Event('_qts_role_changed'));
         }
         return;
       }
-      localStorage.removeItem('_enri_revalidate_fails');
+      localStorage.removeItem('_qts_revalidate_fails');
       const ruoloAggiornato = (risposta.ruolo || 'user').toLowerCase();
       localStorage.setItem('_qts_role', ruoloAggiornato);
-      window._enriValidatedRole = ruoloAggiornato;
+      window._qtsValidatedRole = ruoloAggiornato;
       window.dispatchEvent(new Event('_qts_role_changed'));
     }).catch(() => {
       const cachedRole = localStorage.getItem('_qts_role') || 'user';
-      window._enriValidatedRole = (cachedRole === 'admin') ? 'user' : cachedRole;
+      window._qtsValidatedRole = (cachedRole === 'admin') ? 'user' : cachedRole;
       window.dispatchEvent(new Event('_qts_role_changed'));
     });
     // ─────────────────────────────────────────────────────────────────────
@@ -3119,7 +3119,7 @@ function openModal(lotto, statiMetri, totale) {
   const btnDl = document.getElementById('btnDlLotto');
   if (btnDl) {
     const _prats = allPrats.map(p => ({...p, lotto}));
-    btnDl.onclick = () => exportXlsx(_prats, 'ENRI_Lotto' + lotto + '_pratiche');
+    btnDl.onclick = () => exportXlsx(_prats, 'QTS_Lotto' + lotto + '_pratiche');
   }
 
   // Milestone del lotto
@@ -3307,7 +3307,7 @@ function openModalCluster(cl, statiMap, totale) {
 
   const btnDlCl = document.getElementById('btnDlCluster');
   if (btnDlCl) {
-    btnDlCl.onclick = () => exportXlsx(clPrats, 'ENRI_Cluster' + cl + '_pratiche');
+    btnDlCl.onclick = () => exportXlsx(clPrats, 'QTS_Cluster' + cl + '_pratiche');
   }
 }
 
@@ -4330,7 +4330,7 @@ function openModalKpi(key) {
         <div style="font-size:26px;font-weight:700;font-family:'Raleway',sans-serif;letter-spacing:-0.02em" id="kpiMetriDisplay">${fmt(totMetri)} m</div>
       </div>
       <div style="margin-left:auto">
-        <button onclick="exportXlsx(window._kpiModalPratiche,'ENRI_${key}_pratiche')" style="font-size:11px;padding:6px 14px;border-radius:6px;background:#1d5c3a;color:white;border:1px solid #1E9E6A55;cursor:pointer;font-weight:500">📥 Scarica Excel</button>
+        <button onclick="exportXlsx(window._kpiModalPratiche,'QTS_${key}_pratiche')" style="font-size:11px;padding:6px 14px;border-radius:6px;background:#1d5c3a;color:white;border:1px solid #1E9E6A55;cursor:pointer;font-weight:500">📥 Scarica Excel</button>
       </div>
     </div>
     <div class="kpi-filter-bar">
@@ -4740,7 +4740,7 @@ function openHelp() { window._modalOpen('helpOverlay'); }
       <span onclick="window._modalClose('helpOverlay')"
         style="cursor:pointer;color:var(--muted);font-size:22px;line-height:1" role="button" tabindex="0" aria-label="Chiudi guida" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();window._modalClose('helpOverlay')}">×</span>
     </div>
-    <div style="font-size:11px;color:var(--muted)">Come usare la dashboard ENRI</div>
+    <div style="font-size:11px;color:var(--muted)">Come usare la dashboard QTS</div>
 
     <div class="help-section">
       <h4>KPI di avanzamento (in alto)</h4>
@@ -5762,7 +5762,7 @@ function _hookScadenze() {
     if (window._praticheDetailPerLotto) { renderScadenze(); clearInterval(iv); }
     if (attempts > 15) {
       clearInterval(iv);
-      console.warn('[ENRI] _hookScadenze: dati pratiche non disponibili dopo 30s — verifica caricamento CSV.');
+      console.warn('[QTS] _hookScadenze: dati pratiche non disponibili dopo 30s — verifica caricamento CSV.');
       const c = document.getElementById('scadenzeBody');
       if (c && !c.children.length) {
         c.innerHTML = '<div style="text-align:center;color:#C0392B;font-size:11px;padding:16px 0">⚠️ Dati non disponibili. Verifica il caricamento del Master.csv.</div>';
@@ -5883,7 +5883,7 @@ _hookScadenze();
       // rev.215: letti via API da MongoDB (non più da solleciti.csv su GitHub
       // Pages, che dipendeva dal deploy Pages spesso bloccato/in coda — vedi
       // AGENT_BRIEF). Endpoint staff-autenticato, passa sempre per Render.
-      const apiUrl = (window.ENRI && ENRI.isEnabled ? ENRI.apiBase : 'https://enri-dashboard-api.onrender.com') + '/api/staff/solleciti';
+      const apiUrl = (window.QTS && QTS.isEnabled ? QTS.apiBase : 'https://qts-dashboard-api.onrender.com') + '/api/staff/solleciti';
       const token = localStorage.getItem('_qts_session') || '';
       const r = await fetch(apiUrl, { cache: 'no-cache', headers: { 'x-session-token': token } });
       if (!r.ok) return;

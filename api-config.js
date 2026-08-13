@@ -1,9 +1,9 @@
 /**
- * ENRI Dashboard — API config helper
+ * QTS Dashboard — API config helper
  * ----------------------------------
  * Drop-in helper for the static HTML pages on GitHub Pages.
  *
- * If you set `window.ENRI_API_BASE` (or save it in localStorage as
+ * If you set `window.QTS_API_BASE` (or save it in localStorage as
  * `qts_api_base`), the helper rewrites every fetch() targeting a CSV /
  * GeoJSON / JSON file to go through your backend API instead of the
  * static file on GitHub Pages.
@@ -25,12 +25,12 @@
 (function () {
   const DEFAULT_API_BASE = 'https://qts-dashboard-api.onrender.com'; // ⚠️ AGGIORNARE dopo il deploy su Render
 
-  const API_BASE = (window.ENRI_API_BASE
+  const API_BASE = (window.QTS_API_BASE
     || localStorage.getItem('qts_api_base')
     || DEFAULT_API_BASE
     || '').replace(/\/$/, '');
 
-  window.ENRI = {
+  window.QTS = {
     apiBase: API_BASE,
     isEnabled: !!API_BASE,
     /** Returns the URL where the given data file should be fetched from. */
@@ -78,5 +78,5 @@
     return origFetch(input, init);
   };
 
-  console.info('[ENRI] API base active →', API_BASE);
+  console.info('[QTS] API base active →', API_BASE);
 })();

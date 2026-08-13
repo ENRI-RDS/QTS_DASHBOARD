@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ENRI — Milestone di Progetto</title>
+<title>QTS — Milestone di Progetto</title>
 <script src="js/api-config.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -115,7 +115,7 @@ tbody tr.group-row td{background:var(--surface2);font-family:var(--font-mono);fo
   <!-- HEADER -->
   <div class="page-header">
     <div>
-      <div class="page-eyebrow">ENRI Platform · Pianificazione</div>
+      <div class="page-eyebrow">QTS Platform · Pianificazione</div>
       <div class="page-h1">Milestone di Progetto</div>
       <div class="page-sub">Scadenze contrattuali e milestone di impresa per lotto e cluster</div>
     </div>
@@ -291,7 +291,7 @@ function _renderMilestoneData() {
 }
 
 (function _loadMilestoneData() {
-  var apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
+  var apiBase = (window.QTS && window.QTS.apiBase) || localStorage.getItem('qts_api_base') || '';
   fetch(apiBase + '/api/milestone', {
     headers: { 'x-session-token': localStorage.getItem('_qts_session') || '' }
   })

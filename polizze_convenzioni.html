@@ -5,7 +5,7 @@
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ENRI — Polizze &amp; Convenzioni</title>
+<title>QTS — Polizze &amp; Convenzioni</title>
 <script src="js/api-config.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -263,7 +263,7 @@
 
 <div class="main">
   <div class="hdr">
-    <div class="eyebrow">ENRI · Progetto 2025_17</div>
+    <div class="eyebrow">QTS · Progetto 2025_17</div>
     <div class="title">Polizze &amp; Convenzioni</div>
     <div style="font-size:13px;color:var(--muted);margin-top:6px">Pratiche estratte dal Master CSV che richiedono convenzione e/o polizza assicurativa.</div>
   </div>
@@ -427,7 +427,7 @@
 
   async function loadDates() {
     try {
-      const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
+      const apiBase = (window.QTS && window.QTS.apiBase) || localStorage.getItem('qts_api_base') || '';
       if (!apiBase) return;
       const r = await fetch(apiBase + '/api/admin/polizze-convenzioni/data-richiesta', { cache: 'no-cache', headers: { 'x-session-token': localStorage.getItem('_qts_session') || '' } });
       if (r.ok) {
@@ -442,7 +442,7 @@
 
   async function loadData() {
     await loadDates();
-    const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
+    const apiBase = (window.QTS && window.QTS.apiBase) || localStorage.getItem('qts_api_base') || '';
     let text = '';
     try {
       if (apiBase) {
@@ -736,7 +736,7 @@
   };
 
   function _doSave(lotto, pratica, field, val, btn, cell) {
-    const token = localStorage.getItem('enri_upload_token') || '';
+    const token = localStorage.getItem('qts_upload_token') || '';
     if (!token) {
       _pendingSave = { lotto, pratica, field, val, btn, cell };
       openTokenModal();
@@ -746,7 +746,7 @@
   }
 
   async function _execSave(lotto, pratica, field, val, token, btn, cell) {
-    const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
+    const apiBase = (window.QTS && window.QTS.apiBase) || localStorage.getItem('qts_api_base') || '';
     if (!apiBase) { showToast('API base non configurata.', 'err'); return; }
     btn.disabled = true;
     try {
@@ -767,7 +767,7 @@
       showToast('Operazione completata. Righe aggiornate: ' + d.rows_updated + '.', 'ok');
     } catch(e) {
       if (e.message && e.message.includes('401')) {
-        localStorage.removeItem('enri_upload_token');
+        localStorage.removeItem('qts_upload_token');
         showToast('Token non valido. Riprovare.', 'err');
       } else {
         showToast('Si è verificato un problema. ' + e.message, 'err');
@@ -813,7 +813,7 @@
   };
 
   function _doSaveDate(lotto, pratica, field, dateKey, val, btn, cell) {
-    const token = localStorage.getItem('enri_upload_token') || '';
+    const token = localStorage.getItem('qts_upload_token') || '';
     if (!token) {
       _pendingSave = { kind: 'date', lotto, pratica, field, dateKey, val, btn, cell };
       openTokenModal();
@@ -823,7 +823,7 @@
   }
 
   async function _execSaveDate(lotto, pratica, field, dateKey, val, token, btn, cell) {
-    const apiBase = (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
+    const apiBase = (window.QTS && window.QTS.apiBase) || localStorage.getItem('qts_api_base') || '';
     if (!apiBase) { showToast('API base non configurata.', 'err'); return; }
     btn.disabled = true;
     try {
@@ -839,7 +839,7 @@
       showToast(val ? 'Data aggiornata.' : 'Data cancellata.', 'ok');
     } catch(e) {
       if (e.message && e.message.includes('401')) {
-        localStorage.removeItem('enri_upload_token');
+        localStorage.removeItem('qts_upload_token');
         showToast('Token non valido. Riprovare.', 'err');
       } else {
         showToast('Si è verificato un problema. ' + e.message, 'err');
@@ -868,7 +868,7 @@
   window.confirmToken = function() {
     const t = document.getElementById('tokenInput').value.trim();
     if (!t) return;
-    localStorage.setItem('enri_upload_token', t);
+    localStorage.setItem('qts_upload_token', t);
     document.getElementById('tokenModal').classList.remove('open');
     document.getElementById('tokenInput').value = '';
     if (_pendingSave) {

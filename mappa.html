@@ -7,7 +7,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>ENRI — Avanzamento Progettazione</title>
+<title>QTS — Avanzamento Progettazione</title>
 <script src="js/api-config.js"></script>
 <script>function _sessionToken(){ return localStorage.getItem('_qts_session') || ''; }</script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
@@ -1507,7 +1507,7 @@ async function exportGeoJSON(){
   const lottiSuffix = lottiScope ? lottiScope.join('-') : 'Tutti';
   const tratte = lottiScope ? allFeatures.filter(f => lottiScope.includes(f.properties.LOTTO)) : allFeatures;
   const tratteFeatures = tratte.map(f => ({...f, properties: _prepareExportProps(f, false, cantiereMap)}));
-  _downloadGeoJSON(tratteFeatures, 'ENRI_Lotto_' + lottiSuffix + '_tratte.geojson');
+  _downloadGeoJSON(tratteFeatures, 'QTS_Lotto_' + lottiSuffix + '_tratte.geojson');
 
   const vuoiSed = confirm('Vuoi includere anche gli attraversamenti (SED) in un secondo file?');
   if (vuoiSed) {
@@ -1520,7 +1520,7 @@ async function exportGeoJSON(){
       if (sedFeatures.length) {
         // Piccolo ritardo tra i due download: alcuni browser bloccano download multipli simultanei.
         await new Promise(r => setTimeout(r, 400));
-        _downloadGeoJSON(sedFeatures, 'ENRI_Lotto_' + lottiSuffix + '_sed.geojson');
+        _downloadGeoJSON(sedFeatures, 'QTS_Lotto_' + lottiSuffix + '_sed.geojson');
       } else {
         alert('Nessun attraversamento (SED) trovato per il/i lotto/i selezionato/i.');
       }
@@ -2685,7 +2685,7 @@ const RO_SC_TECNICA_LABEL = { trincea:'Trincea', no_dig:'No Dig', canaletta:'Can
 let RO_CANTIERI = [];
 async function _roLoadCantieri(){
   try {
-    const r = await fetch(ENRI.isEnabled ? ENRI.apiBase + '/api/cantieri' : '/api/cantieri', { headers: { 'x-session-token': localStorage.getItem('_qts_session') || '' } });
+    const r = await fetch(QTS.isEnabled ? QTS.apiBase + '/api/cantieri' : '/api/cantieri', { headers: { 'x-session-token': localStorage.getItem('_qts_session') || '' } });
     if (r.ok) { const d = await r.json(); RO_CANTIERI = d.cantieri || []; }
   } catch(_) {}
 }
@@ -2850,7 +2850,7 @@ const SitiControl = L.Control.extend({
     const btn = L.DomUtil.create('div', 'siti-control-btn', wrap);
     btn.id = 'sitiBtn';
     btn.title = 'Siti di interesse';
-    btn.innerHTML = 'Siti ENRI';
+    btn.innerHTML = 'Siti QTS';
 
     // Pannello
     const panel = L.DomUtil.create('div', 'siti-panel', wrap);
@@ -3323,7 +3323,7 @@ window.addEventListener('load', () => {
   window.addEventListener('pageshow', (e) => {
     if (e.persisted) location.reload();
   });
-  const _apiBase = () => (window.ENRI && window.ENRI.apiBase) || localStorage.getItem('qts_api_base') || '';
+  const _apiBase = () => (window.QTS && window.QTS.apiBase) || localStorage.getItem('qts_api_base') || '';
   const _sessionToken = () => localStorage.getItem('_qts_session') || '';
   const LOG_BIN_ID   = '69c8fbdced015c742bc8e978';
   const ACCESSI_MAX  = 500;

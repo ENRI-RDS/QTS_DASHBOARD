@@ -1,10 +1,10 @@
 /**
- * ENRI Dashboard — API config helper
+ * QTS Dashboard — API config helper
  * ----------------------------------
  * Drop-in helper for the static HTML pages on GitHub Pages.
  *
- * If you set `window.ENRI_API_BASE` (or save it in localStorage as
- * `enri_api_base`), the helper rewrites every fetch() targeting a CSV /
+ * If you set `window.QTS_API_BASE` (or save it in localStorage as
+ * `qts_api_base`), the helper rewrites every fetch() targeting a CSV /
  * GeoJSON / JSON file to go through your backend API instead of the
  * static file on GitHub Pages.
  *
@@ -12,10 +12,10 @@
  *   <script src="js/api-config.js"></script>
  *
  * Then to point all pages at the backend, run once in the browser console:
- *   localStorage.setItem('enri_api_base', 'https://qts-dashboard-api.onrender.com')
+ *   localStorage.setItem('qts_api_base', 'https://qts-dashboard-api.onrender.com')
  *
  * To go back to static files, clear it:
- *   localStorage.removeItem('enri_api_base')
+ *   localStorage.removeItem('qts_api_base')
  *
  * NOTA: DEFAULT_API_BASE qui sotto è un PLACEHOLDER — va aggiornato con
  * l'URL reale assegnato da Render dopo la creazione del Web Service
@@ -25,12 +25,12 @@
 (function () {
   const DEFAULT_API_BASE = 'https://qts-dashboard-api.onrender.com'; // ⚠️ AGGIORNARE dopo il deploy su Render
 
-  const API_BASE = (window.ENRI_API_BASE
-    || localStorage.getItem('enri_api_base')
+  const API_BASE = (window.QTS_API_BASE
+    || localStorage.getItem('qts_api_base')
     || DEFAULT_API_BASE
     || '').replace(/\/$/, '');
 
-  window.ENRI = {
+  window.QTS = {
     apiBase: API_BASE,
     isEnabled: !!API_BASE,
     /** Returns the URL where the given data file should be fetched from. */
@@ -67,7 +67,7 @@
     try {
       const finalUrl = typeof input === 'string' ? input : input.url;
       if (API_BASE && finalUrl && finalUrl.startsWith(API_BASE)) {
-        const token = localStorage.getItem('_enri_session') || '';
+        const token = localStorage.getItem('_qts_session') || '';
         const existingHeaders = (init && init.headers) || (input instanceof Request ? input.headers : undefined);
         const headers = new Headers(existingHeaders);
         if (token && !headers.has('x-session-token')) headers.set('x-session-token', token);
@@ -78,5 +78,5 @@
     return origFetch(input, init);
   };
 
-  console.info('[ENRI] API base active →', API_BASE);
+  console.info('[QTS] API base active →', API_BASE);
 })();
