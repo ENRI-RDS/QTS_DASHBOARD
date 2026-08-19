@@ -84,9 +84,12 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
        motivi di sicurezza, repo pubblico) — in corso lato utente.
 4. [ ] **Testare login** da `hub.html` con un nome/codice presente nel
        foglio Utenti QTS.
-5. [ ] **Aggiornare `DEFAULT_API_BASE`** in `js/api-config.js` e
-       `api-config.js` (root, sono duplicati) con l'URL reale del Web
-       Service Render (es. `https://qts-dashboard-xyz.onrender.com`).
+5. [x] **Aggiornare `DEFAULT_API_BASE`** in `js/api-config.js` e
+       `api-config.js` (root, duplicati) — corretto: URL reale del Web
+       Service Render è `https://qts-dashboard.onrender.com` (il
+       placeholder precedente `qts-dashboard-api.onrender.com` non
+       esisteva → causava `net::ERR_FAILED`/falso positivo CORS in
+       console, il vero CORS su `enri-rds.github.io` era già corretto).
 6. [ ] **Aggiornare link GitHub Pages** in `hub.html` (placeholder
        `https://qts-rds.github.io/dashboard/...`) con l'URL Pages reale
        una volta pubblicato il frontend.
@@ -152,3 +155,14 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
   Distribuito come Web App, URL `/exec` ottenuto (vedi §5.2). Secret
   generato random per QTS, diverso da quello ENRI. Prossimo: inserire
   `APPS_SCRIPT_URL`/`APPS_SCRIPT_SECRET` su Render e testare login.
+- **rev.8** — Login falliva con "Errore di connessione" / CORS in console.
+  Diagnosi: `ALLOWED_ORIGINS` su Render era già corretto
+  (`https://enri-rds.github.io,...`, confermato nei log d'avvio), il vero
+  bug era `DEFAULT_API_BASE` in `js/api-config.js` + `api-config.js`
+  (root) puntato a `qts-dashboard-api.onrender.com`, host mai esistito —
+  l'URL reale del Web Service è `https://qts-dashboard.onrender.com`
+  (confermato dai log Render: "Available at your primary URL"). Corretto
+  in entrambi i file. **Da verificare**: bug noto non richiesto, segnalato
+  qui — nei log d'avvio compare `[sync_cantieri] errore lettura master:
+  404: Master.csv not found`, coerente con §5.7 (dati reali ancora da
+  caricare), non bloccante per il test di login.
