@@ -1,5 +1,5 @@
 /**
- * QTS Dashboard — API config helper
+ * QTS Dashboard — API config helpe
  * ----------------------------------
  * Drop-in helper for the static HTML pages on GitHub Pages.
  *
