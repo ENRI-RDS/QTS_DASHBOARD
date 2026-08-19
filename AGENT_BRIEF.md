@@ -69,15 +69,19 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
 
 ## 5. Prossimi step (in ordine)
 
-1. [~] **Verificare esito deploy Render** dopo fix `PYTHON_VERSION=3.11.10`
-       (rev.5) — **verifica in corso**: env var inserita e salvata su Render,
-       redeploy automatico triggerato, in attesa di conferma stato "Live" nei
-       deploy logs.
-2. [ ] **Distribuire Code.gs come Web App** sul Google Sheet QTS
-       (Estensioni → Apps Script → Distribuisci → Nuova distribuzione →
-       tipo "Applicazione web") e copiare l'URL `/exec`.
-3. [ ] **Inserire su Render** `APPS_SCRIPT_URL` (URL dal punto 2) e
-       `APPS_SCRIPT_SECRET` (stesso valore scritto dentro `Code.gs`).
+1. [x] **Deploy Render confermato "Live"** dopo fix `PYTHON_VERSION=3.11.10`
+       (rev.5/rev.6) — verificato dai deploy logs (`Deploy live for 6158694:
+       Update AGENT_BRIEF.md`).
+2. [x] **Distribuire Code.gs come Web App** sul Google Sheet QTS — fatto,
+       URL `/exec` ottenuto: `https://script.google.com/macros/s/
+       AKfycby_5hYBzumFCVCqIkQ3Qq27Q6_xcoHPBzaK0K59b7uH69cFg1EdG3tIjlSPQl3wCfk0Mg/exec`.
+       `Code.gs` scritto da zero (non preesisteva, foglio aveva solo
+       `myFunction` vuota): legge sheet "Utenti" (colonne Nome/Codice/Ruolo),
+       verifica `secret`+action `login`, ritorna `{ok, nome, ruolo}`.
+3. [~] **Inserire su Render** `APPS_SCRIPT_URL` (vedi sopra) e
+       `APPS_SCRIPT_SECRET` (stesso valore scritto dentro `Code.gs`,
+       generato random, diverso da quello ENRI — NON annotato qui per
+       motivi di sicurezza, repo pubblico) — in corso lato utente.
 4. [ ] **Testare login** da `hub.html` con un nome/codice presente nel
        foglio Utenti QTS.
 5. [ ] **Aggiornare `DEFAULT_API_BASE`** in `js/api-config.js` e
@@ -132,3 +136,19 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
   equivalente, da caricare su GitHub se si preferisce documentarlo nel repo
   invece che solo in env var). TODO aperti: vedi §5 (prossimi step in
   ordine).
+- **rev.6** — Confermato deploy Render "Live" (deploy logs, screenshot
+  utente). Confermato via ispezione `backend/server.py`: la separazione
+  utenze QTS/ENRI è già architetturalmente in place — login passa da
+  `/api/auth/login` → proxy server-to-server verso `APPS_SCRIPT_URL`/
+  `APPS_SCRIPT_SECRET` (env var Render, workspace QTS separato da ENRI),
+  nessun codice condiviso tra i due backend. Resta da completare
+  operativamente: distribuzione Code.gs come Web App sul foglio QTS,
+  inserimento env var su Render, test login end-to-end (§5 punti 2-4).
+- **rev.7** — Foglio Utenti QTS confermato con stesse 3 colonne di ENRI
+  (Nome/Codice/Ruolo), ma script Apps Script associato era vuoto
+  (`myFunction` stub). Scritto `Code.gs` da zero (doPost, verifica
+  `secret`+`action:"login"`, match nome+codice case-insensitive su
+  colonna Nome/Codice, ritorna `{ok, nome, ruolo}` da colonna Ruolo).
+  Distribuito come Web App, URL `/exec` ottenuto (vedi §5.2). Secret
+  generato random per QTS, diverso da quello ENRI. Prossimo: inserire
+  `APPS_SCRIPT_URL`/`APPS_SCRIPT_SECRET` su Render e testare login.
