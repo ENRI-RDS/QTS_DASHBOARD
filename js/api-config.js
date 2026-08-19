@@ -23,7 +23,7 @@
  * https://<nome-servizio>.onrender.com).
  */
 (function () {
-  const DEFAULT_API_BASE = 'https://qts-dashboard-api.onrender.com'; // ⚠️ AGGIORNARE dopo il deploy su Render
+  const DEFAULT_API_BASE = 'https://qts-dashboard.onrender.com';
 
   const API_BASE = (window.QTS_API_BASE
     || localStorage.getItem('qts_api_base')
