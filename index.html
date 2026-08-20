@@ -3293,10 +3293,7 @@ function renderDashboard(data) {
     if (d.stato === 'NO COMPETENZA') { lottiTotale[d.lotto] -= d.metri; return; }
     lottiMap[d.lotto][d.stato]=(lottiMap[d.lotto][d.stato]||0)+d.metri;
   });
-  const ORDER_ATTIVI  = ['1A','1B','2A','2B'];
-  const ORDER_FUTURI  = ['1','2','3','4','5','6','7','8','P'];
-  const ORDER = [...ORDER_ATTIVI, ...ORDER_FUTURI];
-  const lotti=Object.keys(lottiMap).sort((a,b)=>{const ia=ORDER.indexOf(a),ib=ORDER.indexOf(b);return(ia<0?99:ia)-(ib<0?99:ib);});
+  const lotti=Object.keys(lottiMap).sort((a,b)=>a.localeCompare(b));
   let grandTotal=0;
   const globalStati={};
   lotti.forEach(l=>{grandTotal+=lottiTotale[l];Object.entries(lottiMap[l]).forEach(([s,m])=>{globalStati[s]=(globalStati[s]||0)+m;});});
@@ -3355,59 +3352,7 @@ function renderDashboard(data) {
   wrap.innerHTML='';
   const tooltip=document.getElementById('tooltip');
 
-  // Separatore gruppo attivi
-  const lottiAttivi = lotti.filter(l => ORDER_ATTIVI.includes(l));
-  const lottiFuturi = lotti.filter(l => ORDER_FUTURI.includes(l));
-  const totAttivi = lottiAttivi.reduce((s, l) => s + lottiTotale[l], 0);
-  const totFuturi = lottiFuturi.reduce((s, l) => s + lottiTotale[l], 0);
-
-  const sepAttivi = document.createElement('div');
-  sepAttivi.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:8px;margin-top:2px';
-  sepAttivi.innerHTML = `
-    <div style="width:90px;flex-shrink:0"></div>
-    <div style="flex:1;display:flex;align-items:center;gap:8px">
-      <span style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.12em;color:var(--accent);white-space:nowrap;background:#41BBD912;border:1px solid #41BBD933;border-radius:4px;padding:2px 8px">⚡ Lotti Attivi</span>
-      <div style="flex:1;height:1px;background:linear-gradient(to right,#41BBD955,transparent)"></div>
-    </div>`;
-  wrap.appendChild(sepAttivi);
-
   lotti.forEach(lotto=>{
-    // Separatore + totale attivi prima dei lotti futuri
-    if (lotto === ORDER_FUTURI[0] && lottiAttivi.length > 0) {
-      // Totale attivi
-      const totAttiviRow = document.createElement('div');
-      totAttiviRow.className = 'bar-row';
-      totAttiviRow.style.cssText = 'margin:4px 0 2px;padding:3px 4px;border-top:1px solid var(--border);cursor:pointer;opacity:0.85';
-
-      const gruppiAttivi = {};
-      lottiAttivi.forEach(l => Object.entries(lottiMap[l]).forEach(([s,m]) => { gruppiAttivi[s] = (gruppiAttivi[s]||0)+m; }));
-      const segsAttiviHtml = renderBarre(buildGruppiMap(gruppiAttivi), totAttivi, tooltip);
-      const ottAttiviMetri = lottiAttivi.reduce((s,l) => s + (lottiMap[l]['OTTENUTO']||0), 0);
-      const ottAttiviPct = totAttivi > 0 ? (ottAttiviMetri / totAttivi * 100).toFixed(0) + '%' : '';
-      totAttiviRow.innerHTML = `
-        <div class="bar-lotto-wrap" style="flex-shrink:0"><span class="bar-lotto-num" style="font-size:9px;color:var(--muted)">Totale attivi ↗</span></div>
-        <div class="bar-track">${segsAttiviHtml}</div>
-        <span class="bar-pct">${ottAttiviPct}</span>
-        <span class="bar-val" style="min-width:62px;text-align:right;font-size:12px;color:var(--text);font-family:'Raleway',sans-serif;flex-shrink:0;font-weight:700;letter-spacing:-0.01em">${fmt(totAttivi)} m</span>`;
-      totAttiviRow.querySelectorAll('.bar-seg').forEach(seg => {
-        seg.addEventListener('mousemove', e => { _showBarTip(tooltip, seg, e); });
-        seg.addEventListener('mouseleave', () => { tooltip.style.opacity = '0'; });
-      });
-      totAttiviRow.addEventListener('click', () => openModalGruppo('⚡ Riepilogo Lotti Attivi', lottiAttivi, lottiMap, lottiTotale));
-      wrap.appendChild(totAttiviRow);
-
-      const sepFuturi = document.createElement('div');
-      sepFuturi.style.cssText = 'display:flex;align-items:center;gap:10px;margin-top:10px;margin-bottom:8px';
-      sepFuturi.innerHTML = `
-        <div style="width:90px;flex-shrink:0"></div>
-        <div style="flex:1;display:flex;align-items:center;gap:8px">
-          <span style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:0.12em;color:var(--muted);white-space:nowrap;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 8px">Lotti in Progettazione</span>
-          <div style="flex:1;height:1px;background:linear-gradient(to right,#6B768555,transparent)"></div>
-        </div>
-        <span style="width:38px;flex-shrink:0"></span>
-        <span style="min-width:62px;flex-shrink:0"></span>`;
-      wrap.appendChild(sepFuturi);
-    }
     const tot=lottiTotale[lotto];
     const ottenutoPct=tot>0?(lottiMap[lotto]['OTTENUTO']||0)/tot*100:0;
     const pctLabel = ottenutoPct>0 ? ottenutoPct.toFixed(0)+'%' : '';
@@ -3437,30 +3382,6 @@ function renderDashboard(data) {
     });
     wrap.appendChild(row);
   });
-
-  // Totale lotti in avvio
-  if (lottiFuturi.length > 0) {
-    const totFuturiRow = document.createElement('div');
-    totFuturiRow.className = 'bar-row';
-    totFuturiRow.style.cssText = 'margin:4px 0 2px;padding:3px 4px;border-top:1px solid var(--border);cursor:pointer;opacity:0.85';
-
-    const gruppiFuturi = {};
-    lottiFuturi.forEach(l => Object.entries(lottiMap[l]).forEach(([s,m]) => { gruppiFuturi[s] = (gruppiFuturi[s]||0)+m; }));
-    const segsFuturiHtml = renderBarre(buildGruppiMap(gruppiFuturi), totFuturi, tooltip);
-    const ottFuturiMetri = lottiFuturi.reduce((s,l) => s + (lottiMap[l]['OTTENUTO']||0), 0);
-    const ottFuturiPct = totFuturi > 0 ? (ottFuturiMetri / totFuturi * 100).toFixed(0) + '%' : '';
-    totFuturiRow.innerHTML = `
-      <div class="bar-lotto-wrap" style="flex-shrink:0"><span class="bar-lotto-num" style="font-size:9px;color:var(--muted)">Totale progettazione ↗</span></div>
-      <div class="bar-track">${segsFuturiHtml}</div>
-      <span class="bar-pct">${ottFuturiPct}</span>
-      <span class="bar-val" style="min-width:62px;text-align:right;font-size:12px;color:var(--text);font-family:'Raleway',sans-serif;flex-shrink:0;font-weight:700;letter-spacing:-0.01em">${fmt(totFuturi)} m</span>`;
-    totFuturiRow.querySelectorAll('.bar-seg').forEach(seg => {
-      seg.addEventListener('mousemove', e => { _showBarTip(tooltip, seg, e); });
-      seg.addEventListener('mouseleave', () => { tooltip.style.opacity = '0'; });
-    });
-    totFuturiRow.addEventListener('click', () => openModalGruppo('Riepilogo Lotti in Progettazione', lottiFuturi, lottiMap, lottiTotale));
-    wrap.appendChild(totFuturiRow);
-  }
 
   // Totale Progetto — metri per stato
   const STATI_INATTIVI = ['IN ATTESA','IN REDAZIONE'];
@@ -4551,24 +4472,14 @@ function apriEditManuale() {
   const data = window._currentData || window._lastDashData;
   if (!data || !data.length) { alert('Nessun dato disponibile. Carica prima un file CSV.'); return; }
   const map = emBuildMap(data);
-  const ORDER_ATTIVI = ['1A','1B','2A','2B'];
-  const ORDER_FUTURI = ['1','2','3','4','5','6','7','8'];
-  const ORDER = [...ORDER_ATTIVI, ...ORDER_FUTURI];
-  const lotti = Object.keys(map).sort((a,b) => {
-    const ia = ORDER.indexOf(a), ib = ORDER.indexOf(b);
-    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
-  });
+  const lotti = Object.keys(map).sort((a,b) => a.localeCompare(b));
 
   let th = `<th class="th-lotto">Lotto</th>`;
   EM_GRUPPI.forEach(g => { th += `<th style="color:${g.color}">${g.label}</th>`; });
 
   let rows = '';
   lotti.forEach(lotto => {
-    const isAttivo = ORDER_ATTIVI.includes(lotto);
-    if (lotto === ORDER_FUTURI[0] && lotti.some(l => ORDER_ATTIVI.includes(l))) {
-      rows += `<tr class="em-sep-row"><td colspan="${EM_GRUPPI.length+1}">Lotti in Progettazione</td></tr>`;
-    }
-    rows += `<tr><td class="td-lotto">${lotto}${isAttivo ? ' <span style="font-size:8px;color:#41BBD9">⚡</span>' : ''}</td>`;
+    rows += `<tr><td class="td-lotto">${lotto}</td>`;
     EM_GRUPPI.forEach(g => {
       const val = g.stati.reduce((s,st) => s+(map[lotto][st]||0), 0);
       const subLabels = g.stati.length > 1
