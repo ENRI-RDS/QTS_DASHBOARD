@@ -109,6 +109,26 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
 
 ## 6. Log revisioni
 
+- **rev.20** — `index.html`: eliminata completamente la funzione/dicitura
+  "Lotti Attivi" / "Lotti in Progettazione" — era residuo del vecchio
+  schema lotti ENRI (`ORDER_ATTIVI=['1A','1B','2A','2B']`,
+  `ORDER_FUTURI=['1'..'8','P']`), mai adattato allo schema QTS (A/B/C),
+  per cui non scattava mai (nessun lotto QTS corrisponde a quei codici) —
+  ma lasciava comunque codice morto e un ordinamento lotti inefficace.
+  Rimosso in due punti:
+  - `renderDashboard()`: tolti `ORDER_ATTIVI`/`ORDER_FUTURI`/`ORDER`,
+    `lottiAttivi`/`lottiFuturi`/`totAttivi`/`totFuturi`, i separatori
+    "⚡ Lotti Attivi"/"Lotti in Progettazione" e le righe riepilogative
+    "Totale attivi"/"Totale progettazione" (con relativi `gruppiAttivi`/
+    `gruppiFuturi` e handler). Ordinamento lotti ora semplice
+    `a.localeCompare(b)`.
+  - `apriEditManuale()` (modale dati manuali): stessa coppia
+    `ORDER_ATTIVI`/`ORDER_FUTURI` locale, stesso separatore "Lotti in
+    Progettazione" e badge ⚡ per `isAttivo`, rimossi allo stesso modo;
+    ordinamento lotti anch'esso `localeCompare`.
+  Verificato: nessuna occorrenza residua di `ORDER_ATTIVI`/`ORDER_FUTURI`/
+  `lottiAttivi`/`lottiFuturi`/`isAttivo` nel file. JS inline estratto e
+  validato con `node --check` → OK.
 - **rev.19** — Rimosso il tasto/funzione "Siti QTS" da `mappa.html` e
   `mappa_impresa_caricamento.html`: array `SITI`, controllo `SitiControl`,
   pannello (`sitiPanel`/`sitiBtn`), ricerca (`filterSiti`), marker
