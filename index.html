@@ -617,10 +617,7 @@ window.loadXLSX = (function(){
     #tabellaContainer { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     #tabellaContainer table { min-width: 700px; }
 
-    /* Cluster bars + Previsioni Rilascio: da affiancati a impilati */
-    #clusterBodyFlex {
-      flex-direction: column !important;
-    }
+    /* Previsioni Rilascio: layout mobile */
     #prevRilascioCol {
       display: flex !important;
       flex-direction: row !important;
@@ -1077,7 +1074,7 @@ window.loadXLSX = (function(){
     </div>
 
   </div>
-  <!-- Prev. Rilascio (indipendente da cluster — grafico "Avanzamento per Cluster" rimosso: nessuna fonte dati in QTS.geojson) -->
+  <!-- Prev. Rilascio (indicatori pratiche inviate: in linea / in scadenza / scadute) -->
   <div id="prevRilascioSection">
     <div class="card">
       <div class="card-body">
@@ -1347,7 +1344,6 @@ window.loadXLSX = (function(){
         if (_sedSortKey === 'nome')       { va = (a.name||'').toLowerCase();  vb = (b.name||'').toLowerCase(); }
         else if (_sedSortKey === 'tipo')  { va = (a.tipo||'').toLowerCase();  vb = (b.tipo||'').toLowerCase(); }
         else if (_sedSortKey === 'lotto')   { va = (a.lotto||'').toLowerCase(); vb = (b.lotto||'').toLowerCase(); }
-        else if (_sedSortKey === 'cluster') { va = (a.cluster||'').toLowerCase(); vb = (b.cluster||'').toLowerCase(); }
         else if (_sedSortKey === 'comune'){ va = (a.comune||'').toLowerCase();vb = (b.comune||'').toLowerCase(); }
         else if (_sedSortKey === 'ente')  { va = (a.ente||'').toLowerCase();  vb = (b.ente||'').toLowerCase(); }
         else if (_sedSortKey === 'stato') { va = getSedStatoPrincipale(a).toLowerCase(); vb = getSedStatoPrincipale(b).toLowerCase(); }
@@ -1361,7 +1357,7 @@ window.loadXLSX = (function(){
     }
 
     // aggiorna frecce header
-    var sedCols = ['nome','tipo','lotto','cluster','comune','ente','stato','data','nSed'];
+    var sedCols = ['nome','tipo','lotto','comune','ente','stato','data','nSed'];
     sedCols.forEach(function(k) {
       var el = document.getElementById('sedArr_'+k);
       if (el) el.textContent = (k === _sedSortKey) ? (_sedSortDir === 1 ? '↑' : '↓') : '↕';
@@ -1407,7 +1403,6 @@ window.loadXLSX = (function(){
         +'<td class="tbl-td" style="padding:8px 14px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+nameSafe+'"><span style="font-size:12px;font-weight:600;color:var(--text)">'+nameSafe+'</span></td>'
         +'<td class="tbl-td" style="padding:8px 10px"><span class="sed-tipo-chip '+d.tipo+'">'+tipoLabel+'</span></td>'
         +'<td class="tbl-td" style="padding:8px 10px"><span class="tbl-lotto-chip">'+(d.lotto||'—')+'</span></td>'
-        +'<td class="tbl-td" style="padding:8px 10px;font-size:11px;font-weight:600;color:var(--text2)">'+( d.cluster ? 'C'+d.cluster : '—')+'</td>'
         +'<td class="tbl-td" style="padding:8px 10px;font-size:11px;color:var(--text2)">'+(d.comune||'—')+'</td>'
         +'<td class="tbl-td" style="padding:8px 10px;font-size:11px;color:var(--text2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+enteSafe+'">'+(d.ente||'—')+'</td>'
         +'<td class="tbl-td" style="padding:6px 10px">'+statoCell+'</td>'
@@ -1474,11 +1469,11 @@ window.loadXLSX = (function(){
       var pratiche = getSedPratiche(d);
       if (pratiche && pratiche.length) {
         pratiche.forEach(function(p) {
-          rows.push([d.nSed||'', d.name||'', d.tipo||'', d.cluster||'', d.lotto||'', d.comune||'', d.provincia||'', d.ente||'',
+          rows.push([d.nSed||'', d.name||'', d.tipo||'', d.lotto||'', d.comune||'', d.provincia||'', d.ente||'',
                      p.tipo||'', buildSedCodice(p), p.ente||'', p.stato||'', p.dum||'', p.dr||'']);
         });
       } else {
-        rows.push([d.nSed||'', d.name||'', d.tipo||'', d.cluster||'', d.lotto||'', d.comune||'', d.provincia||'', d.ente||'',
+        rows.push([d.nSed||'', d.name||'', d.tipo||'', d.lotto||'', d.comune||'', d.provincia||'', d.ente||'',
                    '','','','IN ATTESA','','']);
       }
     });
@@ -1488,10 +1483,10 @@ window.loadXLSX = (function(){
   async function writeSedExcel(rows, filename) {
     await window.loadXLSX();
     if (typeof XLSX === 'undefined') { alert('Libreria XLSX non disponibile.'); return; }
-    var header = ['Numero SED','Nome','Tipo Attraversamento','Cluster','Lotto','Comune','Provincia','Ente GeoJSON',
+    var header = ['Numero SED','Nome','Tipo Attraversamento','Lotto','Comune','Provincia','Ente GeoJSON',
                   'Tipo Permesso','Codice Pratica','Ente Permesso','Stato Permesso','Data Ultima Modifica','Data Richiesta'];
     var ws = XLSX.utils.aoa_to_sheet([header].concat(rows));
-    ws['!cols'] = [{wch:12},{wch:30},{wch:16},{wch:8},{wch:8},{wch:18},{wch:8},{wch:24},
+    ws['!cols'] = [{wch:12},{wch:30},{wch:16},{wch:8},{wch:18},{wch:8},{wch:24},
                    {wch:22},{wch:16},{wch:24},{wch:28},{wch:16},{wch:16}];
     var range = XLSX.utils.decode_range(ws['!ref']);
     for (var c = range.s.c; c <= range.e.c; c++) {
@@ -1554,15 +1549,12 @@ window.loadXLSX = (function(){
           lines.forEach(function(seg){ for(var i=1;i<seg.length;i++) tot+=haverDist(seg[i-1],seg[i]); });
           return tot;
         }
-        var CLUSTER_MAP = {'1A':'1','1B':'1','2A':'2','2B':'2','1':'1','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7','8':'8'};
-        var cluster = p.CLUSTER || p.cluster || CLUSTER_MAP[p.LOTTO] || '';
         return {
           fid:       p.fid || '',
           tratta:    p.N_SED || p.fid || '',
           name:      p.name || '',
           tipo:      p.TIPO_ATTRAVERSAMENTO || 'IDRICO',
           lotto:     p.LOTTO || '',
-          cluster:   cluster,
           comune:    p.COMUNE || '',
           provincia: p.PROVINCIA || '',
           ente:      p.ENTE || '',
@@ -1868,7 +1860,6 @@ window.loadXLSX = (function(){
               <th onclick="sedSort('nome')" style="padding:9px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);font-weight:700;white-space:nowrap;cursor:pointer;user-select:none" title="Ordina per Nome"><span class="col-th-inner">Nome <span id="sedArr_nome" class="col-sort-btn">↕</span></span></th>
               <th onclick="sedSort('tipo')" style="padding:9px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);font-weight:700;cursor:pointer;user-select:none" title="Ordina per Tipo"><span class="col-th-inner">Tipo <span id="sedArr_tipo" class="col-sort-btn">↕</span></span></th>
               <th onclick="sedSort('lotto')" style="padding:9px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);font-weight:700;cursor:pointer;user-select:none" title="Ordina per Lotto"><span class="col-th-inner">Lotto <span id="sedArr_lotto" class="col-sort-btn">↕</span></span></th>
-              <th onclick="sedSort('cluster')" style="padding:9px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);font-weight:700;cursor:pointer;user-select:none" title="Ordina per Cluster"><span class="col-th-inner">Cluster <span id="sedArr_cluster" class="col-sort-btn">↕</span></span></th>
               <th onclick="sedSort('comune')" style="padding:9px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);font-weight:700;cursor:pointer;user-select:none" title="Ordina per Comune"><span class="col-th-inner">Comune <span id="sedArr_comune" class="col-sort-btn">↕</span></span></th>
               <th onclick="sedSort('ente')" style="padding:9px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);font-weight:700;cursor:pointer;user-select:none" title="Ordina per Ente"><span class="col-th-inner">Ente <span id="sedArr_ente" class="col-sort-btn">↕</span></span></th>
               <th onclick="sedSort('stato')" style="padding:9px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);font-weight:700;min-width:160px;cursor:pointer;user-select:none" title="Ordina per Stato Permesso"><span class="col-th-inner">Stato Permesso <span id="sedArr_stato" class="col-sort-btn">↕</span></span></th>
@@ -2251,7 +2242,7 @@ function renderBarre(gruppiMap, totale, tooltip, onHover) {
   return html;
 }
 // Riepilogo_progettazione.csv eliminato (ridondante, derivato 1:1 da QTS.geojson) —
-// loadData()/loadCluster() leggono direttamente QTS.geojson.
+// loadData() legge direttamente QTS.geojson.
 const QGIS_URL = 'QTS.geojson';
 const MASTER_URL = 'Master.csv';
 
@@ -2276,7 +2267,7 @@ function _timeout(ms, msg) {
 
 async function fetchQtsGeojson(forceFresh = false) {
   // Cache in memoria (stessa sessione pagina): evita doppio fetch quando
-  // loadData() e loadCluster() partono in parallelo allo stesso load.
+  // più chiamate partono in parallelo allo stesso load.
   // Se _swrUpdating è attivo, usa sempre la cache anche se forceFresh=true.
   if (_qtsGeojsonCache && (!forceFresh || _swrUpdating)) return _qtsGeojsonCache;
 
@@ -3155,7 +3146,7 @@ async function loadData(saveSnapshot = false) {
     setLoading(40);
     const geojson = await fetchQtsGeojson(true); // forceFresh=true: loadData guida il refresh
     setLoading(70);
-    // Aggrega da QTS.geojson (stessa fonte di loadCluster → totali coerenti)
+    // Aggrega da QTS.geojson
     const feats = geojson.features || [];
 
     // Aggrega per lotto+stato
@@ -3798,7 +3789,7 @@ function _processMasterText(text) {
       const dum    = iDUM !== -1 ? (cols[iDUM]?.trim() || '') : '';
       const src    = iSrc !== -1 ? (cols[iSrc]?.trim() || '') : '';
       // Master.csv non ha una colonna COMUNE: il dato arriva da QTS.geojson,
-      // mappato per TRATTA_ID (window._trattaComuneMap, popolato da fetchQtsGeojson/loadCluster).
+      // mappato per TRATTA_ID (window._trattaComuneMap, popolato da fetchQtsGeojson).
       // iComM resta come fallback nel caso in futuro la colonna venga aggiunta al Master.
       const comune = (window._trattaComuneMap && window._trattaComuneMap[tratta])
                    || (iComM !== -1 ? (cols[iComM]?.trim() || '') : '');
@@ -3947,7 +3938,7 @@ function _processMasterText(text) {
       localStorage.setItem('_autPerLotto', JSON.stringify(_autPerLotto));
     } catch(e) {}
 
-    // Indice per tratta → pratiche (per popup cluster)
+    // Indice per tratta → pratiche (per popup mappa)
     window._masterByTratta = {};
     Object.values(permessiMap).forEach(r => {
       const lotto = r.lotto || (window._trattaLottoMap && window._trattaLottoMap[r.tratta]) || '';
@@ -4420,7 +4411,7 @@ function updatePrevRilascio() {
 // (window._trattaComuneMap, per TRATTA_ID), caricato da loadData() DOPO loadMaster() (che deve
 // girare prima per _trattaLottoMap, v. sopra). Quando le pratiche vengono costruite in
 // _processMasterText il comune è quindi ancora vuoto: questa funzione lo ripopola a posteriori
-// su _masterByTratta (usato dall'export Cluster) e _praticheDetailPerLotto (usato ovunque altrove),
+// su _masterByTratta (usato dalla ricerca pratiche per tratta) e _praticheDetailPerLotto (usato ovunque altrove),
 // senza dover riparsire il Master.csv.
 function _backfillComuni() {
   if (!window._trattaComuneMap || !window._masterByTratta || !window._praticheDetailPerLotto) return;
@@ -4485,8 +4476,8 @@ function openHelp() { window._modalOpen('helpOverlay'); }
     </div>
 
     <div class="help-section">
-      <h4>Avanzamento per Cluster</h4>
-      <p>Barre orizzontali che mostrano la distribuzione degli stati per ogni cluster. La colonna laterale <strong>Prev. Rilascio</strong> riepiloga le pratiche inviate: <span style="color:#1E9E6A;font-weight:600">✓ In linea</span>, <span style="color:#D08A1A;font-weight:600">⚠ In scadenza</span>, <span style="color:#C0392B;font-weight:600">✕ Scadute</span>. Clicca su ciascun contatore per vedere l'elenco dettagliato. Clicca su una barra cluster per il dettaglio pratiche.</p>
+      <h4>Prev. Rilascio</h4>
+      <p>Riepiloga le pratiche inviate rispetto alla scadenza attesa: <span style="color:#1E9E6A;font-weight:600">✓ In linea</span>, <span style="color:#D08A1A;font-weight:600">⚠ In scadenza</span>, <span style="color:#C0392B;font-weight:600">✕ Scadute</span>. Clicca su ciascun contatore per vedere l'elenco dettagliato.</p>
     </div>
 
     <div class="help-section">
@@ -4506,7 +4497,7 @@ function openHelp() { window._modalOpen('helpOverlay'); }
 
     <div class="help-section">
       <h4>Storico</h4>
-      <p>Il pulsante <strong>📈 Storico</strong> apre il grafico dell'avanzamento nel tempo. Mostra l'evoluzione settimana per settimana dei metri autorizzati, con la possibilità di filtrare per lotto o per cluster.</p>
+      <p>Il pulsante <strong>📈 Storico</strong> apre il grafico dell'avanzamento nel tempo. Mostra l'evoluzione settimana per settimana dei metri autorizzati, con la possibilità di filtrare per lotto.</p>
     </div>
 
     <div class="help-section">
@@ -5655,7 +5646,7 @@ _hookScadenze();
       + 'background:#eff6ff;color:#043F75;border:1px solid #bfdbfe;user-select:none" '
       + 'title="Vedi solleciti per ' + codice.replace(/"/g,'') + '">' + n + ' </span>';
   }
-  window._solBadge = _solBadge; // esposta globalmente: usata anche dalle tabelle modal Lotto/Cluster
+  window._solBadge = _solBadge; // esposta globalmente: usata anche dalle tabelle modal Lotto
 
   // Popover fisso, aggiornato al click sul badge
   ;(function() {
