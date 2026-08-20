@@ -823,21 +823,24 @@ const STATO_COLORS = {
   'NECESSARIA INTEGRAZIONE':'#C0392B', 'PROTOCOLLATO INTEGRAZIONE':'#436A93', 'OTTENUTO':'#1E9E6A'
 };
 window.STATO_COLORS = STATO_COLORS;
-const IMPRESE = {'1':'Valtellina','1A':'Valtellina','1B':'Soleto','2':'Sertori','2A':'Sielte','2B':'Telebit','3':'Valtellina','4':'Sielte','5':'Circet','6':'Sertori','7':'Valtellina','8':'Sielte'};
-const LOTTO_ORDER = ['1A','1B','2A','2B','1','2','3','4','5','6','7','8'];
-const LOTTI_ATTIVI = ['1A','1B','2A','2B'];
-const LOTTI_AVVIO  = ['1','2','3','4','5','6','7','8'];
+// QTS non ha una mappa lotto→impresa in Master.csv (a differenza di ENRI): vuota finché non disponibile
+const IMPRESE = {};
 
 let map, allLayers=[], currentFilter='TUTTI', lottoStats={};
 let currentViewMode = 'stato'; // 'stato' | 'lotto' | 'scavi'
 
-// Colori per lotto
-const LOTTO_COLORS = {
-  '1A':'#4f8ef7','1B':'#89bfff',
-  '2A':'#e07b3a','2B':'#f7a96a',
-  '1':'#3a8c5c','2':'#5cb87a','3':'#c9a227','4':'#e8c050',
-  '5':'#cc3333','6':'#e06868','7':'#a07af7','8':'#ffffff'
-};
+// Colori per lotto, assegnati dinamicamente sui lotti effettivamente presenti nei dati
+// (QTS usa A/B/C, diversi dagli 1-8/1A-2B di ENRI: niente più elenco hardcoded)
+const LOTTO_PALETTE = ['#3a8c5c','#4f8ef7','#e07b3a','#c9a227','#cc3333','#a07af7','#1E9E6A','#436A93','#D08A1A','#7A3DAA','#5cb87a','#89bfff'];
+const LOTTO_COLORS = {};
+function assignLottoColors(stats) {
+  Object.keys(stats).sort((a,b)=>a.localeCompare(b,'it',{numeric:true})).forEach((id,i)=>{
+    if (!LOTTO_COLORS[id]) LOTTO_COLORS[id] = LOTTO_PALETTE[i % LOTTO_PALETTE.length];
+  });
+}
+function lottoOrder(stats) {
+  return Object.keys(stats).sort((a,b)=>a.localeCompare(b,'it',{numeric:true}));
+}
 
 function getScaviColorForFeature(feature) {
   // Colora per stato cantiere (RO_CANTIERI/RO_SC_STATO_COLOR definiti più sotto nel file,
@@ -910,20 +913,7 @@ function renderFilterLotto(stats) {
   sep0.style.cssText='width:1px;height:16px;background:var(--border);align-self:center;margin:0 4px;';
   fr.appendChild(sep0);
 
-  LOTTI_ATTIVI.forEach(id=>{
-    if(!stats[id]) return;
-    const b=document.createElement('button');
-    b.className='filter-btn'; b.id='fbtn-'+id; b.textContent=id;
-    b.onclick=()=>toggleLotto(id);
-    fr.appendChild(b);
-  });
-
-  const sep1=document.createElement('span');
-  sep1.style.cssText='width:1px;height:16px;background:var(--border);align-self:center;margin:0 4px;';
-  fr.appendChild(sep1);
-
-  LOTTI_AVVIO.forEach(id=>{
-    if(!stats[id]) return;
+  lottoOrder(stats).forEach(id=>{
     const b=document.createElement('button');
     b.className='filter-btn'; b.id='fbtn-'+id; b.textContent=id;
     b.onclick=()=>toggleLotto(id);
@@ -1655,7 +1645,7 @@ function renderSidebar(stats) {
   const list=document.getElementById('lottoList');
   if (!list) return;  // guard
   list.innerHTML='';
-  LOTTO_ORDER.forEach(id=>{
+  lottoOrder(stats).forEach(id=>{
     const s=stats[id]; if(!s) return;
     const color=getColor(s.statoLabel);
     const pct=s.pct.toFixed(1);
@@ -2291,6 +2281,7 @@ function _buildMapLayers(geojson, isUpdate = false) {
   const features = geojson.features.filter(f => f.properties.LOTTO !== 'P');
   allFeatures = features;
   lottoStats = buildLottoStats(features);
+  assignLottoColors(lottoStats);
 
   if (isUpdate) {
     allLayers.forEach(({layer, outlineLayer}) => {
@@ -2951,7 +2942,7 @@ window.addEventListener('load', () => {
 
     <div class="help-section">
       <h4>Modalità di Visualizzazione</h4>
-      <p>I pulsanti <strong>Pratiche · Scavi · Lotto</strong> nella barra laterale cambiano il criterio di colorazione delle tratte. <em>Pratiche</em> mostra l'avanzamento autorizzativo con colori che vanno dal grigio (in attesa) al verde (ottenuto). <em>Lotto</em> distingue i quattro lotti attivi (1A, 1B, 2A, 2B) e quelli in avvio (1–8). La legenda in basso a sinistra si aggiorna automaticamente al cambio di modalità.</p>
+      <p>I pulsanti <strong>Pratiche · Scavi · Lotto</strong> nella barra laterale cambiano il criterio di colorazione delle tratte. <em>Pratiche</em> mostra l'avanzamento autorizzativo con colori che vanno dal grigio (in attesa) al verde (ottenuto). <em>Lotto</em> distingue i lotti effettivamente presenti nei dati caricati. La legenda in basso a sinistra si aggiorna automaticamente al cambio di modalità.</p>
     </div>
 
     <div class="help-section">
