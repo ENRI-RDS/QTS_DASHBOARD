@@ -104,15 +104,46 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
        vanno ricostruiti da zero una volta ricevuto il file.
 9. [ ] Verificare se esiste un `brandkitretelit.md` dedicato o se va
        riportato dal progetto ENRI.
-10. [ ] Lotti/cluster: verificare se la struttura lotti (1A/1B/2A/2B) è la
-        stessa o cambia per QTS.
+10. [x] Lotti/cluster: struttura lotti QTS è A/B/C (diversa da ENRI 1A/1B/2A/2B).
+        Confermato e corretto in rev.17.
 
 ## 6. Log revisioni
+
+- **rev.17** — Fix bug lotti QTS ereditati da ENRI (residuo del fork, mai
+  riadattati ai dati reali). Confermato: lotti QTS sono **A/B/C** (da
+  `LOTTO` in `QTS.geojson`, da "Lotto A.xlsx" ecc. in `Master.csv`),
+  diversi dai lotti ENRI (1-8, 1A/1B/2A/2B).
+  - `mappa.html`: `LOTTO_COLORS`/`LOTTO_ORDER`/`LOTTI_ATTIVI`/`LOTTI_AVVIO`
+    erano hardcoded sui lotti ENRI → causavano tratte grigie (fallback
+    colore) in modalità "Lotto" e legenda/filtri con lotti inesistenti
+    per QTS. Fix: colori e ordine lotto ora **dinamici**, calcolati sui
+    dati effettivamente caricati (`assignLottoColors()` + `lottoOrder()`
+    su `lottoStats`, palette `LOTTO_PALETTE` a 12 colori assegnati in
+    ordine alfabetico/numerico ai lotti presenti). Rimossa la vecchia
+    distinzione "lotti attivi vs lotti in avvio" (concetto ENRI non
+    applicabile a QTS, ora un solo elenco filtri). Testo guida "?"
+    aggiornato di conseguenza (non cita più 1A/1B/2A/2B/1-8).
+  - `IMPRESE_PER_LOTTO` (`index.html`, `scavi.html`) e `IMPRESE`
+    (`mappa_impresa_caricamento.html`, `polizze_convenzioni.html`):
+    contenevano tutte la stessa mappa impresa-per-lotto di ENRI
+    (Valtellina/Soleto/Sielte/Telebit/Sertori/Circet sui lotti 1-8/
+    1A-2B). Aggiornate su indicazione di Andrea a
+    `{A:'Telebit', B:'Telebit', C:'Telebit'}` — Telebit gestisce la
+    progettazione di tutti e 3 i lotti QTS.
+  - `mappa.html`: JS inline validato con `node --check` dopo le modifiche
+    → OK.
+  - **TODO aperto, non ancora corretto**: `COMUNI_PER_LOTTO` in
+    `index.html` (~riga 2782) ha ancora comuni/lotti ENRI (1,1A,1B,2...8),
+    usato come fallback quando `QTS.geojson` non copre un lotto (righe
+    ~2865, 3099, 3200, 3222). Nessuna voce per A/B/C. Dati reali dei
+    comuni per lotto sono già ricavabili da `QTS.geojson` (es. lotto A →
+    Vimercate, Concorezzo, Monza...); da sistemare su richiesta.
 
 - **rev.1** — Setup iniziale repo QTS: rename automatico ENRI→QTS su tutti i
   file (`gantt.html`, `scavi.html`, `mappa_impresa_caricamento.html`,
   `index.html`, `sopralluoghi.html`, `polizze_convenzioni.html`, `mappa.html`,
   `hub.html`, `imprese_scavi.html`, `imprese.html`, `js/api-config.js`,
+
   `api-config.js`, `milestone.html`, `ai_alerts.html`, `admin.html`,
   `backend/server.py`), via regex `ENRI(?!CH)`/`enri(?!ch)` per preservare
   `enrich`/`enriched`. Verificata coerenza chiavi localStorage/sessione
