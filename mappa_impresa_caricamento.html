@@ -1174,13 +1174,14 @@ const STATO_COLORS = {
 };
 window.STATO_COLORS = STATO_COLORS;
 const IMPRESE = {'A':'Telebit','B':'Telebit','C':'Telebit'};
-const LOTTO_ORDER = ['1A','1B','2A','2B','1','2','3','4','5','6','7','8'];
-const LOTTI_ATTIVI = ['1A','1B','2A','2B'];
-const LOTTI_AVVIO  = ['1','2','3','4','5','6','7','8'];
 
 let map, allLayers=[], currentFilter='TUTTI', lottoStats={};
 let MY_LOTTI = null; // popolato da _loadMyLotti() prima di caricare la mappa — null = non ancora caricato
 let currentViewMode = 'stato'; // 'stato' | 'lotto' | 'cluster'
+
+function lottoOrder(stats) {
+  return Object.keys(stats).sort((a,b)=>a.localeCompare(b,'it',{numeric:true}));
+}
 
 // Colori ufficiali da specifica progetto QTS (Path A/B/C) — allineati a mappa.html
 const LOTTO_COLORS = { 'A':'#E8C61A', 'B':'#7A3DAA', 'C':'#2D6CDF' };
@@ -1292,20 +1293,7 @@ function renderFilterLotto(stats) {
   sep0.style.cssText='width:1px;height:16px;background:var(--border);align-self:center;margin:0 4px;';
   fr.appendChild(sep0);
 
-  LOTTI_ATTIVI.forEach(id=>{
-    if(!stats[id]) return;
-    const b=document.createElement('button');
-    b.className='filter-btn'; b.id='fbtn-'+id; b.textContent=id;
-    b.onclick=()=>toggleLotto(id);
-    fr.appendChild(b);
-  });
-
-  const sep1=document.createElement('span');
-  sep1.style.cssText='width:1px;height:16px;background:var(--border);align-self:center;margin:0 4px;';
-  fr.appendChild(sep1);
-
-  LOTTI_AVVIO.forEach(id=>{
-    if(!stats[id]) return;
+  lottoOrder(stats).forEach(id=>{
     const b=document.createElement('button');
     b.className='filter-btn'; b.id='fbtn-'+id; b.textContent=id;
     b.onclick=()=>toggleLotto(id);
@@ -2181,7 +2169,7 @@ function renderSidebarScavi(cantieri) {
   const list = document.getElementById('lottoList');
   if (!list) return;
   list.innerHTML = '';
-  LOTTO_ORDER.forEach(id => {
+  lottoOrder(stats).forEach(id => {
     const s = stats[id]; if (!s) return;
     const color = SC_STATO_COLOR[s.statoLabel] || SC_STATO_COLOR.non_avviato;
     const pct = s.pct.toFixed(1);
@@ -2212,7 +2200,7 @@ function renderSidebar(stats) {
   const list=document.getElementById('lottoList');
   if (!list) return;  // guard
   list.innerHTML='';
-  LOTTO_ORDER.forEach(id=>{
+  lottoOrder(stats).forEach(id=>{
     const s=stats[id]; if(!s) return;
     const color=getColor(s.statoLabel);
     const pct=s.pct.toFixed(1);
