@@ -109,6 +109,24 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
 
 ## 6. Log revisioni
 
+- **rev.21** — **Bug fix critico**: "Distribuzione Stati" (donut) in
+  `index.html` non si renderizzava mai quando nessun lotto aveva ancora
+  superato lo stato IN ATTESA/IN REDAZIONE (caso reale QTS: tutti i lotti
+  A/B/C al 100% "in attesa"). Causa: in `renderDashboard()`, quando
+  `activeLotti` (lotti con avanzamento) è vuoto, la riga per la tabella
+  "Dettaglio lotti attivi" faceva `return;` — uscendo dalla funzione
+  **prima** della chiamata a `renderDonut(globalStati, grandTotal)` e
+  `renderFlussoMese()` in fondo, che quindi non venivano mai eseguite.
+  Bug preesistente, identico anche in `ENRI-RDS/index.html` (verificato
+  via file caricato dall'utente) — lì non si manifesta solo perché c'è
+  sempre almeno un lotto avanzato. Fix: il `return` anticipato è stato
+  sostituito con un `if/else` che mostra il messaggio "Nessun lotto
+  avanzato" ma lascia proseguire l'esecuzione fino a `renderDonut`/
+  `renderFlussoMese`. `node --check` OK.
+  **Nota per ENRI**: stesso bug latente presente anche lì
+  (`renderDashboard()`, stessa riga `if(!activeLotti.length){...return;}`)
+  — da applicare lo stesso fix se/quando capiterà lo stesso scenario dati
+  (tutti i lotti fermi a IN ATTESA/IN REDAZIONE).
 - **rev.20** — `index.html`: eliminata completamente la funzione/dicitura
   "Lotti Attivi" / "Lotti in Progettazione" — era residuo del vecchio
   schema lotti ENRI (`ORDER_ATTIVI=['1A','1B','2A','2B']`,
