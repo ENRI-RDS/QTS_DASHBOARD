@@ -295,3 +295,32 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
   `"Permits submission"` e `"Authorizations received"`. `backend/server.py`
   ora a **zero occorrenze** di "cluster" (verificato via grep). `py_compile` OK.
   Prossimo file: `milestone.html`.
+- **rev.14** — Chiarito con Andrea: "cluster" non esisterà nel dominio QTS
+  (concetto ereditato da ENRI, mai avuto senso in QTS.geojson). Eliminate
+  anche le 7 righe `"Cluster 1"`..`"Cluster 7"` da `MILESTONE_CONTRACT_ROWS`
+  in `server.py` (non più in sospeso — cancellate, non rinominate). Restano
+  solo `"Permits submission"` e `"Authorizations received"`. `milestone.html`
+  ESCLUSO su richiesta esplicita di Andrea — non toccarlo.
+  **`index.html` — FATTO** (23→0 occorrenze):
+  - CSS morta `#clusterBodyFlex` (nessun elemento con quell'id nell'HTML,
+    residuo del vecchio pannello "Avanzamento per Cluster" già rimosso in
+    rev.11) rimossa dalla media query mobile.
+  - Colonna "Cluster" rimossa dalla tabella SED: sort key, array `sedCols`,
+    cella `<td>` nel render riga, header `<th>`.
+  - Export Excel SED (`buildSedExcelRows`/`writeSedExcel`): rimossa colonna
+    Cluster da righe, header e `!cols` widths.
+  - `CLUSTER_MAP`/campo `cluster` rimossi dal parsing SED da QTS.geojson
+    (oggetto `p` → `{fid, tratta, name, tipo, lotto, comune, ...}`).
+  - Help modal: sezione "Avanzamento per Cluster" (descriveva un pannello
+    già rimosso in rev.11) sostituita con sezione "Prev. Rilascio" che
+    descrive il pannello realmente presente. Corretta anche la voce
+    "Storico" che citava un filtro per cluster mai esistito nel codice.
+  - 6 commenti con riferimenti fantasma a `loadCluster()` (funzione mai
+    definita in questo file, solo citata in commenti) e a modali/export
+    "Cluster" inesistenti: ripuliti senza toccare logica.
+  - Verificato: `grep -ic cluster index.html` → 0. JS inline estratto e
+    validato con `node --check` → OK. Div count 410/411 invariato
+    rispetto all'originale (pre-esistente, non introdotto da queste modifiche).
+  Prossimo file: da concordare con Andrea (restano `mappa.html`,
+  `mappa_impresa_caricamento.html`, `imprese_scavi.html`, `ai_alerts.html`,
+  `scavi.html`, `hub.html`, `gantt.html`).
