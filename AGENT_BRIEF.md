@@ -270,3 +270,28 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
   **Lezione operativa aggiornata**: la tecnica del diff funzioni/window/
   const prima-vs-originale (non solo grep sul range da cancellare) è
   ora il controllo standard dopo ogni rimozione a blocco in questi file.
+- **rev.13 (in corso)** — Nuova richiesta: rimozione COMPLETA del concetto
+  "cluster" (non solo i pannelli dedicati già tolti in rev.11/12, ma
+  anche il campo dati, colonne tabella e filtri residui) da tutti i file
+  che lo referenziano: `backend/server.py`, `mappa.html`,
+  `mappa_impresa_caricamento.html`, `index.html`, `imprese_scavi.html`,
+  `ai_alerts.html`, `scavi.html`, `hub.html`, `gantt.html`,
+  `milestone.html`. Un file alla volta, `str_replace` mirato.
+  **`backend/server.py` — FATTO**: rimosso `cluster` da `CANTIERI_COLS`,
+  `_sync_cantieri()` (var locale, dict `geo_by_tratta`, `groups[key]`,
+  update/insert cantiere), endpoint `GET /api/cantieri` (parametro query
+  + filtro Mongo), `MILESTONE_IMPRESE_ROWS` (campo per-lotto). Lasciate
+  INVARIATE le 7 label `"Cluster 1"`..`"Cluster 7"` in
+  `MILESTONE_CONTRACT_ROWS` (milestone contrattuali, non tag cluster) —
+  su richiesta esplicita di Andrea, che invierà i dati corretti in
+  seguito. `py_compile` OK. NB: `cantieri.csv` su GitHub ha ancora la
+  colonna `cluster` nell'header finché non viene rigenerato da un push
+  successivo (`_push_cantieri_to_github()` userà il nuovo `CANTIERI_COLS`
+  al prossimo giro).
+  **Aggiornamento**: chiarito che "cluster" non esisterà nel dominio QTS
+  (a differenza del vecchio ENRI). Eliminate anche le 7 righe
+  `"Cluster 1"`..`"Cluster 7"` da `MILESTONE_CONTRACT_ROWS` (non più
+  rinominate/lasciate in sospeso — cancellate). Restano solo
+  `"Permits submission"` e `"Authorizations received"`. `backend/server.py`
+  ora a **zero occorrenze** di "cluster" (verificato via grep). `py_compile` OK.
+  Prossimo file: `milestone.html`.
