@@ -48,7 +48,6 @@
   *{margin:0;padding:0;box-sizing:border-box;}
   body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;-webkit-text-size-adjust:100%;}
   .topbar{display:flex;align-items:center;gap:16px;padding:0 28px;height:58px;background:var(--retelit-blue);flex-shrink:0;z-index:1000;}
-  .logo{font-size:13px;font-weight:700;letter-spacing:0.14em;color:var(--retelit-ice);white-space:nowrap;text-transform:uppercase;}
   .divider-v{width:1px;height:20px;background:var(--retelit-blue-50);flex-shrink:0;}
   .page-title{font-size:13px;font-weight:600;letter-spacing:.04em;color:var(--retelit-ice);white-space:nowrap;text-transform:uppercase;}
   .topbar-back{font-size:12px;color:var(--retelit-sky);font-weight:600;text-decoration:none;display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:8px;border:1px solid var(--retelit-sky);transition:background .15s;background:transparent;cursor:pointer;}
@@ -56,8 +55,6 @@
   .topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
   .btn{font-size:11px;padding:5px 14px;border-radius:5px;background:var(--accent);color:white;border:none;cursor:pointer;font-family:var(--font-body);font-weight:500;transition:opacity 0.2s;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:5px;}
   .btn:hover{opacity:0.85;}
-  .btn.secondary{background:var(--surface2);border:1px solid var(--border);color:var(--text);}
-  .btn.secondary:hover{color:var(--text);}
   .badge{font-size:11px;padding:3px 10px;border-radius:4px;background:rgba(255,255,255,.08);border:1px solid var(--retelit-blue-50);color:var(--retelit-ice);}
   .badge.ok{border-color:#1E9E6A44;color:#1E9E6A;background:#1E9E6A11;}
   .wrap{display:flex;flex:1;overflow:hidden;position:relative;min-height:0;}
@@ -120,7 +117,6 @@
   .popup-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
   .popup-impresa{font-size:11px;font-weight:600;color:var(--accent);}
   .popup-tratta{font-size:10px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 6px;font-family:var(--font-mono);}
-  .popup-stato-bar{height:3px;width:100%;margin-top:12px;border-radius:2px;}
   /* Body — due colonne */
   .popup-body{display:flex;gap:0;align-items:stretch;}
   .popup-body-left{flex:1;min-width:0;padding:12px 14px 14px 16px;}
@@ -144,10 +140,6 @@
   .popup-detail-row .dl{color:var(--muted);}
   .popup-detail-row .dv{font-family:var(--font-mono);font-size:11px;font-weight:600;}
   .popup-pratica{display:inline-block;font-family:var(--font-mono);font-size:10px;background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:3px 8px;margin:2px 3px 2px 0;}
-  .popup-tag{display:inline-flex;align-items:center;gap:4px;font-size:9.5px;font-weight:600;padding:3px 9px;border-radius:20px;margin-right:4px;}
-  .popup-tag.ok{background:#e8f5ee;color:#2e7d52;border:1px solid #2e7d5233;}
-  .popup-tag.warn{background:#fef9ec;color:#a07820;border:1px solid #a0782033;}
-  .popup-tag.err{background:#fdecea;color:#c0392b;border:1px solid #c0392b33;}
   /* Loading */
   #loadingOverlay{position:absolute;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:2000;}
   .spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;}
@@ -176,30 +168,16 @@
   .leaflet-control-attribution{background:#ffffffcc!important;color:var(--muted)!important;font-size:9px!important;}
   .leaflet-control-attribution a{color:var(--muted)!important;}
   /* Stats bar */
-  .sidebar-close-btn{ display:none; }
   .stats-bar{position:absolute;bottom:16px;left:16px;z-index:500;display:flex;gap:8px;flex-wrap:wrap;}
   .stat-pill{background:#ffffffdd;backdrop-filter:blur(8px);border:1px solid var(--border);border-radius:20px;padding:5px 14px;font-size:11px;display:flex;align-items:center;gap:6px;color:var(--text);}
   .stat-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
   /* Lavorabile badge nella sidebar */
   .lav-badge{font-size:8px;padding:1px 5px;border-radius:8px;font-family:var(--font-mono);flex-shrink:0;}
   .lav-si{background:#1E9E6A22;color:#1E9E6A;border:1px solid #1E9E6A44;}
-  .lav-no{background:#C0392B22;color:#C0392B;border:1px solid #C0392B44;}
   @keyframes tratta-pulse {
     0%,100% { opacity: 1; }
     50%      { opacity: 0.55; }
   }
-  .btn-back{
-    display:inline-flex;align-items:center;gap:6px;
-    font-size:12px;font-weight:600;padding:6px 14px;
-    border-radius:7px;border:none;cursor:pointer;
-    background:var(--accent);color:#fff;
-    font-family:var(--font-body);
-    text-decoration:none;
-    transition:opacity 0.15s,transform 0.1s;
-    box-shadow:0 1px 4px rgba(4,63,117,.20);
-    flex-shrink:0;
-  }
-  .btn-back:hover{opacity:0.88;transform:translateX(-1px);}
   /* ─── MOBILE BOTTOM-DRAWER LAYOUT ─────────────────────────────── */
 
   /* Drawer toggle button (visibile solo su mobile) */
@@ -234,9 +212,7 @@
       height:auto; flex-wrap:wrap; padding:6px 10px; gap:5px;
       min-height:50px; position:sticky; top:0; z-index:1000;
     }
-    .topbar-left{ gap:6px; flex:0 0 auto; }
     .page-title,.divider-v{ display:none; }
-    .logo{ font-size:11px; letter-spacing:.08em; }
     .topbar-right{
       margin-left:auto; gap:8px; flex-wrap:nowrap; align-items:center;
     }
@@ -251,11 +227,8 @@
     .search-results{ max-height:200px; }
     /* Pulsanti touch-friendly */
     .btn{ font-size:11px; padding:7px 12px; min-height:40px; border-radius:8px; }
-    .btn-back{ font-size:11px; padding:7px 14px; min-height:40px; border-radius:8px; }
-    /* Nasconde su mobile: GeoJSON, Progettazione, Help */
-    .btn-mobile-hidden,
+    /* Nasconde su mobile: GeoJSON, Help */
     button.topbar-back[onclick="exportGeoJSON()"],
-    a.btn-back[href="index.html?direct=1"],
     .help-btn { display:none !important; }
 
     /* ── Layout: mappa a schermo pieno ── */
@@ -294,14 +267,6 @@
       cursor:grab;
     }
     .sidebar-head{ padding:8px 14px 6px; position:relative; }
-    .sidebar-close-btn{
-      display:block;
-      position:absolute; top:8px; right:10px;
-      background:none; border:none; cursor:pointer;
-      font-size:16px; color:var(--muted);
-      width:30px; height:30px; line-height:30px; text-align:center;
-      border-radius:50%; padding:0;
-    }
     .sidebar-title{ font-size:10px; margin-bottom:6px; }
     .view-toggle{ margin-bottom:6px; }
     .view-btn{ font-size:10px; padding:5px 10px; min-height:32px; }
@@ -365,7 +330,6 @@
     .popup-meta{ gap:5px; }
     .popup-impresa{ font-size:10px; }
     .popup-tratta{ font-size:9px; }
-    .popup-stato-bar{ margin-top:7px; height:2px; }
     .popup-body{ flex-direction:column; }
     .popup-body-left{ padding:6px 11px 8px 11px; }
     .popup-body-right{
@@ -479,11 +443,8 @@
   .search-result-main{font-weight:600;color:var(--text);}
   .search-result-sub{color:var(--muted);font-size:10px;margin-top:1px;}
   .search-divider{padding:5px 14px;font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);background:var(--surface2);border-bottom:1px solid var(--border);}
-  .search-highlight{position:relative;}
 
   /* ── SED ATTRAVERSAMENTI ─────────────────────────────── */
-  /* punti nella legenda (cerchio invece di linea) */
-  .legend-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
   .sed-control-btn {
     padding:0 10px; height:36px; border-radius:8px;
     background:var(--surface); border:1px solid var(--border);
@@ -983,8 +944,7 @@ function updateLegend(mode) {
       <div class="legend-item"><div class="legend-line" style="background:#41BBD9"></div>Inviato / Protocollato</div>
       <div class="legend-item"><div class="legend-line" style="background:#D08A1A"></div>In Verifica / Firma</div>
       <div class="legend-item"><div class="legend-line" style="background:#6B7685"></div>In Attesa / Redazione</div>
-      <div class="legend-item"><div class="legend-line" style="background:#043F75"></div>Invio Preliminare</div>
-      <div class="legend-item"><div class="legend-line" style="background:#1A7D99"></div>Tracciato QTS</div>`;
+      <div class="legend-item"><div class="legend-line" style="background:#043F75"></div>Invio Preliminare</div>`;
   } else if (mode === 'scavi') {
     leg.innerHTML = `
       <div class="legend-title">Stato scavi</div>
@@ -1669,13 +1629,6 @@ function renderSidebar(stats) {
     div.onclick=()=>zoomLotto(id);
     list.appendChild(div);
   });
-}
-
-// applyFilter mantenuto per compatibilità
-function applyFilter(lotto) {
-  if (lotto === 'TUTTI') { selectedLotti.clear(); }
-  else { selectedLotti.clear(); selectedLotti.add(lotto); }
-  applyFilterMulti();
 }
 
 function zoomLotto(id) {
@@ -2954,11 +2907,6 @@ window.addEventListener('load', () => {
     <div class="help-section">
       <h4>📍 Popup Dettaglio Tratta</h4>
       <p>Clicca su qualsiasi tratta per aprire il pannello di dettaglio. Trovi: comune, tipologia, lunghezza, ente destinatario (fino a due enti), stato autorizzativo con badge colorato, stato lavorabilità e motivo di eventuale blocco, nulla osta e ordinanza se presenti, codici pratica associati. La colonna destra mostra l'avanzamento del lotto con due barre grafiche (permessi ottenuti e pratiche inviate+) e il contributo della tratta sul totale del lotto. Un link apre la posizione direttamente in Google Maps.</p>
-    </div>
-
-    <div class="help-section">
-      <h4>🟣 Tracciato QTS</h4>
-      <p>Il toggle <strong>Tracciato QTS</strong> nella barra laterale sovrappone il tracciato di riferimento QTS alla mappa corrente, visualizzato in viola tratteggiato. Il pulsante <strong>Solo QTS</strong> nasconde tutti gli altri layer e centra la vista sul tracciato QTS, utile per confronti rapidi. La lunghezza totale del QTS compare a fianco del toggle una volta caricato il file.</p>
     </div>
 
     <div class="help-section">
