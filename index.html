@@ -934,6 +934,18 @@ window.loadXLSX = (function(){
   .sed-progress-bar { height:6px; background:var(--border); border-radius:3px; overflow:hidden; margin-top:4px; }
   .sed-progress-fill { height:100%; border-radius:3px; background:#1E9E6A; transition:width 0.4s; }
 
+  /* ── SED EMBEDDED (compatto, dentro card Avanzamento per Lotto) ── */
+  #sedEmbedded .sed-kpi-row { gap:6px; }
+  #sedEmbedded .sed-kpi { padding:8px 10px !important; }
+  #sedEmbedded .sed-kpi-label { font-size:8px !important; }
+  #sedEmbedded .sed-kpi-val { font-size:16px !important; }
+  #sedEmbedded .sed-kpi-sub { font-size:9px !important; }
+  #sedEmbedded table th { padding:6px 8px !important; font-size:9px !important; }
+  #sedEmbedded table td { padding:5px 8px !important; font-size:11px !important; }
+  #sedEmbedded .sed-tipo-chip { font-size:9px !important; padding:2px 6px !important; }
+  #sedEmbedded select, #sedEmbedded input { font-size:11px !important; padding:5px 8px !important; }
+  #sedEmbedded .card-title { font-size:10px !important; }
+
   .tbl-pag-btn {
     font-size:11px; font-weight:700; padding:4px 12px; border-radius:6px;
     cursor:pointer; font-family:inherit;
@@ -1149,6 +1161,159 @@ window.loadXLSX = (function(){
         <div style="flex:1"></div>
         <span style="font-size:9px;color:var(--muted2);font-style:italic" id="flussoDataRef"></span>
       </div>
+
+      <!-- ── SED — Attraversamenti (embedded, compatto) ── -->
+      <div id="sedEmbedded" style="border-top:1px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:10px 18px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="card-title">🔶 Attraversamenti SED</span>
+            <span id="sedBadge" class="badge" style="font-size:9px">Caricamento...</span>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <div class="pdf-dropdown" id="sedXlsDropdown">
+              <button class="btn" style="font-size:10px;padding:5px 11px;background:var(--ok);color:#fff;border:1px solid var(--ok)" onclick="toggleSedXlsDropdown(event)">Scarica Excel ▾</button>
+              <div class="pdf-dropdown-menu">
+                <button onclick="exportSedXlsx();closeSedXlsDropdown()">Tutti gli attraversamenti</button>
+                <button onclick="exportSedXlsxView();closeSedXlsDropdown()">Vista corrente</button>
+              </div>
+            </div>
+            <button onclick="sedToggleCollapse()" id="sedCollapseBtn" style="font-size:10px;padding:5px 9px;border-radius:6px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);cursor:pointer;font-family:inherit;font-weight:600;transition:all 0.15s">&#9650; Comprimi</button>
+          </div>
+        </div>
+
+        <!-- KPI row — sempre visibile anche quando compresso -->
+        <div style="padding:0 14px">
+          <div class="sed-kpi-row" id="sedKpiRow">
+            <div class="sed-kpi ferroviario">
+              <span class="sed-kpi-label">Ferroviario</span>
+              <span class="sed-kpi-val" id="sedKpiFerr">—</span>
+              <div style="margin-top:6px;display:flex;flex-direction:column;gap:3px">
+                <div style="display:flex;align-items:center;gap:4px">
+                  <span style="font-size:8px;font-weight:700;color:#043F75;width:22px;flex-shrink:0">Inv.</span>
+                  <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div id="sedBarInvFerr" style="height:100%;background:#043F75;border-radius:2px;width:0%;transition:width .4s"></div></div>
+                  <span id="sedSubInvFerr" style="font-size:9px;font-family:monospace;font-weight:700;color:#043F75;width:44px;text-align:right;flex-shrink:0">0 (0%)</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:4px">
+                  <span style="font-size:8px;font-weight:700;color:#1E9E6A;width:22px;flex-shrink:0">Ott.</span>
+                  <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div id="sedBarOttFerr" style="height:100%;background:#1E9E6A;border-radius:2px;width:0%;transition:width .4s"></div></div>
+                  <span id="sedSubOttFerr" style="font-size:9px;font-family:monospace;font-weight:700;color:#1E9E6A;width:44px;text-align:right;flex-shrink:0">0 (0%)</span>
+                </div>
+              </div>
+            </div>
+            <div class="sed-kpi autostradale">
+              <span class="sed-kpi-label">Autostradale</span>
+              <span class="sed-kpi-val" id="sedKpiAuto">—</span>
+              <div style="margin-top:6px;display:flex;flex-direction:column;gap:3px">
+                <div style="display:flex;align-items:center;gap:4px">
+                  <span style="font-size:8px;font-weight:700;color:#043F75;width:22px;flex-shrink:0">Inv.</span>
+                  <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div id="sedBarInvAuto" style="height:100%;background:#043F75;border-radius:2px;width:0%;transition:width .4s"></div></div>
+                  <span id="sedSubInvAuto" style="font-size:9px;font-family:monospace;font-weight:700;color:#043F75;width:44px;text-align:right;flex-shrink:0">0 (0%)</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:4px">
+                  <span style="font-size:8px;font-weight:700;color:#1E9E6A;width:22px;flex-shrink:0">Ott.</span>
+                  <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div id="sedBarOttAuto" style="height:100%;background:#1E9E6A;border-radius:2px;width:0%;transition:width .4s"></div></div>
+                  <span id="sedSubOttAuto" style="font-size:9px;font-family:monospace;font-weight:700;color:#1E9E6A;width:44px;text-align:right;flex-shrink:0">0 (0%)</span>
+                </div>
+              </div>
+            </div>
+            <div class="sed-kpi idrico">
+              <span class="sed-kpi-label">Idrico</span>
+              <span class="sed-kpi-val" id="sedKpiIdrico">—</span>
+              <div style="margin-top:6px;display:flex;flex-direction:column;gap:3px">
+                <div style="display:flex;align-items:center;gap:4px">
+                  <span style="font-size:8px;font-weight:700;color:#043F75;width:22px;flex-shrink:0">Inv.</span>
+                  <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div id="sedBarInvIdri" style="height:100%;background:#043F75;border-radius:2px;width:0%;transition:width .4s"></div></div>
+                  <span id="sedSubInvIdri" style="font-size:9px;font-family:monospace;font-weight:700;color:#043F75;width:44px;text-align:right;flex-shrink:0">0 (0%)</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:4px">
+                  <span style="font-size:8px;font-weight:700;color:#1E9E6A;width:22px;flex-shrink:0">Ott.</span>
+                  <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div id="sedBarOttIdri" style="height:100%;background:#1E9E6A;border-radius:2px;width:0%;transition:width .4s"></div></div>
+                  <span id="sedSubOttIdri" style="font-size:9px;font-family:monospace;font-weight:700;color:#1E9E6A;width:44px;text-align:right;flex-shrink:0">0 (0%)</span>
+                </div>
+              </div>
+            </div>
+            <div class="sed-kpi inviato">
+              <span class="sed-kpi-label">Permessi Inviati</span>
+              <div style="display:flex;align-items:baseline;gap:6px">
+                <span class="sed-kpi-val" id="sedKpiInv">0</span>
+                <span style="font-size:11px;color:var(--muted);font-weight:700" id="sedKpiInvPct">/ — (0%)</span>
+              </div>
+              <div class="sed-progress-bar"><div class="sed-progress-fill" id="sedProgressInvFill" style="width:0%;background:#043F75"></div></div>
+            </div>
+            <div class="sed-kpi ottenuto">
+              <span class="sed-kpi-label">Permessi Ottenuti</span>
+              <div style="display:flex;align-items:baseline;gap:6px">
+                <span class="sed-kpi-val" id="sedKpiOtt">0</span>
+                <span style="font-size:11px;color:var(--muted);font-weight:700" id="sedKpiOttPct">/ — (0%)</span>
+              </div>
+              <div class="sed-progress-bar"><div class="sed-progress-fill" id="sedProgressFill" style="width:0%"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="sedBody">
+
+          <!-- Toolbar filtri -->
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:9px 14px;border-bottom:1px solid var(--border);background:var(--surface2);border-top:1px solid var(--border);margin-top:10px">
+            <div style="position:relative;flex:1;min-width:180px;max-width:320px">
+              <svg style="position:absolute;left:8px;top:50%;transform:translateY(-50%);pointer-events:none" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              <input id="sedQ" type="text" placeholder="Cerca nome, ente, comune…"
+                style="width:100%;box-sizing:border-box;padding:6px 9px 6px 26px;background:var(--surface);border:1px solid var(--border2);border-radius:6px;font-family:inherit;color:var(--text);outline:none"
+                oninput="renderSed()" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'">
+            </div>
+            <div style="flex:1"></div>
+            <select id="sedFTipo" onchange="renderSed()" style="background:var(--surface);border:1px solid var(--border2);border-radius:6px;font-family:inherit;color:var(--text);outline:none;cursor:pointer">
+              <option value="">Tutti i tipi</option>
+              <option value="FERROVIARIO">Ferroviario</option>
+              <option value="AUTOSTRADALE">Autostradale</option>
+              <option value="IDRICO">Idrico</option>
+            </select>
+            <select id="sedFLotto" onchange="renderSed()" style="background:var(--surface);border:1px solid var(--border2);border-radius:6px;font-family:inherit;color:var(--text);outline:none;cursor:pointer">
+              <option value="">Tutti i lotti</option>
+            </select>
+            <select id="sedFStato" onchange="renderSed()" style="background:var(--surface);border:1px solid var(--border2);border-radius:6px;font-family:inherit;color:var(--text);outline:none;cursor:pointer">
+              <option value="">Tutti gli stati</option>
+              <option value="IN ATTESA">In Attesa</option>
+              <option value="IN REDAZIONE">In Redazione</option>
+              <option value="INVIO PRELIMINARE">Invio Preliminare</option>
+              <option value="INVIATO">Inviato</option>
+              <option value="PROTOCOLLATO">Protocollato</option>
+              <option value="NECESSARIA INTEGRAZIONE">Necessaria Integrazione</option>
+              <option value="OTTENUTO">Ottenuto</option>
+            </select>
+            <select id="sedFEnte" onchange="renderSed()" style="background:var(--surface);border:1px solid var(--border2);border-radius:6px;font-family:inherit;color:var(--text);outline:none;cursor:pointer">
+              <option value="">Tutti gli enti</option>
+            </select>
+            <button onclick="sedResetFilters()" style="font-size:10px;font-weight:600;padding:5px 10px;border-radius:6px;border:1px solid var(--border2);background:var(--surface);color:var(--muted);cursor:pointer;font-family:inherit;transition:all .15s" onmouseover="this.style.borderColor='var(--accent2)';this.style.color='var(--accent2)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--muted)'">&#10005; Reset</button>
+          </div>
+
+          <!-- Tabella -->
+          <div style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;table-layout:auto;min-width:760px">
+              <thead>
+                <tr style="background:var(--surface2);border-bottom:2px solid var(--border2)">
+                  <th onclick="sedSort('nSed')" style="text-align:left;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-weight:700;min-width:90px;cursor:pointer;user-select:none" title="Ordina per Numero SED"><span class="col-th-inner">N° SED <span id="sedArr_nSed" class="col-sort-btn">↕</span></span></th>
+                  <th style="text-align:left;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-weight:700;min-width:90px">Pratica</th>
+                  <th onclick="sedSort('nome')" style="text-align:left;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-weight:700;white-space:nowrap;cursor:pointer;user-select:none" title="Ordina per Nome"><span class="col-th-inner">Nome <span id="sedArr_nome" class="col-sort-btn">↕</span></span></th>
+                  <th onclick="sedSort('tipo')" style="text-align:left;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-weight:700;cursor:pointer;user-select:none" title="Ordina per Tipo"><span class="col-th-inner">Tipo <span id="sedArr_tipo" class="col-sort-btn">↕</span></span></th>
+                  <th onclick="sedSort('lotto')" style="text-align:left;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-weight:700;cursor:pointer;user-select:none" title="Ordina per Lotto"><span class="col-th-inner">Lotto <span id="sedArr_lotto" class="col-sort-btn">↕</span></span></th>
+                  <th onclick="sedSort('comune')" style="text-align:left;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-weight:700;cursor:pointer;user-select:none" title="Ordina per Comune"><span class="col-th-inner">Comune <span id="sedArr_comune" class="col-sort-btn">↕</span></span></th>
+                  <th onclick="sedSort('ente')" style="text-align:left;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-weight:700;cursor:pointer;user-select:none" title="Ordina per Ente"><span class="col-th-inner">Ente <span id="sedArr_ente" class="col-sort-btn">↕</span></span></th>
+                  <th onclick="sedSort('stato')" style="text-align:left;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-weight:700;min-width:130px;cursor:pointer;user-select:none" title="Ordina per Stato Permesso"><span class="col-th-inner">Stato Permesso <span id="sedArr_stato" class="col-sort-btn">↕</span></span></th>
+                  <th onclick="sedSort('data')" style="text-align:left;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-weight:700;min-width:90px;cursor:pointer;user-select:none" title="Ordina per Data Invio"><span class="col-th-inner">Data Invio <span id="sedArr_data" class="col-sort-btn">↕</span></span></th>
+                  <th style="text-align:right;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);font-weight:700;min-width:64px">Solleciti</th>
+                </tr>
+              </thead>
+              <tbody id="sedTbody"></tbody>
+            </table>
+          </div>
+
+          <!-- Footer -->
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 12px;border-top:1px solid var(--border);background:var(--surface2)">
+            <span id="sedFootL" style="font-size:10px;color:var(--muted)"></span>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="side">
       <div id="lottiTable" style="display:none"></div>
@@ -1158,36 +1323,6 @@ window.loadXLSX = (function(){
           <canvas id="donutCanvas" width="200" height="200"></canvas>
           <div id="donutLegend" style="width:100%;display:flex;flex-direction:column;gap:5px"></div>
         </div>
-      </div>
-
-      <!-- SED QUICK CARD -->
-      <div class="card" id="sedQuickCard">
-        <div class="card-header" style="padding:12px 16px">
-          <span class="card-title">&#128310; SED &mdash; Permessi</span>
-          <span id="sqBadge" style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--muted)">&#8212;</span>
-        </div>
-        <div style="padding:12px 16px 4px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-            <span style="font-size:9px;text-transform:uppercase;letter-spacing:0.09em;color:var(--muted);font-weight:600">Inviati</span>
-            <span id="sqInvPct" style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#41BBD9">0%</span>
-          </div>
-          <div style="height:7px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:8px">
-            <div id="sqBarInv" style="height:100%;background:#41BBD9;border-radius:3px;transition:width 0.5s;width:0%"></div>
-          </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-            <span style="font-size:9px;text-transform:uppercase;letter-spacing:0.09em;color:var(--muted);font-weight:600">Ottenuti</span>
-            <span id="sqOttPct" style="font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:#1E9E6A">0%</span>
-          </div>
-          <div style="height:7px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:14px">
-            <div id="sqBarOtt" style="height:100%;background:#1E9E6A;border-radius:3px;transition:width 0.5s;width:0%"></div>
-          </div>
-          <div id="sqRows" style="display:flex;flex-direction:column;gap:8px"></div>
-        </div>
-        <div style="border-top:1px solid var(--border);padding:10px 16px 12px;margin-top:10px">
-          <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.09em;color:var(--muted);font-weight:600;margin-bottom:8px">Ottenuti per lotto</div>
-          <div id="sqLottoRows" style="display:flex;flex-direction:column;gap:5px"></div>
-        </div>
-
       </div>
     </div>
   </div>
@@ -1721,165 +1856,6 @@ window.loadXLSX = (function(){
     <div id="cercaResults" style="overflow-y:auto;padding:14px 18px;flex:1;min-height:100px;background:var(--surface)"></div>
   </div>
 </div>
-<!-- ══════════════════════════════════════════════════════════════════════════
-<!-- ══════════════════════════════════════════════════════════════════════════
-     SEZIONE SED — Attraversamenti Speciali
-══════════════════════════════════════════════════════════════════════════════ -->
-<div id="sedSection" style="margin:18px 28px 32px;padding:0">
-  <div class="card">
-    <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
-      <div style="display:flex;align-items:center;gap:10px">
-        <span class="card-title">🔶 Attraversamenti SED</span>
-        <span id="sedBadge" class="badge" style="font-size:10px">Caricamento...</span>
-      </div>
-      <div style="display:flex;gap:6px;align-items:center">
-        <div class="pdf-dropdown" id="sedXlsDropdown">
-          <button class="btn" style="font-size:11px;padding:6px 13px;background:var(--ok);color:#fff;border:1px solid var(--ok)" onclick="toggleSedXlsDropdown(event)">Scarica Excel ▾</button>
-          <div class="pdf-dropdown-menu">
-            <button onclick="exportSedXlsx();closeSedXlsDropdown()">Tutti gli attraversamenti</button>
-            <button onclick="exportSedXlsxView();closeSedXlsDropdown()">Vista corrente</button>
-          </div>
-        </div>
-        <button onclick="sedToggleCollapse()" id="sedCollapseBtn" style="font-size:11px;padding:6px 10px;border-radius:7px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);cursor:pointer;font-family:inherit;font-weight:600;transition:all 0.15s">&#9650; Comprimi</button>
-      </div>
-    </div>
-
-    <!-- KPI row — sempre visibile anche quando compresso -->
-    <div style="padding:14px 18px 0">
-      <div class="sed-kpi-row" id="sedKpiRow">
-        <div class="sed-kpi ferroviario">
-          <span class="sed-kpi-label">Ferroviario</span>
-          <span class="sed-kpi-val" id="sedKpiFerr">—</span>
-          <div style="margin-top:8px;display:flex;flex-direction:column;gap:4px">
-            <div style="display:flex;align-items:center;gap:5px">
-              <span style="font-size:9px;font-weight:700;color:#043F75;width:26px;flex-shrink:0">Inv.</span>
-              <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div id="sedBarInvFerr" style="height:100%;background:#043F75;border-radius:2px;width:0%;transition:width .4s"></div></div>
-              <span id="sedSubInvFerr" style="font-size:10px;font-family:monospace;font-weight:700;color:#043F75;width:54px;text-align:right;flex-shrink:0">0 (0%)</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:5px">
-              <span style="font-size:9px;font-weight:700;color:#1E9E6A;width:26px;flex-shrink:0">Ott.</span>
-              <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div id="sedBarOttFerr" style="height:100%;background:#1E9E6A;border-radius:2px;width:0%;transition:width .4s"></div></div>
-              <span id="sedSubOttFerr" style="font-size:10px;font-family:monospace;font-weight:700;color:#1E9E6A;width:54px;text-align:right;flex-shrink:0">0 (0%)</span>
-            </div>
-          </div>
-        </div>
-        <div class="sed-kpi autostradale">
-          <span class="sed-kpi-label">Autostradale</span>
-          <span class="sed-kpi-val" id="sedKpiAuto">—</span>
-          <div style="margin-top:8px;display:flex;flex-direction:column;gap:4px">
-            <div style="display:flex;align-items:center;gap:5px">
-              <span style="font-size:9px;font-weight:700;color:#043F75;width:26px;flex-shrink:0">Inv.</span>
-              <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div id="sedBarInvAuto" style="height:100%;background:#043F75;border-radius:2px;width:0%;transition:width .4s"></div></div>
-              <span id="sedSubInvAuto" style="font-size:10px;font-family:monospace;font-weight:700;color:#043F75;width:54px;text-align:right;flex-shrink:0">0 (0%)</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:5px">
-              <span style="font-size:9px;font-weight:700;color:#1E9E6A;width:26px;flex-shrink:0">Ott.</span>
-              <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div id="sedBarOttAuto" style="height:100%;background:#1E9E6A;border-radius:2px;width:0%;transition:width .4s"></div></div>
-              <span id="sedSubOttAuto" style="font-size:10px;font-family:monospace;font-weight:700;color:#1E9E6A;width:54px;text-align:right;flex-shrink:0">0 (0%)</span>
-            </div>
-          </div>
-        </div>
-        <div class="sed-kpi idrico">
-          <span class="sed-kpi-label">Idrico</span>
-          <span class="sed-kpi-val" id="sedKpiIdrico">—</span>
-          <div style="margin-top:8px;display:flex;flex-direction:column;gap:4px">
-            <div style="display:flex;align-items:center;gap:5px">
-              <span style="font-size:9px;font-weight:700;color:#043F75;width:26px;flex-shrink:0">Inv.</span>
-              <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div id="sedBarInvIdri" style="height:100%;background:#043F75;border-radius:2px;width:0%;transition:width .4s"></div></div>
-              <span id="sedSubInvIdri" style="font-size:10px;font-family:monospace;font-weight:700;color:#043F75;width:54px;text-align:right;flex-shrink:0">0 (0%)</span>
-            </div>
-            <div style="display:flex;align-items:center;gap:5px">
-              <span style="font-size:9px;font-weight:700;color:#1E9E6A;width:26px;flex-shrink:0">Ott.</span>
-              <div style="flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div id="sedBarOttIdri" style="height:100%;background:#1E9E6A;border-radius:2px;width:0%;transition:width .4s"></div></div>
-              <span id="sedSubOttIdri" style="font-size:10px;font-family:monospace;font-weight:700;color:#1E9E6A;width:54px;text-align:right;flex-shrink:0">0 (0%)</span>
-            </div>
-          </div>
-        </div>
-        <div class="sed-kpi inviato">
-          <span class="sed-kpi-label">Permessi Inviati</span>
-          <div style="display:flex;align-items:baseline;gap:8px">
-            <span class="sed-kpi-val" id="sedKpiInv">0</span>
-            <span style="font-size:13px;color:var(--muted);font-weight:700" id="sedKpiInvPct">/ — (0%)</span>
-          </div>
-          <div class="sed-progress-bar"><div class="sed-progress-fill" id="sedProgressInvFill" style="width:0%;background:#043F75"></div></div>
-        </div>
-        <div class="sed-kpi ottenuto">
-          <span class="sed-kpi-label">Permessi Ottenuti</span>
-          <div style="display:flex;align-items:baseline;gap:8px">
-            <span class="sed-kpi-val" id="sedKpiOtt">0</span>
-            <span style="font-size:13px;color:var(--muted);font-weight:700" id="sedKpiOttPct">/ — (0%)</span>
-          </div>
-          <div class="sed-progress-bar"><div class="sed-progress-fill" id="sedProgressFill" style="width:0%"></div></div>
-        </div>
-      </div>
-    </div>
-
-    <div id="sedBody">
-
-      <!-- Toolbar filtri -->
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--surface2);border-top:1px solid var(--border);margin-top:14px">
-        <div style="position:relative;flex:1;min-width:220px;max-width:400px">
-          <svg style="position:absolute;left:9px;top:50%;transform:translateY(-50%);pointer-events:none" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input id="sedQ" type="text" placeholder="Cerca nome, ente, comune…"
-            style="width:100%;box-sizing:border-box;padding:7px 10px 7px 28px;background:var(--surface);border:1px solid var(--border2);border-radius:6px;font-family:inherit;font-size:12px;color:var(--text);outline:none"
-            oninput="renderSed()" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border2)'">
-        </div>
-        <div style="flex:1"></div>
-        <select id="sedFTipo" onchange="renderSed()" style="background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:7px 10px;font-family:inherit;font-size:12px;color:var(--text);outline:none;cursor:pointer">
-          <option value="">Tutti i tipi</option>
-          <option value="FERROVIARIO">Ferroviario</option>
-          <option value="AUTOSTRADALE">Autostradale</option>
-          <option value="IDRICO">Idrico</option>
-        </select>
-        <select id="sedFLotto" onchange="renderSed()" style="background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:7px 10px;font-family:inherit;font-size:12px;color:var(--text);outline:none;cursor:pointer">
-          <option value="">Tutti i lotti</option>
-        </select>
-        <select id="sedFStato" onchange="renderSed()" style="background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:7px 10px;font-family:inherit;font-size:12px;color:var(--text);outline:none;cursor:pointer">
-          <option value="">Tutti gli stati</option>
-          <option value="IN ATTESA">In Attesa</option>
-          <option value="IN REDAZIONE">In Redazione</option>
-          <option value="INVIO PRELIMINARE">Invio Preliminare</option>
-          <option value="INVIATO">Inviato</option>
-          <option value="PROTOCOLLATO">Protocollato</option>
-          <option value="NECESSARIA INTEGRAZIONE">Necessaria Integrazione</option>
-          <option value="OTTENUTO">Ottenuto</option>
-        </select>
-        <select id="sedFEnte" onchange="renderSed()" style="background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:7px 10px;font-family:inherit;font-size:12px;color:var(--text);outline:none;cursor:pointer">
-          <option value="">Tutti gli enti</option>
-        </select>
-        <button onclick="sedResetFilters()" style="font-size:10px;font-weight:600;padding:6px 12px;border-radius:6px;border:1px solid var(--border2);background:var(--surface);color:var(--muted);cursor:pointer;font-family:inherit;transition:all .15s" onmouseover="this.style.borderColor='var(--accent2)';this.style.color='var(--accent2)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--muted)'">&#10005; Reset</button>
-      </div>
-
-      <!-- Tabella -->
-      <div style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse;table-layout:auto;min-width:800px">
-          <thead>
-            <tr style="background:var(--surface2);border-bottom:2px solid var(--border2)">
-              <th onclick="sedSort('nSed')" style="padding:9px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);font-weight:700;min-width:110px;cursor:pointer;user-select:none" title="Ordina per Numero SED"><span class="col-th-inner">N° SED <span id="sedArr_nSed" class="col-sort-btn">↕</span></span></th>
-              <th style="padding:9px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);font-weight:700;min-width:120px">Pratica</th>
-              <th onclick="sedSort('nome')" style="padding:9px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);font-weight:700;white-space:nowrap;cursor:pointer;user-select:none" title="Ordina per Nome"><span class="col-th-inner">Nome <span id="sedArr_nome" class="col-sort-btn">↕</span></span></th>
-              <th onclick="sedSort('tipo')" style="padding:9px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);font-weight:700;cursor:pointer;user-select:none" title="Ordina per Tipo"><span class="col-th-inner">Tipo <span id="sedArr_tipo" class="col-sort-btn">↕</span></span></th>
-              <th onclick="sedSort('lotto')" style="padding:9px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);font-weight:700;cursor:pointer;user-select:none" title="Ordina per Lotto"><span class="col-th-inner">Lotto <span id="sedArr_lotto" class="col-sort-btn">↕</span></span></th>
-              <th onclick="sedSort('comune')" style="padding:9px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);font-weight:700;cursor:pointer;user-select:none" title="Ordina per Comune"><span class="col-th-inner">Comune <span id="sedArr_comune" class="col-sort-btn">↕</span></span></th>
-              <th onclick="sedSort('ente')" style="padding:9px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);font-weight:700;cursor:pointer;user-select:none" title="Ordina per Ente"><span class="col-th-inner">Ente <span id="sedArr_ente" class="col-sort-btn">↕</span></span></th>
-              <th onclick="sedSort('stato')" style="padding:9px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);font-weight:700;min-width:160px;cursor:pointer;user-select:none" title="Ordina per Stato Permesso"><span class="col-th-inner">Stato Permesso <span id="sedArr_stato" class="col-sort-btn">↕</span></span></th>
-              <th onclick="sedSort('data')" style="padding:9px 10px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);font-weight:700;min-width:110px;cursor:pointer;user-select:none" title="Ordina per Data Invio"><span class="col-th-inner">Data Invio <span id="sedArr_data" class="col-sort-btn">↕</span></span></th>
-              <th style="padding:9px 10px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:0.07em;color:var(--muted);font-weight:700;min-width:80px">Solleciti</th>
-            </tr>
-          </thead>
-          <tbody id="sedTbody"></tbody>
-        </table>
-      </div>
-
-      <!-- Footer -->
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-top:1px solid var(--border);background:var(--surface2)">
-        <span id="sedFootL" style="font-size:11px;color:var(--muted)"></span>
-
-      </div>
-    </div>
-  </div>
-</div>
-
 
 <!-- TABELLA TUTTE LE PRATICHE
 ══════════════════════════════════════════════════════════════════════════════ -->
