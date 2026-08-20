@@ -109,6 +109,39 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
 
 ## 6. Log revisioni
 
+- **rev.18** — Colori legenda ufficiali, fix lotti su
+  `mappa_impresa_caricamento.html`, rimozione voce "Tracciato QTS" e
+  pulizia codice morto in `mappa.html`.
+  - Colori lotto allineati alla specifica ufficiale di progetto (Path A
+    giallo, Path B viola, Path C blu): `LOTTO_COLORS` reso esplicito
+    (`{A:'#E8C61A', B:'#7A3DAA', C:'#2D6CDF'}`) sia in `mappa.html` sia in
+    `mappa_impresa_caricamento.html` (non più solo dinamico via palette).
+  - `mappa_impresa_caricamento.html`: stesso bug di `LOTTO_ORDER`/
+    `LOTTI_ATTIVI`/`LOTTI_AVVIO` hardcoded ENRI già risolto in `mappa.html`
+    in rev.17, qui non ancora sistemato — ora corretto con lo stesso
+    approccio (`lottoOrder()` dinamico su `lottoStats`, gruppo filtro
+    unico, sidebar/ordinamento senza più liste 1-8/1A-2B fisse).
+  - `mappa.html`: rimossa la voce di legenda "Tracciato QTS" (colore
+    viola #1A7D99) e l'intera sezione della guida "?" che la descriveva
+    — corrispondeva a un toggle/pulsante "Solo QTS" mai realmente
+    implementato nel codice, puro residuo testuale ereditato da ENRI.
+  - `mappa.html`: pulizia codice morto (3088→3037 righe). JS: rimossa
+    `applyFilter()` (mai chiamata, commento "mantenuto per compatibilità"
+    non corrispondeva al vero). CSS: rimosse classi definite ma mai
+    applicate nel markup/JS — `.btn-mobile-hidden`, `.lav-no`,
+    `.legend-dot` (la legenda SED usa stili inline), `.popup-stato-bar`
+    (+variante mobile), `.search-highlight`, `.btn.secondary` (+hover),
+    `.sidebar-close-btn` (+variante mobile), `.topbar-left`, `.logo`
+    (+variante mobile), `.btn-back` (+hover+variante mobile — il
+    selettore `a.btn-back[href="index.html?direct=1"]` non veniva mai
+    matchato: il link reale in pagina usa `class="topbar-back"`),
+    `.popup-tag` e varianti `.ok`/`.warn`/`.err`.
+  - Verificato con scansione statica su tutto il file (regex classi CSS
+    vs markup, funzioni JS vs chiamate) + `node --check` sul JS inline
+    estratto → OK. Nota non risolta: `id="drawerToggleBtn"` non è
+    referenziato da alcun JS/CSS (il bottone usa `onclick` inline) — id
+    verosimilmente superfluo ma innocuo, lasciato per prudenza.
+
 - **rev.17** — Fix bug lotti QTS ereditati da ENRI (residuo del fork, mai
   riadattati ai dati reali). Confermato: lotti QTS sono **A/B/C** (da
   `LOTTO` in `QTS.geojson`, da "Lotto A.xlsx" ecc. in `Master.csv`),
