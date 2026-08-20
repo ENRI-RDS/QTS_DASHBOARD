@@ -1182,13 +1182,8 @@ let map, allLayers=[], currentFilter='TUTTI', lottoStats={};
 let MY_LOTTI = null; // popolato da _loadMyLotti() prima di caricare la mappa — null = non ancora caricato
 let currentViewMode = 'stato'; // 'stato' | 'lotto' | 'cluster'
 
-// Colori per lotto
-const LOTTO_COLORS = {
-  '1A':'#4f8ef7','1B':'#89bfff',
-  '2A':'#e07b3a','2B':'#f7a96a',
-  '1':'#3a8c5c','2':'#5cb87a','3':'#c9a227','4':'#e8c050',
-  '5':'#cc3333','6':'#e06868','7':'#a07af7','8':'#ffffff'
-};
+// Colori ufficiali da specifica progetto QTS (Path A/B/C) — allineati a mappa.html
+const LOTTO_COLORS = { 'A':'#E8C61A', 'B':'#7A3DAA', 'C':'#2D6CDF' };
 
 // Palette colori per cluster (30 colori distinti)
 const _CLUSTER_PALETTE = [
