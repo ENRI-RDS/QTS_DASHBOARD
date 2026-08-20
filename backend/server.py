@@ -48,7 +48,7 @@ MONGO_URL = os.environ["MONGO_URL"]
 DB_NAME = os.environ["DB_NAME"]
 
 # DATA_DIR is the directory containing the git-committed seed files
-# (Master.csv, QGIS.geojson, etc.). It's READ-ONLY in the new model.
+# (Master.csv, QTS.geojson, etc.). It's READ-ONLY in the new model.
 DATA_DIR = Path(os.environ.get("DATA_DIR", ROOT_DIR.parent)).resolve()
 
 _default_origins = (
@@ -294,9 +294,8 @@ async def _require_milestone_session(
 # vengono più pubblicati sul repo GitHub pubblico (vedi _push_to_github).
 SENSITIVE_FILES = {
     "Master.csv",
-    "QGIS.geojson",
-    "Riepilogo_progettazione.csv",
-    "SED_classificato.geojson",
+    "QTS.geojson",
+    "SED_QTS.geojson",
 }
 
 
@@ -587,9 +586,9 @@ async def upload_file(
         rel, x_actor_nome,
     )
 
-    # Se è Master.csv, rigenera anche i file derivati (Riepilogo_progettazione.csv,
-    # QGIS.geojson) e sincronizza GitHub — stesso comportamento di approve/delete/restore,
-    # altrimenti un upload manuale lascia mappa e barre ferme alla versione precedente.
+    # Se è Master.csv, rigenera anche QTS.geojson e sincronizza GitHub — stesso
+    # comportamento di approve/delete/restore, altrimenti un upload manuale
+    # lascia mappa e barre ferme alla versione precedente.
     if rel == MASTER_FILENAME:
         asyncio.create_task(_push_current_master_to_github())
     elif rel in GITHUB_PATHS:
@@ -957,38 +956,7 @@ async def _read_master_csv() -> "pd.DataFrame":
     return df
 
 
-QGIS_FILENAME      = "QGIS.geojson"
-RIEPILOGO_FILENAME = "Riepilogo_progettazione.csv"
-
-
-async def _read_riepilogo_csv() -> "pd.DataFrame | None":
-    """Legge Riepilogo_progettazione.csv (Mongo se presente, altrimenti seed su
-    disco). Usato per recuperare CLUSTER/PROVINCIA/COMUNE per TRATTA_ID: questi
-    campi non esistono in Master.csv, solo in Riepilogo (ereditati da QGIS.geojson).
-    Ritorna None se il file non e' ancora disponibile (fail-soft: i cantieri
-    vengono comunque creati, solo senza questi campi)."""
-    try:
-        cur = await _current_upload(RIEPILOGO_FILENAME)
-        if cur:
-            raw = await _read_gridfs(cur["gridfs_id"])
-        else:
-            path = DATA_DIR / RIEPILOGO_FILENAME
-            if not path.exists():
-                return None
-            raw = path.read_bytes()
-        sep = _detect_sep(raw)
-        for enc in ("utf-8", "cp1252", "latin-1"):
-            try:
-                return pd.read_csv(
-                    io.BytesIO(raw), sep=sep, dtype=str, keep_default_na=False,
-                    encoding=enc, on_bad_lines="warn",
-                )
-            except (UnicodeDecodeError, UnicodeError):
-                continue
-        return pd.read_csv(io.BytesIO(raw), sep=sep, dtype=str, keep_default_na=False, encoding="utf-8", encoding_errors="replace")
-    except Exception as e:
-        print(f"[_read_riepilogo_csv] errore: {e}")
-        return None
+QGIS_FILENAME = "QTS.geojson"  # geometria principale tratte, keyed by TRATTA_ID
 
 
 GITHUB_REPO     = os.environ.get("GITHUB_REPO", "QTS-RDS/dashboard")
@@ -997,20 +965,18 @@ GITHUB_CSV_PATH = os.environ.get("GITHUB_CSV_PATH", "Master.csv")
 
 # Mappa file dashboard -> path nel repo GitHub (override via env se servono sottocartelle)
 GITHUB_PATHS: dict = {
-    "Master.csv":                  GITHUB_CSV_PATH,
-    "Riepilogo_progettazione.csv": os.environ.get("GITHUB_RIEPILOGO_PATH", "Riepilogo_progettazione.csv"),
-    "QGIS.geojson":                os.environ.get("GITHUB_QGIS_PATH", "QGIS.geojson"),
-    "solleciti.csv":               os.environ.get("GITHUB_SOLLECITI_PATH", "solleciti.csv"),
-    "sopralluoghi.csv":             os.environ.get("GITHUB_SOPRALLUOGHI_PATH", "sopralluoghi.csv"),
-    "QTS.geojson":                 os.environ.get("GITHUB_QTS_PATH", "QTS.geojson"),
-    "SED_classificato.geojson":    os.environ.get("GITHUB_SED_PATH", "SED_classificato.geojson"),
+    "Master.csv":       GITHUB_CSV_PATH,
+    "QTS.geojson":      os.environ.get("GITHUB_QGIS_PATH", "QTS.geojson"),
+    "solleciti.csv":    os.environ.get("GITHUB_SOLLECITI_PATH", "solleciti.csv"),
+    "sopralluoghi.csv": os.environ.get("GITHUB_SOPRALLUOGHI_PATH", "sopralluoghi.csv"),
+    "SED_QTS.geojson":  os.environ.get("GITHUB_SED_PATH", "SED_QTS.geojson"),
 }
 
 
 _GITHUB_PUSH_TIMES: dict[str, str] = {}   # label/basename -> ISO timestamp ultimo push riuscito
 
 async def _push_to_github(file_bytes: bytes, path: str = None, label: str = None) -> None:
-    """Aggiorna un file su GitHub via API (Master.csv, QGIS.geojson, Riepilogo_progettazione.csv, ...).
+    """Aggiorna un file su GitHub via API (Master.csv, QTS.geojson, SED_QTS.geojson, ...).
     In caso di conflitto sha (409 — qualcun altro ha scritto sullo stesso file nel frattempo,
     es. una modifica manuale in parallelo) rilegge lo sha aggiornato e riprova fino a 3 volte."""
     path  = path or GITHUB_CSV_PATH
@@ -1064,7 +1030,7 @@ async def _push_to_github(file_bytes: bytes, path: str = None, label: str = None
 
 async def _push_current_master_to_github() -> None:
     """Legge la versione corrente di Master.csv da MongoDB, la pusha su GitHub
-    e rigenera QGIS.geojson + Riepilogo_progettazione.csv (usata da delete/restore)."""
+    e rigenera QTS.geojson (usata da delete/restore)."""
     try:
         df = await _read_master_csv()
         github_buf = io.StringIO()
@@ -1077,9 +1043,9 @@ async def _push_current_master_to_github() -> None:
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# Derivazione QGIS.geojson + Riepilogo_progettazione.csv da Master.csv
+# Derivazione QTS.geojson da Master.csv
 # ─────────────────────────────────────────────────────────────────────────────
-# Regole verificate contro un export reale di Riepilogo_progettazione.csv:
+# Regole verificate contro un export reale delle tratte (Master.csv/QTS.geojson):
 #   - STATO_LEGENDA è sempre identico a STATO_AUTORIZZAZIONE (0 eccezioni su 692 righe)
 #   - LAVORABILE = SI solo se STATO_AUTORIZZAZIONE = OTTENUTO E (se richiesto)
 #     anche il/i NULLA OSTA sono OTTENUTI (idem ORDINANZA se richiesta)
@@ -1302,32 +1268,19 @@ async def _store_derived_file(filename: str, data: bytes, content_type: str, not
 
 
 async def _regenerate_derived_files(master_df: "pd.DataFrame", note: str = "") -> dict:
-    """Rigenera QGIS.geojson e Riepilogo_progettazione.csv a partire da Master.csv.
-
-    Verificato sui file reali: Riepilogo_progettazione.csv e' ESATTAMENTE la
-    tabella attributi di QGIS.geojson esportata in CSV (stesse 21 colonne,
-    stesso ordine, stessi valori, stesso numero di righe — confrontato riga
-    per riga su TR_0103 e sull'intero file). Per questo la patch avviene UNA
-    SOLA VOLTA sulle properties di QGIS.geojson, e Riepilogo viene poi
-    derivato direttamente da quello: i due file non possono piu' disallinearsi.
+    """Rigenera QTS.geojson a partire da Master.csv (patch in place delle
+    proprieta' di stato). Riepilogo_progettazione.csv e' stato eliminato
+    (ridondante: QTS.geojson gia' contiene COMUNE/PROVINCIA/LOTTO/ENTE per
+    TRATTA_ID — vedi _sync_cantieri che li legge direttamente da qui).
 
     Vengono aggiornati SOLO i campi calcolati da Master.csv:
     STATO_AUTORIZZAZIONE, STATO_LEGENDA, STATO_NULLAOSTA, STATO_ORDINANZA,
-    LAVORABILE, MOTIVO_NO, PRATICA, ENTE.
-    Tutto il resto (fid, TIPOLOGIA, PROVINCIA, COMUNE, CLUSTER, ROUTE, ENTE 2,
-    LUNGHEZZA, SPAN, LOTTO, PROTOCOLLO_AUT, CAMPO AWS, geometria) resta
-    esattamente come nel QGIS.geojson esistente.
+    LAVORABILE, MOTIVO_NO, PRATICA, ENTE. Tutto il resto (fid, PROVINCIA,
+    COMUNE, ENTE 2, LUNGHEZZA, LOTTO, CONCOMITANZA_ENRI, geometria) resta
+    esattamente come nel QTS.geojson esistente.
 
     Fire-and-forget: eventuali errori vengono solo loggati.
     """
-    # Ordine colonne confermato sul file reale (json.load preserva l'ordine delle key)
-    RIEPILOGO_COLUMNS = [
-        "fid", "TIPOLOGIA", "PROVINCIA", "COMUNE", "CLUSTER", "ROUTE", "ENTE", "ENTE 2",
-        "LUNGHEZZA", "SPAN", "LOTTO", "TRATTA_ID", "MOTIVO_NO", "STATO_AUTORIZZAZIONE",
-        "STATO_NULLAOSTA", "STATO_ORDINANZA", "PROTOCOLLO_AUT", "PRATICA", "LAVORABILE",
-        "STATO_LEGENDA", "CAMPO AWS",
-    ]
-
     out_ids: dict = {}
     try:
         summary = _compute_tratta_summary(master_df)
@@ -1340,8 +1293,7 @@ async def _regenerate_derived_files(master_df: "pd.DataFrame", note: str = "") -
             print(f"[Sync] {QGIS_FILENAME} non trovato — skip rigenerazione")
             return out_ids
 
-        # ── 1. Patch in place delle proprieta' di stato su QGIS.geojson ─────────
-        riepilogo_rows = []
+        # ── Patch in place delle proprieta' di stato su QTS.geojson ─────────
         for feat in geo["features"]:
             props = feat.get("properties") or {}
             tid = str(props.get("TRATTA_ID") or "").strip()
@@ -1358,25 +1310,14 @@ async def _regenerate_derived_files(master_df: "pd.DataFrame", note: str = "") -
                 if s["ENTE"]:
                     props["ENTE"] = s["ENTE"]
             feat["properties"] = props
-            # Riga corrispondente per Riepilogo_progettazione.csv — stesse colonne,
-            # stessi valori, derivati dalla stessa feature appena patchata.
-            riepilogo_rows.append({col: props.get(col, "") for col in RIEPILOGO_COLUMNS})
 
         geo_bytes = json.dumps(geo, ensure_ascii=False).encode("utf-8")
         out_ids["qgis"] = await _store_derived_file(QGIS_FILENAME, geo_bytes, "application/geo+json", note)
-        asyncio.create_task(_push_to_github(geo_bytes, path=GITHUB_PATHS["QGIS.geojson"], label=QGIS_FILENAME))
-
-        # ── 2. Riepilogo_progettazione.csv: derivato 1:1 da QGIS.geojson ────────
-        riep_df = pd.DataFrame(riepilogo_rows, columns=RIEPILOGO_COLUMNS)
-        rbuf = io.StringIO()
-        riep_df.to_csv(rbuf, index=False)  # virgola, come il file originale
-        rdata = rbuf.getvalue().encode("utf-8")
-        out_ids["riepilogo"] = await _store_derived_file(RIEPILOGO_FILENAME, rdata, "text/csv", note)
-        asyncio.create_task(_push_to_github(rdata, path=GITHUB_PATHS["Riepilogo_progettazione.csv"], label=RIEPILOGO_FILENAME))
+        asyncio.create_task(_push_to_github(geo_bytes, path=GITHUB_PATHS["QTS.geojson"], label=QGIS_FILENAME))
 
         print(f"[Sync] Rigenerati: {list(out_ids.keys())} ({len(summary)} tratte, note={note!r})")
     except Exception as e:
-        print(f"[Sync] Errore rigenerazione QGIS/Riepilogo: {type(e).__name__}: {e}")
+        print(f"[Sync] Errore rigenerazione QTS.geojson: {type(e).__name__}: {e}")
     return out_ids
 
 
@@ -1516,7 +1457,7 @@ async def impresa_pratiche(sess: dict = Depends(_require_session)):
 
 @app.get("/api/imprese/master-sed")
 async def impresa_master_sed(sess: dict = Depends(_require_session)):
-    """GeoJSON (QGIS.geojson + SED_classificato.geojson) filtrati ai SOLI lotti
+    """GeoJSON (QTS.geojson + SED_QTS.geojson) filtrati ai SOLI lotti
     assegnati all'impresa (nome dal token firmato). Le pagine Area Impresa usano
     questo endpoint invece di scaricare i file interi con i lotti di tutti i
     concorrenti. Stesso pattern di scoping di /api/imprese/pratiche."""
@@ -1537,8 +1478,8 @@ async def impresa_master_sed(sess: dict = Depends(_require_session)):
         out["features"] = feats
         return out
 
-    qgis = _scope(await _read_current_geojson("QGIS.geojson"))
-    sed = _scope(await _read_current_geojson("SED_classificato.geojson"))
+    qgis = _scope(await _read_current_geojson("QTS.geojson"))
+    sed = _scope(await _read_current_geojson("SED_QTS.geojson"))
     return {"qgis": qgis, "sed": sed, "lotti": sorted(lotti)}
 
 
@@ -1831,7 +1772,7 @@ async def regenerate_derived(
     x_upload_token: Annotated[str | None, Header(alias="x-upload-token")] = None,
     token_q: Annotated[str | None, Query(alias="x_upload_token")] = None,
 ):
-    """Rigenera QGIS.geojson + Riepilogo_progettazione.csv dal Master.csv corrente
+    """Rigenera QTS.geojson dal Master.csv corrente
     senza modificarlo — utile dopo un fix a _compute_tratta_summary per applicare
     la nuova logica ai dati già presenti, senza dover re-uploadare Master.csv."""
     _check_token(x_upload_token or token_q)
@@ -3233,25 +3174,28 @@ async def _sync_cantieri() -> int:
         print(f"[sync_cantieri] errore lettura master: {e}")
         return 0
 
-    # CLUSTER/PROVINCIA/COMUNE non esistono in Master.csv: vengono recuperati da
-    # Riepilogo_progettazione.csv (che li eredita da QGIS.geojson), indicizzati
-    # per TRATTA_ID. Fail-soft: se il file non è disponibile i cantieri vengono
-    # comunque creati, semplicemente senza questi tre campi.
+    # PROVINCIA/COMUNE non esistono in Master.csv: vengono recuperati direttamente
+    # da QTS.geojson (properties), indicizzati per TRATTA_ID. Fail-soft: se il
+    # file non è disponibile i cantieri vengono comunque creati, semplicemente
+    # senza questi campi. NB: QTS.geojson non ha un campo CLUSTER (a differenza
+    # del vecchio QGIS.geojson/Riepilogo ereditato da ENRI) — "cluster" resta
+    # sempre vuoto finché non viene introdotto un campo equivalente nei dati QTS.
     geo_by_tratta: dict[str, dict] = {}
     try:
-        riep_df = await _read_riepilogo_csv()
-        if riep_df is not None and "TRATTA_ID" in riep_df.columns:
-            for _, row in riep_df.iterrows():
-                tid = str(row.get("TRATTA_ID", "")).strip()
+        geo = await _read_current_geojson(QGIS_FILENAME)
+        if geo and isinstance(geo.get("features"), list):
+            for feat in geo["features"]:
+                props = feat.get("properties") or {}
+                tid = str(props.get("TRATTA_ID", "")).strip()
                 if not tid:
                     continue
                 geo_by_tratta[tid] = {
-                    "cluster":   str(row.get("CLUSTER", "")).strip(),
-                    "provincia": str(row.get("PROVINCIA", "")).strip(),
-                    "comune":    str(row.get("COMUNE", "")).strip(),
+                    "cluster":   "",
+                    "provincia": str(props.get("PROVINCIA", "")).strip(),
+                    "comune":    str(props.get("COMUNE", "")).strip(),
                 }
     except Exception as e:
-        print(f"[sync_cantieri] errore lettura riepilogo (cluster/provincia/comune): {e}")
+        print(f"[sync_cantieri] errore lettura QTS.geojson (provincia/comune): {e}")
 
     codice_cache = await _max_codice_per_lotto()
     await _backfill_codici_cantiere(codice_cache)
