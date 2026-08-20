@@ -424,8 +424,6 @@
     .view-btn{ font-size:10px; padding:5px 10px; min-height:32px; }
     .filter-row{ gap:4px; }
     .filter-btn{ font-size:10px; padding:4px 9px; min-height:28px; }
-    .qts-toggle-row{ margin-top:6px; padding:6px 0 4px; }
-    .qts-label{ font-size:10px; }
     /* Sidebar body: la lista lotti è nascosta su mobile (solo filtri visibili).
        NB: scoperto a #lottoList soltanto — non a .sidebar-body in generale,
        altrimenti nasconde anche pratBodyPanel/scaviBodyPanel (i form di aggiornamento). */
@@ -619,19 +617,6 @@
   @media print{.search-bar{display:none!important;}}
 
   /* QTS toggle */
-  .qts-toggle-row { display:flex;align-items:center;gap:8px;margin-top:10px;padding:8px 0 6px;border-top:1px solid var(--border); }
-  .qts-label { font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);flex:1; }
-  .qts-switch { position:relative;width:36px;height:20px;cursor:pointer;flex-shrink:0; }
-  .qts-switch input { opacity:0;width:0;height:0;position:absolute; }
-  .qts-slider { position:absolute;inset:0;background:#c8ccd8;border-radius:20px;transition:background 0.2s; }
-  .qts-slider:before { content:'';position:absolute;height:14px;width:14px;left:3px;top:3px;background:#fff;border-radius:50%;transition:all 0.2s; }
-  .qts-switch input:checked + .qts-slider { background:#0aa3c2; }
-  .qts-switch input:checked + .qts-slider:before { transform:translateX(16px);background:#fff; }
-  .qts-km { font-size:10px;font-family:var(--font-mono);color:var(--retelit-teal); }
-  .qts-only-btn{font-size:10px;padding:4px 10px;border-radius:12px;border:1.5px solid var(--retelit-teal);background:var(--retelit-ice);color:var(--retelit-blue);cursor:pointer;transition:all 0.15s;font-family:var(--font-body);font-weight:500;}
-  .qts-only-btn:hover{border-color:var(--retelit-blue);background:var(--retelit-blue-25);color:var(--retelit-blue);}
-  .qts-only-btn.active{background:var(--retelit-blue);border-color:var(--retelit-blue);color:#fff;}
-
   /* ── SED ATTRAVERSAMENTI ─────────────────────────────── */
   /* punti nella legenda (cerchio invece di linea) */
   .legend-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
@@ -1196,7 +1181,6 @@ const LOTTI_AVVIO  = ['1','2','3','4','5','6','7','8'];
 let map, allLayers=[], currentFilter='TUTTI', lottoStats={};
 let MY_LOTTI = null; // popolato da _loadMyLotti() prima di caricare la mappa — null = non ancora caricato
 let currentViewMode = 'stato'; // 'stato' | 'lotto' | 'cluster'
-let qtsOnlyMode = false;
 
 // Colori per lotto
 const LOTTO_COLORS = {
@@ -1275,12 +1259,6 @@ function setViewMode(mode) {
       if (!map.hasLayer(layer)) map.addLayer(layer);
       if(outlineLayer){ if(!map.hasLayer(outlineLayer)) map.addLayer(outlineLayer); outlineLayer.bringToBack(); }
     });
-    if (qtsOnlyMode) {
-      allLayers.forEach(({layer,outlineLayer}) => {
-        if (map.hasLayer(layer)) map.removeLayer(layer);
-        if (outlineLayer && map.hasLayer(outlineLayer)) map.removeLayer(outlineLayer);
-      });
-    }
     updateLegend(mode);
     if (mode === 'scavi') {
       renderSidebarScavi(SC_CANTIERI);
@@ -1355,7 +1333,6 @@ function toggleLotto(id) {
 }
 
 function applyFilterMulti() {
-  if (qtsOnlyMode) return;
   // Aggiorna visual dei bottoni
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active','selected'));
   if (selectedLotti.size === 0) {
@@ -1435,7 +1412,6 @@ function toggleCluster(cl) {
 }
 
 function applyFilterClusterMulti() {
-  if (qtsOnlyMode) return;
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active','selected'));
   if (selectedClusters.size === 0) {
     const btnT = document.getElementById('cbtn-TUTTI');
@@ -2598,141 +2574,6 @@ document.addEventListener('click', e => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 
-// ── LAYER QTS ───────────────────────────────────────────────────────────────
-let qtsLayer = null;
-let qtsOutlineLayer = null;
-let qtsLoaded = false;
-const QTS_COLOR_HEX = '#1A7D99';
-
-async function loadQTS() {
-  if (qtsLoaded) return;
-  try {
-    const geojson = await fetchWithSWR('QTS.geojson', {
-      isJson: true,
-      onUpdate: (fresh) => {
-        if (!qtsLoaded) return;
-        if (qtsLayer       && map.hasLayer(qtsLayer))        map.removeLayer(qtsLayer);
-        if (qtsOutlineLayer && map.hasLayer(qtsOutlineLayer)) map.removeLayer(qtsOutlineLayer);
-        qtsLoaded = false; qtsLayer = null; qtsOutlineLayer = null;
-        loadQTSFromGeojson(fresh);
-        if (_qtsActive) { qtsOutlineLayer.addTo(map); qtsLayer.addTo(map); }
-      }
-    });
-
-    let totM = 0;
-    geojson.features.forEach(f => {
-      const l = f.properties && (f.properties.LUNGHEZZA || f.properties.lunghezza || 0);
-      totM += Number(l) || 0;
-    });
-
-    qtsOutlineLayer = L.geoJSON(geojson, {
-      renderer: outlineRenderer,
-      style: () => ({ color:'#5577aa', weight:8, opacity:0.3, smoothFactor:1.5, interactive:false })
-    });
-
-    qtsLayer = L.geoJSON(geojson, {
-      renderer: mainRenderer,
-      style: () => ({ color: QTS_COLOR_HEX, weight:4, opacity:0.95, smoothFactor:1.5, dashArray:'8,6' }),
-      onEachFeature: (f, layer) => {
-        const p = f.properties || {};
-        const len = p.LUNGHEZZA || p.lunghezza || '';
-        const desc = [p.NOME || p.nome || p.NAME || '', p.TRATTA_ID || p.tratta_id || ''].filter(Boolean).join(' — ');
-        layer.bindPopup(`<div class="popup-inner">
-          <div class="popup-header" style="border-color:#0aa3c255">
-            <span class="popup-lotto" style="color:${QTS_COLOR_HEX}">QTS</span>
-            ${desc ? `<span class="popup-impresa" style="color:${QTS_COLOR_HEX}">${desc}</span>` : ''}
-          </div>
-          ${len ? `<div class="popup-row"><span class="label">Lunghezza</span><span class="val">${(Number(len)/1000).toFixed(3).replace('.',',')} km</span></div>` : ''}
-          <div style="margin-top:8px"><span class="popup-stato" style="background:#1A7D9922;color:${QTS_COLOR_HEX};border:1px solid #41BBD944">Tracciato QTS</span></div>
-        </div>`, {maxWidth:320});
-        layer.on('mouseover', e => { e.target.setStyle({weight:7, opacity:1}); e.target.bringToFront(); });
-        layer.on('mouseout',  e => { e.target.setStyle({weight:4, opacity:0.95}); });
-      }
-    });
-
-    qtsLoaded = true;
-
-    if (totM > 0) {
-      const kmEl = document.getElementById('qtsKm');
-      if (kmEl) { kmEl.textContent = (totM/1000).toFixed(1).replace('.',',') + ' km'; kmEl.style.display=''; }
-    }
-
-  } catch(e) {
-    console.warn('QTS layer:', e.message);
-    const tog = document.getElementById('qtsToggle');
-    if (tog) {
-      tog.checked  = false;   // ← resetta lo stato visivo prima di disabilitare
-      tog.disabled = true;
-      tog.parentElement.title = 'QTS.geojson non disponibile';
-    }
-  }
-}
-
-function loadQTSFromGeojson(geojson) {
-  // Ricostruisce i layer QTS da geojson già caricato (usato dall'update SWR)
-  qtsOutlineLayer = L.geoJSON(geojson, {
-    renderer: outlineRenderer,
-    style: () => ({ color:'#5577aa', weight:8, opacity:0.3, smoothFactor:1.5, interactive:false })
-  });
-  qtsLayer = L.geoJSON(geojson, {
-    renderer: mainRenderer,
-    style: () => ({ color: QTS_COLOR_HEX, weight:4, opacity:0.95, smoothFactor:1.5, dashArray:'8,6' })
-  });
-  qtsLoaded = true;
-}
-
-async function setQTSOnly(on) {
-  qtsOnlyMode = !!on;
-  const btn = document.getElementById('qtsOnlyBtn');
-  if (btn) btn.classList.toggle('active', qtsOnlyMode);
-
-  if (qtsOnlyMode) {
-    const tog = document.getElementById('qtsToggle');
-    if (tog && !tog.checked) {
-      tog.checked = true;
-      toggleQTS(true);
-    } else if (tog && tog.checked && !qtsLoaded) {
-      await loadQTS();
-      toggleQTS(true);
-    }
-    allLayers.forEach(({layer,outlineLayer}) => {
-      if (map.hasLayer(layer)) map.removeLayer(layer);
-      if (outlineLayer && map.hasLayer(outlineLayer)) map.removeLayer(outlineLayer);
-    });
-    if (qtsLayer) {
-      const g = L.featureGroup([qtsLayer]);
-      if (g.getBounds && g.getBounds().isValid()) map.fitBounds(g.getBounds(), { padding:[50,50], maxZoom:14 });
-    }
-    return;
-  }
-
-  if (currentViewMode === 'cluster') applyFilterClusterMulti();
-  else applyFilterMulti();
-}
-
-function toggleQTS(on) {
-  if (!on && qtsOnlyMode) setQTSOnly(false);
-  if (on) {
-    if (!qtsLoaded) {
-      loadQTS().then(() => {
-        // Verifica che il checkbox sia ancora attivo prima di aggiungere i layer
-        const tog = document.getElementById('qtsToggle');
-        if (tog && tog.checked && qtsLayer) {
-          if (!map.hasLayer(qtsOutlineLayer)) qtsOutlineLayer.addTo(map).bringToBack();
-          if (!map.hasLayer(qtsLayer)) qtsLayer.addTo(map).bringToFront();
-        }
-      });
-    } else if (qtsLayer) {
-      if (!map.hasLayer(qtsOutlineLayer)) qtsOutlineLayer.addTo(map).bringToBack();
-      if (!map.hasLayer(qtsLayer)) qtsLayer.addTo(map).bringToFront();
-      else qtsLayer.bringToFront();
-    }
-  } else {
-    if (qtsLayer && map.hasLayer(qtsLayer)) map.removeLayer(qtsLayer);
-    if (qtsOutlineLayer && map.hasLayer(qtsOutlineLayer)) map.removeLayer(qtsOutlineLayer);
-  }
-}
-// ─────────────────────────────────────────────────────────────────────────────
 
 // ── LAYER SED ATTRAVERSAMENTI ───────────────────────────────────────────────
 const SED_META = {
@@ -2971,7 +2812,7 @@ async function _loadSEDInner() {
   } catch (e) {
     console.warn('SED layer:', e.message);
     const btn = document.getElementById('sedBtn');
-    if (btn) { btn.style.opacity = '0.45'; btn.style.pointerEvents = 'none'; btn.title = 'SED_classificato.geojson non disponibile'; }
+    if (btn) { btn.style.opacity = '0.45'; btn.style.pointerEvents = 'none'; btn.title = 'SED_QTS.geojson non disponibile'; }
   }
 }
 

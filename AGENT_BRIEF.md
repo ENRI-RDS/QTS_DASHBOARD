@@ -82,17 +82,19 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
        `APPS_SCRIPT_SECRET` (stesso valore scritto dentro `Code.gs`,
        generato random, diverso da quello ENRI — NON annotato qui per
        motivi di sicurezza, repo pubblico) — in corso lato utente.
-4. [ ] **Testare login** da `hub.html` con un nome/codice presente nel
-       foglio Utenti QTS.
+4. [x] **Testare login** da `hub.html` con un nome/codice presente nel
+       foglio Utenti QTS — ok, login funzionante end-to-end (rev.9).
 5. [x] **Aggiornare `DEFAULT_API_BASE`** in `js/api-config.js` e
        `api-config.js` (root, duplicati) — corretto: URL reale del Web
        Service Render è `https://qts-dashboard.onrender.com` (il
        placeholder precedente `qts-dashboard-api.onrender.com` non
        esisteva → causava `net::ERR_FAILED`/falso positivo CORS in
        console, il vero CORS su `enri-rds.github.io` era già corretto).
-6. [ ] **Aggiornare link GitHub Pages** in `hub.html` (placeholder
-       `https://qts-rds.github.io/dashboard/...`) con l'URL Pages reale
-       una volta pubblicato il frontend.
+6. [x] **Aggiornare link GitHub Pages** in `hub.html` — l'unico link
+       assoluto rotto era la card Milestone (puntava al placeholder
+       `qts-rds.github.io/dashboard/milestone.html`); convertito in path
+       relativo `milestone.html`, coerente con tutte le altre card che già
+       usavano path relativi (rev.9).
 7. [ ] **Caricare i file dati reali** del progetto QTS (Master.csv,
        QGIS.geojson, Riepilogo_progettazione.csv, SED_classificato.geojson)
        via pannello admin — verificare che le colonne combacino con quanto
@@ -166,3 +168,105 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
   qui — nei log d'avvio compare `[sync_cantieri] errore lettura master:
   404: Master.csv not found`, coerente con §5.7 (dati reali ancora da
   caricare), non bloccante per il test di login.
+- **rev.9** — Login end-to-end funzionante. Causa ultimo blocco (401
+  "Foglio Utenti non trovato"): il tab del Google Sheet QTS si chiamava
+  `Foglio1` invece di `Utenti` (Code.gs cerca esplicitamente lo sheet
+  `Utenti`). Risolto rinominando il tab su Google Sheets, nessuna modifica
+  a `Code.gs`/backend necessaria. §5 punto 4 completato.
+- **rev.10** — Eliminato `Riepilogo_progettazione.csv` (ridondante:
+  derivato 1:1 da QGIS.geojson, come già documentato in rev.7 dello schema
+  colonne). File sorgente ridotti a 3: `Master.csv`, `QTS.geojson`
+  (rinominato da `QGIS.geojson` — geometria/attributi tratte, keyed by
+  TRATTA_ID), `SED_QTS.geojson` (rinominato da `SED_classificato.geojson`).
+  Rimosso anche il vecchio layer overlay "Tracciato QTS" in
+  `mappa.html`/`mappa_impresa_caricamento.html` (rete di terze parti
+  mostrata in ENRI, nome ormai in collisione col progetto stesso — su
+  richiesta utente, eliminato interamente: funzioni `loadQTS`,
+  `toggleQTS`, `setQTSOnly`, variabili `qtsLayer`/`qtsOutlineLayer`,
+  markup toggle in sidebar, CSS `.qts-toggle-row` e affini).
+  Backend: `_regenerate_derived_files` ora rigenera solo `QTS.geojson`
+  (patch in place delle proprietà di stato calcolate da Master.csv);
+  `_sync_cantieri` legge PROVINCIA/COMUNE direttamente da `QTS.geojson`
+  invece che da Riepilogo. `scavi.html` (`_loadPermessi`) riscritta per
+  leggere `QTS.geojson` (GeoJSON) invece del CSV Riepilogo.
+  **Nota aperta**: `QTS.geojson` non ha un campo `CLUSTER` (presente nel
+  vecchio QGIS.geojson/Riepilogo ereditato da ENRI) — l'aggregazione per
+  cluster in `scavi.html` degrada automaticamente a vuota (nessun errore,
+  ma il grafico cluster non mostra dati finché non si introduce un campo
+  equivalente nei dati QTS). `index.html` riscritto: `fetchRiepilogoCSV`
+  → `fetchQtsGeojson` (fetch+cache di `QTS.geojson`, JSON invece di CSV);
+  `loadData()` e `loadCluster()` aggregano LOTTO×STATO/PROVINCIA/COMUNE
+  direttamente dalle properties delle feature. Il pannello "Avanzamento
+  per Cluster" mostra ora un messaggio informativo ("dato non disponibile
+  nei dati QTS") invece del grafico — **occhio**: `prevRilascioCol`
+  (Prev. Rilascio, dati Master.csv, indipendente) è annidato nello stesso
+  `clusterSection` e resta visibile, verificato non nasconderlo per
+  errore. `_emAggiornaClusters()` (usata solo dal flusso "modifica
+  manuale"/ripristina CSV) resta invariata: deriva pseudo-cluster da un
+  `CLUSTER_MAP` statico lotto→cluster (1A/1B→1, 2A/2B→2, ecc.), non da un
+  campo CLUSTER reale — soluzione disponibile ma NON adottata come fonte
+  primaria del grafico principale (approssimazione lotto-based, non
+  geografica come il vecchio CLUSTER ENRI: deciderlo esplicitamente se
+  serve riattivare il grafico).
+  Rinominati anche i riferimenti `SED_classificato.geojson` →
+  `SED_QTS.geojson` in `index.html`/`scavi.html`/`mappa*.html`.
+  Verificato con `py_compile` (backend) e HTML parser + `node --check`
+  (tutti i file frontend toccati): nessun errore.
+  **Prossimo step**: caricare via pannello admin i 3 file reali
+  (`Master.csv`, `QTS.geojson`, `SED_QTS.geojson`) e testare end-to-end.
+- **rev.11** — Eliminato il grafico "Avanzamento per Cluster" da
+  `index.html` (nessuna fonte dati, come da rev.10) e da `scavi.html`
+  (pannello "Permessi per cluster"). **Incidente rilevato e corretto**:
+  la rimozione a blocco di `loadCluster()`→`openModalCluster()` in
+  `index.html` aveva accidentalmente cancellato anche `fmt()`,
+  `parseNum()`, `setLoading()`, `openModal()` (modale dettaglio Lotto),
+  `closeModal()`, il gestore Escape globale e `window._modalOpen`/
+  `window._modalClose` (focus-trap, usati da TUTTE le modali: Lotto,
+  Gruppo, Kpi, Help) — codice non correlato che si trovava fisicamente
+  tra le funzioni cluster nel file. Rilevato confrontando l'elenco
+  funzioni prima/dopo con lo zip originale caricato dall'utente
+  (`/mnt/user-data/uploads/...QTS_DASHBOARD-main__1_.zip`, riestratto in
+  `/home/claude/qts_orig/` come riferimento pulito), poi recuperato
+  chirurgicamente dall'originale e reinserito. Verificato con diff
+  sistematico funzioni/`window.X=`/costanti top-level su TUTTI i file
+  toccati in questa sessione (`index.html`, `scavi.html`, `mappa.html`,
+  `mappa_impresa_caricamento.html`, `admin.html`, `backend/server.py`):
+  uniche assenze residue sono quelle intenzionali (cluster/Riepilogo/
+  layer QTS overlay), nessun'altra vittima collaterale. `py_compile`,
+  HTML parser e `node --check` tutti OK.
+  **Lezione operativa**: quando si rimuove codice per nome/funzione in
+  un file HTML/JS di migliaia di righe, non affidarsi a range di righe
+  ricavati da un singolo grep — codice non correlato può trovarsi
+  frammisto. Preferire `str_replace` con blocco delimitato per intero
+  (funzione per funzione) o verificare sempre con un diff funzioni
+  prima/dopo (`grep -oP '^(async )?function \w+'`) contro l'originale
+  prima di considerare una rimozione conclusa.
+  Nel pannello "Avanzamento per Cluster" resta solo il pannello
+  "Prev. Rilascio" (Master.csv, indipendente), ora estratto in una card
+  a sé stante (`#prevRilascioSection`) con layout responsive via
+  `flex-wrap` invece della vecchia logica JS `adjustClusterMobile()`
+  (rimossa, non più necessaria).
+- **rev.12** — Eliminato anche il pannello "Avanzamento per Cluster" da
+  `scavi.html` (card + `_renderClusters()`, `openModalCluster()`/
+  `closeModalCluster()`, modale `modalClusterOverlay`, `CLUSTER_PERMESSI`,
+  `CLUSTER_COLOR`, `window._CLUSTER_SCAVI`/`clusterScaviMap`). **Stesso
+  incidente della rev.11, rilevato subito con lo stesso metodo diff**:
+  la rimozione a blocco `_renderClusters()`→`closeModalCluster()` aveva
+  inglobato 4 funzioni non correlate interposte nel mezzo — `_renderBars()`
+  (barre di avanzamento per lotto), `_renderRadar()` (radar chart),
+  `openModalLotto()`/`closeModalLotto()` (modale dettaglio lotto, con
+  relativo gestore Escape). Recuperate dall'originale e reinserite (con
+  fix: il gestore Escape recuperato chiamava ancora `closeModalCluster()`,
+  rimossa la chiamata). Verificato con lo stesso diff sistematico
+  funzioni/`window.X=`/costanti prima/dopo: nessuna assenza inattesa.
+  Lasciati intenzionalmente INTATTI: la colonna/tag "Cluster" per-lotto
+  nella tabella cantieri principale, i quick-filter, il breakdown imprese
+  per cluster, il campo `r.cluster`/`LOTTI[].cl` — è una feature diversa
+  (tag per-lotto, non un'aggregazione dedicata) che il richiedente non ha
+  chiesto di rimuovere; resta funzionante ma mostrerà sempre "?" finché
+  QTS.geojson non avrà un campo CLUSTER (nota già presente, invariata).
+  `py_compile` n/a (nessun file Python toccato), HTML parser + `node
+  --check` OK su `scavi.html`.
+  **Lezione operativa aggiornata**: la tecnica del diff funzioni/window/
+  const prima-vs-originale (non solo grep sul range da cancellare) è
+  ora il controllo standard dopo ogni rimozione a blocco in questi file.

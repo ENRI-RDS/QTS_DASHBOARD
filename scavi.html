@@ -577,31 +577,6 @@
     </div>
   </div>
 
-  <!-- CLUSTER BARS (doppia barra: permessi sopra · scavi sotto, per cluster geografico) -->
-  <div class="card">
-    <div class="card-header">
-      <span class="card-title">Avanzamento per Cluster</span>
-      <span class="card-caption" id="clusterStatus">caricamento…</span>
-    </div>
-    <div class="card-body" style="display:flex;flex-direction:column;gap:0;" id="clusterContainer"></div>
-    <div class="legend" style="flex-wrap:wrap;row-gap:6px;">
-      <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-right:4px">PERMESSI:</span>
-      <div class="legend-item"><div class="legend-dot" style="background:#1E9E6A"></div>Ottenuto</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#436A93"></div>Prot. Integrazione</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#C0392B"></div>Nec. Integrazione</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#41BBD9"></div>Inviato/Protocollato</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#D08A1A"></div>In Firma</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#6B7685"></div>In Attesa</div>
-      <div style="width:100%;height:1px;background:var(--border);margin:4px 0"></div>
-      <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-right:4px">SCAVI:</span>
-      <div class="legend-item"><div class="legend-dot" style="background:#C23B22"></div>In sospeso</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#1F7A4E"></div>Completato</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#0B3182"></div>In corso</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#C08A14"></div>In allestimento</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#8A91B4"></div>Non avviato</div>
-    </div>
-  </div>
-
   <!-- GRID: lotti bars + tabella  |  sidebar -->
   <div class="grid-main">
 
@@ -691,15 +666,14 @@
 </div>
 
 <script>
-// ── DATI LOTTI — caricati da API /api/cantieri (scavi) + Riepilogo_progettazione.csv (permessi) ──
+// ── DATI LOTTI — caricati da API /api/cantieri (scavi) + QTS.geojson (permessi) ──
 let LOTTI = [];          // dati scavi aggregati per lotto (da MongoDB)
 let CANTIERI_RAW = [];    // singoli cantieri (tratte) non aggregati, da MongoDB
-let QGIS_GEOJSON_CACHE = null; // cache geometrie tratte (QGIS.geojson) per mappetta cantieri attivi
+let QGIS_GEOJSON_CACHE = null; // cache geometrie tratte (QTS.geojson) per mappetta cantieri attivi
 let MINI_MAP = null;
 let MINI_MAP_LAYER = null;
 let _cantieriQuickFilters = { lotto:'all', stato:'all', cluster:'all', impresa:'all', aggiornamento:'all' };
 let PERMESSI = {};        // { lotto: { statiMap: {STATO: metri}, totale: metri } }  (da CSV permessi)
-let CLUSTER_PERMESSI = {}; // { cluster: { statiMap: {STATO: metri}, totale: metri, lotti: Set } } — aggregato per tratta, non per lotto: un lotto può attraversare più cluster
 
 // Mappa statica lotto → impresa assegnataria (coerente con index.html), usata come fallback
 // quando i cantieri di un lotto non hanno ancora r.impresa valorizzato (scavo non avviato)
@@ -714,8 +688,6 @@ const STATO_MAP = {
   non_avviato: 'non-avviato', allestimento: 'allestimento',
   in_corso: 'in-corso', sospeso: 'sospeso', completato: 'completato'
 };
-
-const RIEPILOGO_URL = 'Riepilogo_progettazione.csv';
 
 // ── Colore distintivo per provincia (deterministico, stessa provincia = stesso colore ovunque) ──
 const PROV_PALETTE = ['#043F75','#1A7D99','#41BBD9','#D08A1A','#C0392B','#7A3DAA','#1E9E6A','#B5657A','#436A93','#8A91B4'];
@@ -748,92 +720,39 @@ function buildGruppiMapPermessi(statiMap) {
   return out;
 }
 
-// ── Parser CSV minimale (tab/;/, autodetect, supporta campi quotati) ─────────
-function _parseCsvLine(line, sep) {
-  const res = []; let cur = '', inQ = false;
-  for (const ch of line) {
-    if (ch === '"') inQ = !inQ;
-    else if (ch === sep && !inQ) { res.push(cur.trim()); cur = ''; }
-    else cur += ch;
-  }
-  res.push(cur.trim());
-  return res;
-}
-
 async function _loadPermessi() {
   try {
-    const res = await fetch(RIEPILOGO_URL, { cache: 'no-cache', headers: { 'x-session-token': localStorage.getItem('_qts_session') || '' } });
+    const res = await fetch('QTS.geojson', { cache: 'no-cache', headers: { 'x-session-token': localStorage.getItem('_qts_session') || '' } });
     if (!res.ok) throw new Error('HTTP ' + res.status);
-    const text = await res.text();
-    console.log('[QTS] Riepilogo_progettazione.csv caricato:', text.length, 'caratteri');
-    const lines = text.trim().split('\n').map(l => l.replace(/\r/, ''));
-    const sep = lines[0].includes('\t') ? '\t' : (lines[0].includes(';') ? ';' : ',');
-    const headers = _parseCsvLine(lines[0], sep);
-    const findC = (...names) => {
-      for (const n of names) {
-        const i = headers.findIndex(h => h.trim().toUpperCase() === n.toUpperCase());
-        if (i >= 0) return i;
-      }
-      return -1;
-    };
-    const iL   = findC('LOTTO');
-    const iS   = findC('STATO_AUTORIZZAZIONE', 'STATO_LEGENDA');
-    const iLun = findC('LUNGHEZZA', 'LENGTH');
-    const iCl  = findC('CLUSTER');
-    const iPr  = findC('PROVINCIA');
-    const iCom = findC('COMUNE');
-    console.log('[QTS] colonne trovate → LOTTO:', iL, 'STATO:', iS, 'LUNGHEZZA:', iLun, 'CLUSTER:', iCl, 'PROVINCIA:', iPr, 'COMUNE:', iCom, '| righe:', lines.length - 1);
+    const geojson = await res.json();
+    const feats = geojson.features || [];
+    console.log('[QTS] QTS.geojson caricato:', feats.length, 'tratte');
 
     const aggMap = {}, totMap = {}, clMap = {}, provMap = {}, comMap = {};
-    // Aggregazione separata per cluster (diretta dalla tratta, indipendente dal lotto):
-    // un lotto può attraversare più cluster e nessuna tratta deve sparire dietro
-    // il "cluster prevalente" del proprio lotto.
-    const clusterAggMap = {}, clusterTotMap = {}, clusterLottiMap = {};
-    for (let i = 1; i < lines.length; i++) {
-      const cols = _parseCsvLine(lines[i], sep);
-      const lottoRaw = cols[iL]?.trim().replace(/"/g, '');
-      if (!lottoRaw) continue;
-      const lotto = String(lottoRaw);
-      const stato = (iS >= 0 ? cols[iS]?.trim() : '') || 'IN ATTESA';
-      const lunghRaw = (cols[iLun] || '0').trim();
-      let lungh = 0;
-      if (lunghRaw.includes(',') && !lunghRaw.includes('.')) lungh = parseFloat(lunghRaw.replace(',', '.')) || 0;
-      else if (lunghRaw.includes(',')) lungh = parseFloat(lunghRaw.replace(/\./g, '').replace(',', '.')) || 0;
-      else lungh = parseFloat(lunghRaw) || 0;
+    // clMap: per-lotto breakdown per cluster (usato solo per calcolare il "cluster
+    // prevalente" del lotto, v. sotto — non per un grafico dedicato al cluster,
+    // rimosso: QTS.geojson non ha un campo CLUSTER, a differenza del vecchio
+    // Riepilogo_progettazione.csv ereditato da ENRI — clMap resta sempre vuoto
+    // finché non si introduce un campo equivalente nei dati QTS).
+    for (const f of feats) {
+      const p = f.properties || {};
+      const lotto = (p.LOTTO ?? '').toString().trim();
+      if (!lotto) continue;
+      const stato = (p.STATO_AUTORIZZAZIONE || p.STATO_LEGENDA || '').toString().trim() || 'IN ATTESA';
+      const lungh = Number(p.LUNGHEZZA) || 0;
       if (lungh <= 0) continue;
       if (!aggMap[lotto]) { aggMap[lotto] = {}; totMap[lotto] = 0; clMap[lotto] = {}; provMap[lotto] = new Set(); comMap[lotto] = new Set(); }
       if (stato !== 'NO COMPETENZA') {
         aggMap[lotto][stato] = (aggMap[lotto][stato] || 0) + lungh;
         totMap[lotto] += lungh;
       }
-      const cl = iCl >= 0 ? cols[iCl]?.trim().replace(/^[Cc]/, '') : '';
+      const cl = (p.CLUSTER || '').toString().trim().replace(/^[Cc]/, '');
       if (cl) clMap[lotto][cl] = (clMap[lotto][cl] || 0) + lungh;
-      const pr = iPr >= 0 ? cols[iPr]?.trim() : '';
+      const pr = (p.PROVINCIA || '').toString().trim();
       if (pr) provMap[lotto].add(pr);
-      const com = iCom >= 0 ? cols[iCom]?.trim() : '';
+      const com = (p.COMUNE || '').toString().trim();
       if (com) comMap[lotto].add(com);
-
-      // Aggregazione per cluster: ogni tratta contribuisce al SUO cluster reale
-      if (cl && stato !== 'NO COMPETENZA') {
-        if (!clusterAggMap[cl]) { clusterAggMap[cl] = {}; clusterTotMap[cl] = 0; clusterLottiMap[cl] = new Set(); }
-        clusterAggMap[cl][stato] = (clusterAggMap[cl][stato] || 0) + lungh;
-        clusterTotMap[cl] += lungh;
-        clusterLottiMap[cl].add(lotto);
-      } else if (cl) {
-        if (!clusterLottiMap[cl]) clusterLottiMap[cl] = new Set();
-        clusterLottiMap[cl].add(lotto);
-      }
     }
-
-    CLUSTER_PERMESSI = {};
-    Object.keys(clusterAggMap).forEach(cl => {
-      CLUSTER_PERMESSI[cl] = {
-        statiMap: clusterAggMap[cl],
-        totale: clusterTotMap[cl],
-        lotti: [...clusterLottiMap[cl]],
-      };
-    });
-    console.log('[QTS] CLUSTER_PERMESSI costruito per cluster:', Object.keys(CLUSTER_PERMESSI), '| totali m:', Object.fromEntries(Object.entries(CLUSTER_PERMESSI).map(([k,v])=>[k,Math.round(v.totale)])));
 
     PERMESSI = {};
     Object.keys(aggMap).forEach(lotto => {
@@ -881,9 +800,6 @@ async function _loadCantieri() {
     // Aggrega per lotto: somma metri, stato = stato più indietro del lotto
     const STATO_RANK = { 'non-avviato':0, 'allestimento':1, 'sospeso':2, 'in-corso':3, 'completato':4 };
     const byLotto = {};
-    // Aggregazione scavi per cluster (diretta dal campo r.cluster del cantiere,
-    // ora popolato correttamente dal server via Riepilogo_progettazione.csv)
-    const clusterScaviMap = {};
     cantieri.forEach(r => {
       const lotto   = String(r.lotto   || '?');
       const cluster = String(r.cluster || '?').replace(/^[Cc]/, '');
@@ -904,15 +820,7 @@ async function _loadCantieri() {
       if (STATO_RANK[statoUI] < STATO_RANK[byLotto[lotto].stato]) {
         byLotto[lotto].stato = statoUI;
       }
-      if (cluster && cluster !== '?') {
-        if (!clusterScaviMap[cluster]) clusterScaviMap[cluster] = { metri: 0, scavati: 0, statoMetri: {}, imprese: new Set() };
-        clusterScaviMap[cluster].metri    += mTot;
-        clusterScaviMap[cluster].scavati  += r.metri_scavati || 0;
-        clusterScaviMap[cluster].statoMetri[statoUI] = (clusterScaviMap[cluster].statoMetri[statoUI] || 0) + mTot;
-        if (r.impresa) clusterScaviMap[cluster].imprese.add(r.impresa);
-      }
     });
-    window._CLUSTER_SCAVI = clusterScaviMap; // letto da _renderClusters
 
     // Lotti con cantiere attivo (almeno una tratta passata a stato cantiere)
     const lottiConCantiere = new Set(Object.keys(byLotto));
@@ -956,10 +864,6 @@ async function _loadCantieri() {
   }
 }
 
-const CLUSTER_COLOR = {
-  '1':'#0B3182','2':'#1F7A4E','3':'#6B3FA0',
-  '4':'#1A7A8A','5':'#C08A14','6':'#8A5A1A','7':'#C23B22'
-};
 const STATO_LABEL = {
   'non-avviato':'Non avviato', 'allestimento':'Allestimento',
   'in-corso':'In Corso', 'sospeso':'In Sospeso', 'completato':'Completato'
@@ -1113,7 +1017,7 @@ async function _loadAndRenderAll() {
 
 function _renderAll() {
   _renderPageSubtitle(); // aggiorna subito lo stato "caricamento…", indipendente dalle altre render
-  const steps = [_renderKpi, _renderBars, _renderClusters, _renderRadar,
+  const steps = [_renderKpi, _renderBars, _renderRadar,
                  _renderCantieriFilters, _renderCantieriTable, _renderRiepilogo, _renderImprese, _renderPageSubtitle];
   steps.forEach(fn => {
     try { fn(); } catch (e) { console.error('[QTS] render step fallito:', fn.name, e); }
@@ -1127,7 +1031,7 @@ function _renderAll() {
 async function _loadQgisGeojsonForMappa() {
   if (QGIS_GEOJSON_CACHE) return QGIS_GEOJSON_CACHE;
   try {
-    const res = await fetch('QGIS.geojson', { cache: 'no-cache', headers: { 'x-session-token': localStorage.getItem('_qts_session') || '' } });
+    const res = await fetch('QTS.geojson', { cache: 'no-cache', headers: { 'x-session-token': localStorage.getItem('_qts_session') || '' } });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     QGIS_GEOJSON_CACHE = await res.json();
   } catch (e) {
@@ -1646,7 +1550,7 @@ function _renderImprese() {
   });
 
   // Metri totali "reali" per impresa: come nella vista per-Lotto, si preferisce il
-  // totale da PERMESSI (Riepilogo_progettazione.csv, copre tutte le tratte autorizzate
+  // totale da PERMESSI (QTS.geojson, copre tutte le tratte autorizzate
   // del lotto) rispetto alla somma di metri_totali dai soli cantieri già sincronizzati
   // in Mongo, che può essere parziale. Fallback sul dato cantieri se il lotto non è in PERMESSI.
   let rows = Object.values(byImpresa).map(g => {
@@ -1806,131 +1710,6 @@ function makeSeg(pct, color, label, metriVal, isGrey) {
   return seg;
 }
 
-// ── CLUSTER BARS ─────────────────────────────────────────────────────────────
-function _renderClusters() {
-const clusterContainer = document.getElementById('clusterContainer');
-clusterContainer.innerHTML = '';
-const totalAll = Object.values(CLUSTER_PERMESSI).reduce((s, v) => s + v.totale, 0);
-document.getElementById('clusterStatus').innerHTML = `<span class="cc-num">${fmt(totalAll)}</span> m totali`;
-const scaviMap = window._CLUSTER_SCAVI || {};
-
-Object.keys(CLUSTER_PERMESSI).sort((a,b)=>+a-+b).forEach(cl => {
-  const cd = CLUSTER_PERMESSI[cl];
-  const tot = cd.totale;
-  const statiMap = cd.statiMap;
-  const gruppi = buildGruppiMapPermessi(statiMap);
-  const sc = scaviMap[cl] || { metri: 0, scavati: 0, statoMetri: {}, imprese: new Set() };
-  const haScavo = sc.metri > 0;
-  const pctScavo = haScavo ? Math.round(sc.scavati / sc.metri * 100) : 0;
-  // Imprese del cluster: derivate da TUTTI i lotti del cluster via IMPRESE_PER_LOTTO,
-  // non solo da r.impresa dei cantieri già censiti (che possono mancare per lotti non ancora avviati)
-  const impreseLottiCl = [...cd.lotti].sort(_lottoCompare)
-    .map(l => ({ lotto: l, impresa: IMPRESE_PER_LOTTO[l] || '?' }));
-  const lottiPerImpresa = {};
-  impreseLottiCl.forEach(x => {
-    (lottiPerImpresa[x.impresa] = lottiPerImpresa[x.impresa] || []).push(x.lotto);
-  });
-  const impreseCl = Object.keys(lottiPerImpresa).sort()
-    .map(imp => `${imp} (Lotto ${lottiPerImpresa[imp].join(', ')})`);
-
-  const group = document.createElement('div');
-  group.style.cssText = 'padding:8px 6px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;';
-  group.addEventListener('mouseenter', () => group.style.background = 'var(--surface2)');
-  group.addEventListener('mouseleave', () => group.style.background = '');
-  group.title = 'Clicca per il dettaglio';
-  group.addEventListener('click', () => openModalCluster(cl));
-
-  // ── Header: badge cluster + nome + imprese (piena larghezza, fuori dalle righe barre) ──
-  const header = document.createElement('div');
-  header.style.cssText = 'display:flex;flex-direction:column;gap:2px;margin-bottom:6px;';
-  header.innerHTML = `
-    <div style="display:flex;align-items:center;gap:6px">
-      <span style="background:${CLUSTER_COLOR[cl]||'#8A91B4'}20;color:${CLUSTER_COLOR[cl]||'#8A91B4'};border:1px solid ${CLUSTER_COLOR[cl]||'#8A91B4'}40;border-radius:4px;padding:1px 7px;font-size:12px;font-weight:700;font-family:var(--font-mono)">${cl}</span>
-      <span style="font-size:12px;font-weight:700;color:var(--text)">Cluster ${cl}</span>
-    </div>
-    ${impreseCl.length ? `<div style="display:flex;flex-wrap:wrap;gap:2px 10px">${impreseCl.map(x => `<span style="font-size:12px;color:var(--accent);font-weight:700;white-space:nowrap" title="${x}">${x}</span>`).join('')}</div>` : ''}`;
-  group.appendChild(header);
-
-  // ── Riga 1: PERMESSI ──
-  const permRow = document.createElement('div');
-  permRow.style.cssText = 'display:flex;align-items:center;gap:10px;margin-bottom:3px;';
-
-  const permTrack = document.createElement('div');
-  permTrack.className = 'bar-track';
-  permTrack.style.cssText = 'flex:none;width:100%;height:16px;';
-  ORDINE_WORKFLOW_PERMESSI.forEach(label => {
-    const g = STATI_GRUPPI_PERMESSI.find(x => x.label === label);
-    if (!g) return;
-    const m = gruppi[g.label] || 0;
-    if (m <= 0) return;
-    const pct = tot > 0 ? m / tot * 100 : 0;
-    permTrack.appendChild(makeSeg(pct, g.color, g.label, m, false));
-  });
-  const permCol = document.createElement('div');
-  permCol.style.cssText = 'flex:1;display:flex;flex-direction:column;gap:2px';
-  permCol.innerHTML = '<span style="font-size:12px;font-weight:700;color:var(--retelit-blue);text-transform:uppercase;letter-spacing:.06em">Permessi</span>';
-  permCol.appendChild(permTrack);
-  permRow.appendChild(permCol);
-
-  const ottenutoM = statiMap['OTTENUTO'] || 0;
-  const permPct = tot > 0 ? Math.round(ottenutoM / tot * 100) : 0;
-  const permPctEl = document.createElement('span');
-  permPctEl.style.cssText = 'font-size:12px;font-weight:700;font-family:var(--font-display);color:var(--retelit-blue);width:36px;text-align:right;flex-shrink:0;';
-  permPctEl.textContent = permPct + '%';
-  permRow.appendChild(permPctEl);
-
-  const permMEl = document.createElement('span');
-  permMEl.style.cssText = 'min-width:72px;text-align:right;font-size:12px;font-weight:700;font-family:Raleway,sans-serif;color:var(--text2);flex-shrink:0;letter-spacing:-.01em';
-  permMEl.textContent = fmt(tot) + ' m';
-  permRow.appendChild(permMEl);
-
-  group.appendChild(permRow);
-
-  // ── Riga 2: SCAVI ──
-  const scaviRow = document.createElement('div');
-  scaviRow.style.cssText = 'display:flex;align-items:center;gap:10px;';
-  if (!haScavo) scaviRow.style.opacity = '.4';
-
-  const scaviTrack = document.createElement('div');
-  scaviTrack.className = 'bar-track';
-  scaviTrack.style.cssText = 'flex:none;width:100%;';
-  const statoMetriCl = sc.statoMetri || {};
-  let trackedMetri = 0;
-  STATO_ORDER.forEach(stato => {
-    const m = statoMetriCl[stato] || 0;
-    if (m <= 0) return;
-    trackedMetri += m;
-    const pct = tot > 0 ? m / tot * 100 : 0;
-    scaviTrack.appendChild(makeSeg(pct, STATO_COLOR[stato], STATO_LABEL[stato], m, false));
-  });
-  const metriNonTracciati = Math.max(0, tot - trackedMetri);
-  if (metriNonTracciati > 0) {
-    const pctRimasto = tot > 0 ? metriNonTracciati / tot * 100 : 100;
-    scaviTrack.appendChild(makeSeg(pctRimasto, STATO_COLOR['non-avviato'], 'Non tracciato', metriNonTracciati, true));
-  }
-  const scaviCol = document.createElement('div');
-  scaviCol.style.cssText = 'flex:1;display:flex;flex-direction:column;gap:2px';
-  scaviCol.innerHTML = '<span style="font-size:12px;font-weight:700;color:var(--warn);text-transform:uppercase;letter-spacing:.06em">Scavi</span>';
-  scaviCol.appendChild(scaviTrack);
-  scaviRow.appendChild(scaviCol);
-
-  const scaviPctEl = document.createElement('span');
-  scaviPctEl.className = 'bar-pct';
-  scaviPctEl.style.color = STATO_COLOR['in-corso'];
-  scaviPctEl.textContent = haScavo ? pctScavo + '%' : '—';
-  scaviRow.appendChild(scaviPctEl);
-
-  const scaviMEl = document.createElement('span');
-  scaviMEl.style.cssText = 'min-width:72px;text-align:right;font-size:12px;font-family:Raleway,sans-serif;font-weight:700;color:var(--text2);flex-shrink:0;letter-spacing:-.01em';
-  scaviMEl.textContent = fmt(tot) + ' m';
-  scaviRow.appendChild(scaviMEl);
-
-  group.appendChild(scaviRow);
-  clusterContainer.appendChild(group);
-});
-}
-
-// ── BARRE PER LOTTO (doppia barra: permessi sopra · scavi sotto) ────────────
 function _renderBars() {
 const barContainer = document.getElementById('barContainer');
 barContainer.innerHTML = '';
@@ -2262,126 +2041,10 @@ function closeModalLotto(e) {
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     closeModalLotto();
-    closeModalCluster();
     closeModalStato();
   }
 });
 
-// ── MODAL CLUSTER ─────────────────────────────────────────────────────────────
-function openModalCluster(cl) {
-  const cd = CLUSTER_PERMESSI[cl] || { statiMap: {}, totale: 0, lotti: [] };
-  const totMetri  = cd.totale;
-  const ottenutoM = cd.statiMap['OTTENUTO'] || 0;
-  const pctTot    = totMetri > 0 ? (ottenutoM / totMetri * 100).toFixed(1) : '0.0';
-  const clCol     = CLUSTER_COLOR[cl] || '#8A91B4';
-  // Lotti che attraversano questo cluster (dalla lista corretta, non dal cluster prevalente)
-  const lottiCl = LOTTI.filter(r => cd.lotti.includes(r.id));
-
-  // Cantieri del cluster (calcolati qui per poterli usare anche nell'header stats)
-  const cantieriCl = CANTIERI_RAW.filter(r => String(r.cluster ?? '?').replace(/^[Cc]/,'') === String(cl));
-  const totMetriScaviCl = cantieriCl.reduce((s,r) => s + (r.metri_totali || 0), 0);
-  const totScavatiCl    = cantieriCl.reduce((s,r) => s + (r.metri_scavati || 0), 0);
-  const pctScaviCl      = totMetriScaviCl > 0 ? (totScavatiCl / totMetriScaviCl * 100).toFixed(1) : '0.0';
-  const cantieriAttiviCl = cantieriCl.filter(r => (STATO_MAP[r.stato_cantiere] || 'non-avviato') !== 'non-avviato').length;
-
-  document.getElementById('modalClusterTitle').innerHTML =
-    `<span style="background:${clCol}18;color:${clCol};border:1px solid ${clCol}40;border-radius:6px;padding:2px 10px;font-size:13px;font-weight:700;font-family:var(--font-mono);margin-right:10px">${cl}</span>Cluster ${cl}`;
-
-  // Header stats
-  const header = `
-    <div class="modal-stat-grid">
-      <div class="modal-stat">
-        <span class="modal-stat-lbl">Totale cluster</span>
-        <span class="modal-stat-val">${fmt(totMetri)} m</span>
-      </div>
-      <div class="modal-stat">
-        <span class="modal-stat-lbl">✓ Permessi ottenuti</span>
-        <span class="modal-stat-val" style="color:#1E9E6A">${fmt(ottenutoM)} m</span>
-      </div>
-      <div class="modal-stat">
-        <span class="modal-stat-lbl">Avanzamento permessi</span>
-        <span class="modal-stat-val" style="color:#1E9E6A">${pctTot}%</span>
-      </div>
-      <div class="modal-stat">
-        <span class="modal-stat-lbl">Avanzamento scavi</span>
-        <span class="modal-stat-val" style="color:#0B3182">${pctScaviCl}%</span>
-      </div>
-      <div class="modal-stat">
-        <span class="modal-stat-lbl">Lotti coinvolti</span>
-        <span class="modal-stat-val">${cd.lotti.length}</span>
-      </div>
-      <div class="modal-stat">
-        <span class="modal-stat-lbl">Cantieri attivi</span>
-        <span class="modal-stat-val">${cantieriAttiviCl} <span style="font-size:13px;font-weight:600;color:var(--muted)">/ ${cantieriCl.length}</span></span>
-      </div>
-    </div>`;
-
-  // Barre per stato permesso (aggregato cluster, da CLUSTER_PERMESSI — corretto per tratta)
-  const gruppi = buildGruppiMapPermessi(cd.statiMap);
-  let barreStato = `<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:10px">Distribuzione permessi per stato</div>`;
-  ORDINE_WORKFLOW_PERMESSI.forEach(label => {
-    const g = STATI_GRUPPI_PERMESSI.find(x => x.label === label);
-    if (!g) return;
-    const m = gruppi[g.label] || 0; if (!m) return;
-    const pct = totMetri > 0 ? m / totMetri * 100 : 0;
-    barreStato += `<div class="modal-bar-row">
-      <span class="modal-bar-label" style="color:${g.color};font-weight:700;display:flex;align-items:center;gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:${g.color};flex-shrink:0"></span>${g.label}</span>
-      <span style="flex:1"></span>
-      <span class="modal-bar-pct" style="position:static;color:${g.color};text-shadow:none;width:48px;text-align:right">${pct.toFixed(1)}%</span>
-      <span class="modal-bar-val">${fmt(m)} m</span>
-    </div>`;
-  });
-  barreStato += '</div>';
-
-  // Tabella lotti che attraversano il cluster (nota: un lotto può comparire in
-  // più cluster — qui mostriamo i suoi metri totali, non solo la quota in questo cluster)
-  let lottiHtml = `
-    <div style="flex:1.15;min-width:0">
-      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:12px">Lotti del Cluster</div>
-      <table style="width:100%;border-collapse:collapse;font-size:12px">
-        <thead>
-          <tr style="border-bottom:2px solid var(--border)">
-            <th style="text-align:left;padding:6px 8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Lotto</th>
-            <th style="text-align:left;padding:6px 8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Impresa</th>
-            <th style="text-align:right;padding:6px 8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Totale</th>
-            <th style="text-align:right;padding:6px 8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">% Permessi</th>
-            <th style="text-align:right;padding:6px 8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Metri scavati</th>
-            <th style="text-align:right;padding:6px 8px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)">Avanz.</th>
-          </tr>
-        </thead>
-        <tbody>`;
-  lottiCl.forEach(r => {
-    const col = STATO_COLOR[r.stato];
-    const mScav = r.scavati || 0;
-    const permLotto = PERMESSI[r.id];
-    const pctPerm = permLotto && permLotto.totale > 0 ? ((permLotto.statiMap['OTTENUTO']||0) / permLotto.totale * 100).toFixed(1) : '0.0';
-    lottiHtml += `<tr style="border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">
-      <td style="padding:8px;font-family:var(--font-mono);font-weight:700;font-size:13px;color:var(--accent);border-left:3px solid ${col}">${r.id}</td>
-      <td style="padding:8px;font-weight:700;color:var(--accent)">${IMPRESE_PER_LOTTO[r.id] || '?'}</td>
-      <td style="padding:8px;text-align:right;font-weight:700;font-family:var(--font-display)">${fmt(r.metri)} m</td>
-      <td style="padding:8px;text-align:right;font-weight:700;color:#1E9E6A">${pctPerm}%</td>
-      <td style="padding:8px;text-align:right;font-weight:700;font-family:var(--font-display);color:${col}">${mScav>0?fmt(mScav)+' m':'—'}</td>
-      <td style="padding:8px;text-align:right;font-weight:700;color:${col}">${r.pct}%</td>
-    </tr>`;
-  });
-  lottiHtml += '</tbody></table></div>';
-
-  const lottiPermessiRow = `<div style="display:flex;gap:24px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border);flex-wrap:wrap">${lottiHtml}${barreStato}</div>`;
-
-  // Cantieri del cluster (stessa tabella di "Tutti i Cantieri" / openModalStato)
-  const cantieriClHtml = `
-    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
-      <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:12px">Cantieri del cluster</div>
-      ${_cantieriTableHtml(cantieriCl)}
-    </div>`;
-
-  document.getElementById('modalClusterBody').innerHTML = header + lottiPermessiRow + cantieriClHtml;
-  document.getElementById('modalClusterOverlay').classList.add('open');
-}
-function closeModalCluster(e) {
-  if (e && e.target !== document.getElementById('modalClusterOverlay')) return;
-  document.getElementById('modalClusterOverlay').classList.remove('open');
-}
 </script>
 
 <!-- Modal Dettaglio Lotto -->
@@ -2392,17 +2055,6 @@ function closeModalCluster(e) {
       <button class="modal-close" onclick="closeModalLotto()">×</button>
     </div>
     <div id="modalLottoBody"></div>
-  </div>
-</div>
-
-<!-- Modal Dettaglio Cluster -->
-<div class="modal-overlay" id="modalClusterOverlay" onclick="closeModalCluster(event)">
-  <div class="modal" style="width:1420px;max-width:98vw">
-    <div class="modal-title">
-      <span id="modalClusterTitle">Cluster —</span>
-      <button class="modal-close" onclick="closeModalCluster()">×</button>
-    </div>
-    <div id="modalClusterBody"></div>
   </div>
 </div>
 
