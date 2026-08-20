@@ -1045,16 +1045,6 @@ window.loadXLSX = (function(){
     <div id="modalKpiBody"></div>
   </div>
 </div>
-<!-- Modal Storico -->
-<div class="modal-overlay" id="modalClusterOverlay" onclick="closeModalCluster(event)" role="dialog" aria-modal="true" aria-labelledby="modalClusterTitle">
-  <div class="modal" style="width:1140px;max-width:96vw">
-    <div class="modal-title">
-      <span id="modalClusterTitle">Cluster —</span>
-      <span class="modal-close" onclick="closeModalCluster()">×</span>
-    </div>
-    <div id="modalClusterBody"></div>
-  </div>
-</div>
   <div id="errorBox"></div>
 
   <div class="kpi-phase-wrapper">
@@ -1087,42 +1077,25 @@ window.loadXLSX = (function(){
     </div>
 
   </div>
-  <!-- Grafico Cluster -->
-  <div id="clusterSection">
+  <!-- Prev. Rilascio (indipendente da cluster — grafico "Avanzamento per Cluster" rimosso: nessuna fonte dati in QTS.geojson) -->
+  <div id="prevRilascioSection">
     <div class="card">
-      <div class="card-header">
-        <span class="card-title">Avanzamento per Cluster</span>
-        <span style="font-size:15px;font-weight:700;font-family:'Raleway',sans-serif;color:var(--text);letter-spacing:-0.01em" id="clusterStatus">—</span>
-      </div>
       <div class="card-body">
-        <div id="clusterBodyFlex" style="display:flex;flex-wrap:wrap;gap:0;align-items:stretch">
-          <div class="chart-wrap" id="clusterWrap" style="flex:1;min-width:260px"><div style="padding:16px;font-size:12px;color:var(--muted)">Caricamento Riepilogo_progettazione.csv...</div></div>
-          <div id="prevRilascioCol" style="display:none;flex-shrink:0;border-left:2px solid var(--border2);margin-left:16px;padding-left:16px;flex-direction:column;gap:6px;justify-content:center;min-width:110px">
-            <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;color:var(--text2);margin-bottom:2px;text-align:center;padding:4px 8px;background:var(--surface2);border-radius:6px;border:1px solid var(--border2)">📅 Prev. Rilascio</div>
-            <div id="prevOkCell" onclick="openModalPrev('ok')" style="cursor:pointer;background:#1E9E6A18;border:1.5px solid #1E9E6A66;border-radius:8px;padding:8px 14px;text-align:center;transition:background 0.15s" onmouseover="this.style.background='#1E9E6A30'" onmouseout="this.style.background='#1E9E6A18'">
-              <div id="prevOkVal" style="font-size:24px;font-weight:800;font-family:'Raleway',sans-serif;color:#1E9E6A;line-height:1;letter-spacing:-0.02em">0</div>
-              <div style="font-size:9px;color:#1E9E6A;font-weight:600;margin-top:3px">✓ In linea</div>
-            </div>
-            <div id="prevWarnCell" onclick="openModalPrev('warn')" style="cursor:pointer;background:#D08A1A18;border:1.5px solid #D08A1A66;border-radius:8px;padding:8px 14px;text-align:center;transition:background 0.15s" onmouseover="this.style.background='#D08A1A30'" onmouseout="this.style.background='#D08A1A18'">
-              <div id="prevWarnVal" style="font-size:24px;font-weight:800;font-family:'Raleway',sans-serif;color:#D08A1A;line-height:1;letter-spacing:-0.02em">0</div>
-              <div style="font-size:9px;color:#D08A1A;font-weight:600;margin-top:3px">⚠ In scadenza</div>
-            </div>
-            <div id="prevLateCell" onclick="openModalPrev('late')" style="cursor:pointer;background:#C0392B18;border:1.5px solid #C0392B66;border-radius:8px;padding:8px 14px;text-align:center;transition:background 0.15s" onmouseover="this.style.background='#C0392B30'" onmouseout="this.style.background='#C0392B18'">
-              <div id="prevLateVal" style="font-size:24px;font-weight:800;font-family:'Raleway',sans-serif;color:#C0392B;line-height:1;letter-spacing:-0.02em">0</div>
-              <div style="font-size:9px;color:#C0392B;font-weight:600;margin-top:3px">✕ Scadute</div>
-            </div>
+        <div id="prevRilascioCol" style="display:none;flex-direction:row;flex-wrap:wrap;gap:12px;justify-content:center;align-items:center">
+          <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;color:var(--text2);margin-right:4px;text-align:center;padding:4px 8px;background:var(--surface2);border-radius:6px;border:1px solid var(--border2)">📅 Prev. Rilascio</div>
+          <div id="prevOkCell" onclick="openModalPrev('ok')" style="cursor:pointer;background:#1E9E6A18;border:1.5px solid #1E9E6A66;border-radius:8px;padding:8px 14px;text-align:center;transition:background 0.15s" onmouseover="this.style.background='#1E9E6A30'" onmouseout="this.style.background='#1E9E6A18'">
+            <div id="prevOkVal" style="font-size:24px;font-weight:800;font-family:'Raleway',sans-serif;color:#1E9E6A;line-height:1;letter-spacing:-0.02em">0</div>
+            <div style="font-size:9px;color:#1E9E6A;font-weight:600;margin-top:3px">✓ In linea</div>
           </div>
-
+          <div id="prevWarnCell" onclick="openModalPrev('warn')" style="cursor:pointer;background:#D08A1A18;border:1.5px solid #D08A1A66;border-radius:8px;padding:8px 14px;text-align:center;transition:background 0.15s" onmouseover="this.style.background='#D08A1A30'" onmouseout="this.style.background='#D08A1A18'">
+            <div id="prevWarnVal" style="font-size:24px;font-weight:800;font-family:'Raleway',sans-serif;color:#D08A1A;line-height:1;letter-spacing:-0.02em">0</div>
+            <div style="font-size:9px;color:#D08A1A;font-weight:600;margin-top:3px">⚠ In scadenza</div>
+          </div>
+          <div id="prevLateCell" onclick="openModalPrev('late')" style="cursor:pointer;background:#C0392B18;border:1.5px solid #C0392B66;border-radius:8px;padding:8px 14px;text-align:center;transition:background 0.15s" onmouseover="this.style.background='#C0392B30'" onmouseout="this.style.background='#C0392B18'">
+            <div id="prevLateVal" style="font-size:24px;font-weight:800;font-family:'Raleway',sans-serif;color:#C0392B;line-height:1;letter-spacing:-0.02em">0</div>
+            <div style="font-size:9px;color:#C0392B;font-weight:600;margin-top:3px">✕ Scadute</div>
+          </div>
         </div>
-      </div>
-      <div class="legend">
-        <div class="legend-item"><div class="legend-dot" style="background:#1E9E6A"></div>Ottenuto</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#436A93"></div>Protocollato Integrazione</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#C0392B"></div>Necessaria Integrazione</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#41BBD9"></div>Inviato / Protocollato</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#1A7D99"></div>Invio Preliminare</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#D08A1A"></div>In Verifica / In Firma</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#6B7685"></div>In Attesa / Redazione</div>
       </div>
     </div>
   </div>
@@ -1546,7 +1519,7 @@ window.loadXLSX = (function(){
     try {
       var qs = '?t=' + Date.now();
       var geojson = await Promise.race([
-        fetch('SED_classificato.geojson' + qs, { headers: { 'x-session-token': _sessionToken() } })
+        fetch('SED_QTS.geojson' + qs, { headers: { 'x-session-token': _sessionToken() } })
           .then(function(r){ return r.ok ? r.json() : Promise.reject(new Error('render-fail ' + r.status)); }),
         _timeout(30000, 'Il server non risponde. Attendi qualche secondo e ricarica la pagina.')
       ]);
@@ -1636,9 +1609,9 @@ window.loadXLSX = (function(){
       var badge = document.getElementById('sedBadge');
       if (badge) { badge.textContent = '⚠ Errore caricamento'; badge.className = 'badge err'; }
       var kpi = document.getElementById('sedKpiRow');
-      if (kpi) kpi.innerHTML = '<div style="padding:12px 4px;color:#C0392B;font-size:12px;font-weight:600">⚠️ Impossibile caricare SED_classificato.geojson — verifica che il file sia presente nel repo GitHub nella stessa cartella di index.html.<br><span style="font-size:10px;color:var(--muted);font-weight:400">Errore: '+err.message+'</span></div>';
+      if (kpi) kpi.innerHTML = '<div style="padding:12px 4px;color:#C0392B;font-size:12px;font-weight:600">⚠️ Impossibile caricare SED_QTS.geojson — verifica che il file sia presente nel repo GitHub nella stessa cartella di index.html.<br><span style="font-size:10px;color:var(--muted);font-weight:400">Errore: '+err.message+'</span></div>';
       var tbody = document.getElementById('sedTbody');
-      if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:#C0392B;font-size:12px">⚠️ SED_classificato.geojson non trovato — errore: '+err.message+'</td></tr>';
+      if (tbody) tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:#C0392B;font-size:12px">⚠️ SED_QTS.geojson non trovato — errore: '+err.message+'</td></tr>';
     }
   }
 
@@ -2277,17 +2250,18 @@ function renderBarre(gruppiMap, totale, tooltip, onHover) {
   });
   return html;
 }
-// dati.csv non più necessario — loadData legge da Riepilogo_progettazione.csv
-const RIEPILOGO_URL = 'Riepilogo_progettazione.csv';
+// Riepilogo_progettazione.csv eliminato (ridondante, derivato 1:1 da QTS.geojson) —
+// loadData()/loadCluster() leggono direttamente QTS.geojson.
+const QGIS_URL = 'QTS.geojson';
 const MASTER_URL = 'Master.csv';
 
-let _riepilogoCsvText = null;
-// Flag anti-loop: evita che due chiamate concorrenti a fetchRiepilogoCSV(forceFresh) rifacciano il fetch
+let _qtsGeojsonCache = null;
+// Flag anti-loop: evita che due chiamate concorrenti a fetchQtsGeojson(forceFresh) rifacciano il fetch
 let _swrUpdating = false;
 
 // URL statico GitHub: assoluto, bypassa il rewrite di api-config.js verso Render.
 // Usato solo per file NON in SENSITIVE_FILES (es. solleciti.csv), dove il push
-// GitHub è ancora attivo. Master.csv/Riepilogo_progettazione.csv/SED_classificato.geojson
+// GitHub è ancora attivo. Master.csv/QTS.geojson/SED_QTS.geojson
 // sono SENSITIVE_FILES: il backend salta sempre il push (vedi server.py), quindi per
 // quei file si legge sempre e solo da Render/Mongo.
 function _staticFileUrl(rel) {
@@ -2300,24 +2274,24 @@ function _timeout(ms, msg) {
   );
 }
 
-async function fetchRiepilogoCSV(forceFresh = false) {
+async function fetchQtsGeojson(forceFresh = false) {
   // Cache in memoria (stessa sessione pagina): evita doppio fetch quando
   // loadData() e loadCluster() partono in parallelo allo stesso load.
   // Se _swrUpdating è attivo, usa sempre la cache anche se forceFresh=true.
-  if (_riepilogoCsvText && (!forceFresh || _swrUpdating)) return _riepilogoCsvText;
+  if (_qtsGeojsonCache && (!forceFresh || _swrUpdating)) return _qtsGeojsonCache;
 
-  // Riepilogo_progettazione.csv è in SENSITIVE_FILES lato backend:
+  // QTS.geojson è in SENSITIVE_FILES lato backend:
   // _push_to_github lo salta sempre (vedi server.py), quindi il file su
   // GitHub è permanentemente stantio. Lettura diretta da Render/Mongo.
   const qs = '?t=' + Date.now();
   try {
-    const text = await Promise.race([
-      fetch(RIEPILOGO_URL + qs, { headers: { 'x-session-token': _sessionToken() } })
-        .then(r => r.ok ? r.text() : Promise.reject(new Error('render-fail'))),
+    const geojson = await Promise.race([
+      fetch(QGIS_URL + qs, { headers: { 'x-session-token': _sessionToken() } })
+        .then(r => r.ok ? r.json() : Promise.reject(new Error('render-fail'))),
       _timeout(30000, 'Il server non risponde. Attendi qualche secondo e ricarica la pagina.')
     ]);
-    _riepilogoCsvText = text;
-    return _riepilogoCsvText;
+    _qtsGeojsonCache = geojson;
+    return _qtsGeojsonCache;
   } catch(e) {
     throw new Error(e.message || 'Il server non risponde. Attendi qualche secondo e ricarica la pagina.');
   }
@@ -2844,166 +2818,53 @@ const IMPRESE_PER_LOTTO = {
   '8': 'Sielte',
 };
 
-async function loadCluster() {
+
+async function loadGeoAux() {
   try {
     // Usa la cache condivisa — se loadData() ha già scaricato il file, non rifetch
-    const text = await fetchRiepilogoCSV();
-    const lines = text.trim().split('\n').map(l => l.replace(/\r/,''));
+    const geojson = await fetchQtsGeojson();
+    const feats = geojson.features || [];
 
-    // Rileva separatore automaticamente dalla prima riga
-    const firstLine = lines[0];
-    const sep = firstLine.includes('\t') ? '\t' : (firstLine.includes(';') ? ';' : ',');
-
-    // Split gestendo virgolette (es. "3" per cluster)
-    const splitLine = (line) => {
-      const result = [];
-      let cur = '', inQ = false;
-      for (const ch of line) {
-        if (ch === '"') { inQ = !inQ; }
-        else if (ch === sep && !inQ) { result.push(cur.trim()); cur = ''; }
-        else { cur += ch; }
-      }
-      result.push(cur.trim());
-      return result;
-    };
-
-    const headers = splitLine(lines[0]);
-
-    const findCol = (...names) => {
-      for (const name of names) {
-        const idx = headers.findIndex(h => h.trim().toUpperCase() === name.toUpperCase());
-        if (idx !== -1) return idx;
-      }
-      return -1;
-    };
-
-    const iC    = findCol('CLUSTER');
-    const iL    = findCol('LUNGHEZZA', 'LENGTH');
-    const iS    = findCol('STATO_AUTORIZZAZIONE', 'STATO');
-    const iCOM  = findCol('COMUNE');
-    const iLOT  = findCol('LOTTO');
-    const iPRAT = findCol('PRATICA');
-    const iENTE = findCol('ENTE');
-    const iTRAT = findCol('TRATTA_ID');
-
-    if (iC === -1 || iL === -1) {
-      throw new Error(`Colonne non trovate. Headers: ${headers.join(', ')}`);
-    }
-
-    const clMap = {};
-    const clTot = {};
     const comuniKm = {};
     const comuniKmPerLotto = {};
-    const trattaLottoMap = {};       // TRATTA_ID → lotto
-    const trattaComuneMap = {};       // TRATTA_ID → comune
-    const clusterTrattaMap = {};     // CLUSTER → Set<TRATTA_ID>
+    const trattaLottoMap = {};   // TRATTA_ID → lotto
+    const trattaComuneMap = {};  // TRATTA_ID → comune
 
-    for (let i = 1; i < lines.length; i++) {
-      const cols = splitLine(lines[i]);
+    feats.forEach(f => {
+      const props = f.properties || {};
+      const tratta = (props.TRATTA_ID || '').toString().trim();
+      const lottoRaw = (props.LOTTO || '').toString().trim();
+      const comune = (props.COMUNE || '').toString().trim();
+      const stato = (props.STATO_AUTORIZZAZIONE || props.STATO_LEGENDA || '').toString().trim() || 'IN ATTESA';
+      const lungh = Number(props.LUNGHEZZA) || 0;
 
-      // Mappature TRATTA_ID → lotto/comune: indipendenti dalle statistiche cluster,
-      // vanno popolate per OGNI riga con TRATTA_ID valido, anche se CLUSTER o LUNGHEZZA
-      // sono vuoti/zero (altrimenti tratte con questi campi mancanti restano senza comune —
-      // causa bug Lotto 8: righe scartate dai controlli sotto prima di arrivare qui).
-      if (iTRAT !== -1) {
-        const tratta = cols[iTRAT]?.trim().replace(/"/g,'');
-        if (tratta) {
-          if (iLOT !== -1) {
-            const lottoRaw = cols[iLOT]?.trim().replace(/"/g,'');
-            // normalizzato come r.lotto (riga ~4117): stesso formato atteso da IMPRESE_PER_LOTTO
-            const lotto = lottoRaw.replace(/^Lotto\s*/i,'').trim().toUpperCase();
-            if (lotto) trattaLottoMap[tratta] = lotto;
-          }
-          if (iCOM !== -1) {
-            const comune = cols[iCOM]?.trim().replace(/"/g,'');
-            if (comune) trattaComuneMap[tratta] = comune;
-          }
+      // Mappature TRATTA_ID → lotto/comune: indipendenti dalle statistiche, vanno
+      // popolate per OGNI feature con TRATTA_ID valido, anche se LUNGHEZZA è zero
+      // (altrimenti tratte con questi campi mancanti restano senza comune).
+      if (tratta) {
+        if (lottoRaw) {
+          // normalizzato come r.lotto: stesso formato atteso da IMPRESE_PER_LOTTO
+          const lotto = lottoRaw.replace(/^Lotto\s*/i,'').trim().toUpperCase();
+          if (lotto) trattaLottoMap[tratta] = lotto;
         }
+        if (comune) trattaComuneMap[tratta] = comune;
       }
 
-      const cl = cols[iC]?.trim().replace(/"/g,'');
-      if (!cl || cl === '') continue;
-      const stato = (iS !== -1 ? cols[iS]?.trim() : '') || 'IN ATTESA';
-      const lunghRaw = (cols[iL]||'0').trim();
-      let lungh = 0;
-      if (lunghRaw.includes(',') && !lunghRaw.includes('.')) {
-        lungh = parseFloat(lunghRaw.replace(',','.')) || 0;
-      } else if (lunghRaw.includes(',')) {
-        lungh = parseFloat(lunghRaw.replace(/\./g,'').replace(',','.')) || 0;
-      } else {
-        lungh = parseFloat(lunghRaw) || 0;
+      if (lungh <= 0) return;
+      if (comune && lottoRaw && stato !== 'NO COMPETENZA') {
+        comuniKm[comune] = (comuniKm[comune] || 0) + lungh;
+        if (!comuniKmPerLotto[lottoRaw]) comuniKmPerLotto[lottoRaw] = {};
+        comuniKmPerLotto[lottoRaw][comune] = (comuniKmPerLotto[lottoRaw][comune] || 0) + lungh;
       }
-      if (lungh <= 0) continue;
-      if (!clMap[cl]) { clMap[cl] = {}; clTot[cl] = 0; }
-      if (stato !== 'NO COMPETENZA') {
-        clMap[cl][stato] = (clMap[cl][stato] || 0) + lungh;
-        clTot[cl] += lungh;
-      }
-
-      if (iCOM !== -1 && iLOT !== -1 && stato !== 'NO COMPETENZA') {
-        const comune = cols[iCOM]?.trim().replace(/"/g,'');
-        const lotto  = cols[iLOT]?.trim().replace(/"/g,'');
-        if (comune) {
-          comuniKm[comune] = (comuniKm[comune] || 0) + lungh;
-          if (lotto) {
-            if (!comuniKmPerLotto[lotto]) comuniKmPerLotto[lotto] = {};
-            comuniKmPerLotto[lotto][comune] = (comuniKmPerLotto[lotto][comune] || 0) + lungh;
-          }
-        }
-      }
-
-      // Mappa cluster → set tratte
-      if (iTRAT !== -1) {
-        const tratta = cols[iTRAT]?.trim().replace(/"/g,'');
-        if (tratta && cl) {
-          if (!clusterTrattaMap[cl]) clusterTrattaMap[cl] = new Set();
-          clusterTrattaMap[cl].add(tratta);
-        }
-      }
-    }
+    });
 
     window._comuniKm = comuniKm;
     window._comuniKmPerLotto = comuniKmPerLotto;
     window._trattaLottoMap = trattaLottoMap;
     window._trattaComuneMap = trattaComuneMap;
-    window._clusterTrattaMap = {};
-    Object.entries(clusterTrattaMap).forEach(([cl, set]) => {
-      window._clusterTrattaMap[cl] = [...set];
-    });
-
-    if (Object.keys(clMap).length === 0) throw new Error('Nessun cluster trovato nel CSV');
-
-    renderCluster(clMap, clTot);
-    document.getElementById('clusterStatus').textContent = fmt(Object.values(clTot).reduce((a,b)=>a+b,0)) + ' m totali';
   } catch(e) {
-    document.getElementById('clusterWrap').innerHTML = `<div style="padding:16px;font-size:12px;color:#C0392B">⚠ ${e.message}</div>`;
-    document.getElementById('clusterStatus').textContent = 'Errore caricamento';
+    console.warn('loadGeoAux:', e.message);
   }
-}
-
-function renderCluster(clMap, clTot) {
-  const wrap = document.getElementById('clusterWrap');
-  wrap.innerHTML = '';
-  const tooltip = document.getElementById('tooltip');
-  const clusters = Object.keys(clMap).sort((a,b) => +a - +b);
-  clusters.forEach(cl => {
-    const tot = clTot[cl];
-    const ottenutoPct = tot > 0 ? (clMap[cl]['OTTENUTO'] || 0) / tot * 100 : 0;
-    const pctLabel = ottenutoPct > 0 ? ottenutoPct.toFixed(0) + '%' : '';
-    const gruppi = buildGruppiMap(clMap[cl]);
-    const segsHtml = renderBarre(gruppi, tot, tooltip);
-    const row = document.createElement('div');
-    row.className = 'bar-row';
-    row.innerHTML = `<span class="bar-lotto">${cl}</span><div class="bar-track">${segsHtml}</div><span class="bar-pct">${pctLabel}</span><span class="bar-val" style="min-width:72px;text-align:right;font-size:12px;color:var(--text2);font-family:'Raleway',sans-serif;flex-shrink:0;font-weight:700;letter-spacing:-0.01em">${fmt(tot)} m</span>`;
-    row.style.cursor = 'pointer';
-
-    row.addEventListener('click', () => openModalCluster(cl, clMap[cl], clTot[cl]));
-    row.querySelectorAll('.bar-seg').forEach(seg => {
-      seg.addEventListener('mousemove', e => { _showBarTip(tooltip, seg, e); });
-      seg.addEventListener('mouseleave', () => { tooltip.style.opacity = '0'; });
-    });
-    wrap.appendChild(row);
-  });
 }
 
 function setLoading(p) { document.getElementById('loadingBar').style.width = p+'%'; }
@@ -3150,7 +3011,6 @@ function openModal(lotto, statiMetri, totale) {
   setTimeout(_colLottoRefresh, 0);
 }
 
-// ── FOCUS TRAP utility ─────────────────────────────────────────────────────
 (function() {
   const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
   let _lastFocus = null;    // elemento che aveva il focus prima dell'apertura
@@ -3202,114 +3062,11 @@ function closeModal(e) {
 }
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
-    ['modalOverlay','modalGruppoOverlay','modalClusterOverlay',
+    ['modalOverlay','modalGruppoOverlay',
      'modalKpiOverlay','helpOverlay']
       .forEach(id => { const el = document.getElementById(id); if (el && el.classList.contains('open')) window._modalClose(id); });
   }
 });
-
-
-function closeModalCluster(e) {
-  if (e && e.target !== document.getElementById('modalClusterOverlay')) return;
-  window._modalClose('modalClusterOverlay');
-}
-
-function openModalCluster(cl, statiMap, totale) {
-  document.getElementById('modalClusterTitle').textContent = 'Cluster ' + cl + ' — Dettaglio';
-  const body = document.getElementById('modalClusterBody');
-
-  const ottenuto = statiMap['OTTENUTO'] || 0;
-  const pctOtt   = totale > 0 ? (ottenuto / totale * 100).toFixed(1) : '0.0';
-
-  // usa STATI_COLORI_MAP, parseDateIT, fmtDateIT globali
-
-  // Pratiche associate alle tratte di questo cluster
-  const clPrats = [];
-  if (window._clusterTrattaMap && window._masterByTratta) {
-    const seen = new Set();
-    (window._clusterTrattaMap[cl] || []).forEach(tratta => {
-      (window._masterByTratta[tratta] || []).forEach(r => {
-        if (r.stato === 'NO COMPETENZA') return;
-        if (!seen.has(r.codice)) {
-          seen.add(r.codice);
-          clPrats.push({...r, comuni: new Set(r.comune ? [r.comune] : [])});
-        } else {
-          const existing = clPrats.find(p => p.codice === r.codice);
-          if (existing) {
-            existing.metri += r.metri;
-            if (r.comune) existing.comuni.add(r.comune);
-          }
-        }
-      });
-    });
-    clPrats.forEach(p => { p.comuni = [...p.comuni].sort(); });
-    clPrats.sort((a,b) => { const da=parseDateIT(a.dum),db=parseDateIT(b.dum); if(da&&db) return db-da; return da?-1:db?1:a.codice.localeCompare(b.codice); });
-  }
-
-  // Inizializza sistema colonne per cluster modal
-  window._clModalAllPrats = clPrats;
-  _colReset('cl');
-
-  // Pannello pratiche — contenitore dinamico
-  let pratHtml = '';
-  if (clPrats.length > 0) {
-    pratHtml = `
-      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
-        <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);font-weight:600;margin-bottom:10px">
-          Dettaglio pratiche (${clPrats.filter(p=>p.codice.startsWith('AUT/')).length} AUT${clPrats.filter(p=>!p.codice.startsWith('AUT/')).length ? ' · ' + clPrats.filter(p=>!p.codice.startsWith('AUT/')).length + ' NO/ORD' : ''})
-        </div>
-        <div id="_clColBody" style="overflow-x:auto"></div>
-      </div>`;
-  }
-
-  // Barre stati (full width, sopra le pratiche)
-  let barreHtml = '';
-  STATI_GRUPPI.forEach(g => {
-    const m = g.stati.reduce((s,st) => s+(statiMap[st]||0), 0);
-    if (!m) return;
-    const pct = totale > 0 ? m/totale*100 : 0;
-    const nPG = clPrats.filter(p => g.stati.includes(p.stato)).length;
-    const inside = [pct.toFixed(1)+'%', nPG>0?'('+nPG+')':''].filter(Boolean).join(' ');
-    const pctSpanStyle = ` style="left:50%;transform:translate(-50%,-50%)"`;
-    barreHtml += `<div class="modal-bar-row">
-      <span class="modal-bar-label">${g.label}</span>
-      <div class="modal-bar-track-wrap">
-        <div class="modal-bar-track">
-          <div class="modal-bar-fill" style="width:${pct}%;background:${g.color}"></div>
-        </div>
-        <span class="modal-bar-pct"${pctSpanStyle}>${inside}</span>
-      </div>
-      <span class="modal-bar-val" style="color:var(--text);font-family:'Raleway',sans-serif;font-size:14px;font-weight:700;letter-spacing:-0.01em">${fmt(m)} m</span>
-    </div>`;
-  });
-
-  body.innerHTML = `
-    <div style="display:flex;gap:24px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border);align-items:flex-end;flex-wrap:wrap">
-      <div>
-        <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted)">Totale Cluster ${cl}</div>
-        <div style="font-size:24px;font-weight:700;font-family:'Raleway',sans-serif;letter-spacing:-0.02em">${fmt(totale)} m</div>
-      </div>
-      <div>
-        <div style="font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted)">🏆 Autorizzati</div>
-        <div style="font-size:24px;font-weight:700;font-family:'Raleway',sans-serif;letter-spacing:-0.02em;color:#1E9E6A">${fmt(ottenuto)} m <span style="font-size:16px">${pctOtt}%</span></div>
-      </div>
-      ${clPrats.length > 0 ? `<div style="margin-left:auto">
-        <button id="btnDlCluster" style="font-size:11px;padding:6px 14px;border-radius:6px;background:#1d5c3a;color:white;border:1px solid #1E9E6A55;cursor:pointer;font-weight:500">📥 Scarica Excel</button>
-      </div>` : ''}
-    </div>
-    ${barreHtml}
-    ${pratHtml}`;
-
-  document.getElementById('modalClusterOverlay').classList.add('open');
-  window._modalOpen && window._modalOpen('modalClusterOverlay');
-  // Popola la tabella pratiche con sort/filter colonne
-  if (clPrats.length > 0) setTimeout(_colClRefresh, 0);
-
-  const btnDlCl = document.getElementById('btnDlCluster');
-  if (btnDlCl) {
-    btnDlCl.onclick = () => exportXlsx(clPrats, 'QTS_Cluster' + cl + '_pratiche');
-  }
-}
 
 function closeModalGruppo(e) {
   if (e && e.target !== document.getElementById('modalGruppoOverlay')) return;
@@ -3396,44 +3153,25 @@ async function loadData(saveSnapshot = false) {
   document.getElementById('errorBox').style.display = 'none';
   try {
     setLoading(40);
-    const text = await fetchRiepilogoCSV(true); // forceFresh=true: loadData guida il refresh
+    const geojson = await fetchQtsGeojson(true); // forceFresh=true: loadData guida il refresh
     setLoading(70);
-    // Aggrega da Riepilogo_progettazione.csv (stessa fonte dei cluster → totali coerenti)
-    const lines = text.trim().split('\n').map(l => l.replace(/\r/,''));
-    const sep = lines[0].includes('\t') ? '\t' : (lines[0].includes(';') ? ';' : ',');
-    const splitLine = (line) => {
-      const res = []; let cur = '', inQ = false;
-      for (const ch of line) {
-        if (ch === '"') { inQ = !inQ; }
-        else if (ch === sep && !inQ) { res.push(cur.trim()); cur = ''; }
-        else { cur += ch; }
-      }
-      res.push(cur.trim()); return res;
-    };
-    const headers = splitLine(lines[0]);
-    const findC = (...names) => { for(const n of names){ const i=headers.findIndex(h=>h.trim().toUpperCase()===n.toUpperCase()); if(i>=0) return i; } return -1; };
-    const iL   = findC('LOTTO');
-    const iS   = findC('STATO_AUTORIZZAZIONE','STATO_LEGENDA');
-    const iLun = findC('LUNGHEZZA','LENGTH');
+    // Aggrega da QTS.geojson (stessa fonte di loadCluster → totali coerenti)
+    const feats = geojson.features || [];
 
     // Aggrega per lotto+stato
     const aggMap = {};  // { lotto: { stato: metri } }
     const totMap = {};  // { lotto: totale }
-    for (let i=1; i<lines.length; i++) {
-      const cols = splitLine(lines[i]);
-      const lotto = cols[iL]?.trim().replace(/"/g,'');
-      if (!lotto) continue;
-      const stato = (iS>=0 ? cols[iS]?.trim() : '') || 'IN ATTESA';
-      const lunghRaw = (cols[iLun]||'0').trim();
-      let lungh = 0;
-      if (lunghRaw.includes(',') && !lunghRaw.includes('.')) lungh = parseFloat(lunghRaw.replace(',','.')) || 0;
-      else if (lunghRaw.includes(',')) lungh = parseFloat(lunghRaw.replace(/\./g,'').replace(',','.')) || 0;
-      else lungh = parseFloat(lunghRaw) || 0;
-      if (lungh <= 0) continue;
+    feats.forEach(f => {
+      const props = f.properties || {};
+      const lotto = (props.LOTTO || '').toString().trim();
+      if (!lotto) return;
+      const stato = (props.STATO_AUTORIZZAZIONE || props.STATO_LEGENDA || '').toString().trim() || 'IN ATTESA';
+      const lungh = Number(props.LUNGHEZZA) || 0;
+      if (lungh <= 0) return;
       if (!aggMap[lotto]) { aggMap[lotto] = {}; totMap[lotto] = 0; }
       aggMap[lotto][stato] = (aggMap[lotto][stato] || 0) + lungh;
       totMap[lotto] += lungh;
-    }
+    });
 
     // Converti in formato atteso da renderDashboard
     const data = [];
@@ -3464,7 +3202,7 @@ async function loadData(saveSnapshot = false) {
 }
 
 function getComuniHtml(lotto, maxN = 3) {
-  // Usa dati da Riepilogo_progettazione.csv se disponibili, altrimenti fallback su COMUNI_PER_LOTTO
+  // Usa dati da QTS.geojson se disponibili, altrimenti fallback su COMUNI_PER_LOTTO
   const kmMap = (window._comuniKmPerLotto || {})[lotto];
   if (kmMap && Object.keys(kmMap).length > 0) {
     const sorted = Object.entries(kmMap).sort((a,b) => b[1]-a[1]).slice(0, maxN);
@@ -4059,8 +3797,8 @@ function _processMasterText(text) {
       const dr     = iDR  !== -1 ? (cols[iDR]?.trim() || '')  : '';
       const dum    = iDUM !== -1 ? (cols[iDUM]?.trim() || '') : '';
       const src    = iSrc !== -1 ? (cols[iSrc]?.trim() || '') : '';
-      // Master.csv non ha una colonna COMUNE: il dato arriva da Riepilogo_progettazione.csv,
-      // mappato per TRATTA_ID (window._trattaComuneMap, popolato da fetchRiepilogoCSV).
+      // Master.csv non ha una colonna COMUNE: il dato arriva da QTS.geojson,
+      // mappato per TRATTA_ID (window._trattaComuneMap, popolato da fetchQtsGeojson/loadCluster).
       // iComM resta come fallback nel caso in futuro la colonna venga aggiunta al Master.
       const comune = (window._trattaComuneMap && window._trattaComuneMap[tratta])
                    || (iComM !== -1 ? (cols[iComM]?.trim() || '') : '');
@@ -4672,14 +4410,13 @@ function updatePrevRilascio() {
     col.style.display = 'none'; return;
   }
   col.style.display = 'flex';
-  if (typeof adjustClusterMobile === 'function') adjustClusterMobile();
   document.getElementById('prevOkVal').textContent   = okPrats.length;
   document.getElementById('prevWarnVal').textContent = warnPrats.length;
   document.getElementById('prevLateVal').textContent = latePrats.length;
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Master.csv non contiene la colonna COMUNE: il dato arriva da Riepilogo_progettazione.csv
+// Master.csv non contiene la colonna COMUNE: il dato arriva da QTS.geojson
 // (window._trattaComuneMap, per TRATTA_ID), caricato da loadData() DOPO loadMaster() (che deve
 // girare prima per _trattaLottoMap, v. sopra). Quando le pratiche vengono costruite in
 // _processMasterText il comune è quindi ancora vuoto: questa funzione lo ripopola a posteriori
@@ -4709,8 +4446,8 @@ function _backfillComuni() {
 }
 
 window.addEventListener('load', () => {
-  // loadData e loadCluster partono in parallelo.
-  // loadCluster usa la cache in memoria se loadData ha già scaricato il CSV;
+  // loadData e loadGeoAux partono in parallelo.
+  // loadGeoAux usa la cache in memoria se loadData ha già scaricato il file;
   // altrimenti fa fetch autonomamente (stesso URL, stesso TTL sessionStorage).
   // loadMaster prima di loadData: _trattaLottoMap deve essere pronto
   // prima che il CSV venga parsificato (evita race condition sul lotto)
@@ -4719,7 +4456,7 @@ window.addEventListener('load', () => {
     .finally(() => {
       loadData().catch(() => {}).finally(() => { _backfillComuni(); setTimeout(updatePrevRilascio, 600); });
     });
-  loadCluster().catch(e => console.warn('loadCluster error:', e));
+  loadGeoAux().catch(e => console.warn('loadGeoAux error:', e));
   setTimeout(() => { if (typeof loadSolleciti === 'function') loadSolleciti().catch(e => console.warn('loadSolleciti error:', e)); }, 0);
 });
 window.onerror = function(msg, src, line, col, err) {
@@ -4894,7 +4631,6 @@ function ripristinaCSV() {
     window._currentData  = csvData;
     window._lastDashData = csvData;
     renderDashboard(csvData);
-    _emAggiornaClusters(csvData);
     _emRemoveManualBadge();
 
     setBadge('✓ CSV ripristinato', 'display:inline-flex;padding:3px 10px;border-radius:5px;font-size:10px;font-weight:600;background:#d0f0e0;color:#1E9E6A;border:1px solid #1E9E6A44');
@@ -4917,7 +4653,6 @@ function _colRefreshCurrent() {
   if (t === 'kpi')   _kpiApplyFilter();
   else if (t === 'prev')  _prevApplyFilter();
   else if (t === 'lotto') _colLottoRefresh();
-  else if (t === 'cl')    _colClRefresh();
 }
 
 /* Reset stato colonne all'apertura di ogni modale */
@@ -5270,95 +5005,6 @@ function _colLottoRefresh() {
         ${noPrats.length  ? sepRow('Nulla Osta / Ordinanze','background:#6B768522;color:#8890aa;border:1px solid #6B768544',noPrats.length) + makeRighe(noPrats) : ''}
       </tbody>
     </table>`;
-}
-
-/* ── Cluster modal column sort/filter ────────────────────────────────────────── */
-window._clModalAllPrats = [];
-
-function _colClRefresh() {
-  const allPrats = window._clModalAllPrats || [];
-  const body     = document.getElementById('_clColBody');
-  if (!body) return;
-
-  const prats   = _colApplyAll(allPrats);
-  const activeBar = _colActiveBar();
-  const STATI_COLORI_MAP_loc = window.STATI_COLORI_MAP || {};
-
-  const mkRow = (p) => {
-    const col = STATI_COLORI_MAP_loc[p.stato] || '#6B7685';
-    const dateParts = buildDateParts(p);
-    const invio = dateParts.find(d => d.startsWith('Invio:'))?.replace('Invio: ','') || '';
-    const agg   = dateParts.find(d => !d.startsWith('Invio:'))?.replace(/^[^:]+:\s*/,'') || '';
-    const badge = prevBadgeHtml(p);
-    const upd   = p.dataUpdate ? fmtDateIT(p.dataUpdate) : '';
-    const impresa = IMPRESE_PER_LOTTO[p.lotto] || '—';
-    window._praticaNoteMap[p.codice] = p.notes || [];
-    window._praticaStatoMap[p.codice] = p.statoHistory || [];
-    const hasNote = !!(p.notes && p.notes.length);
-    return `<tr style="border-bottom:1px solid #DFE4EB" onmouseover="this.style.background='#EEF1F5'" onmouseout="this.style.background=''">
-      <td class="tbl-codice-click" data-cod="${p.codice}" style="padding:6px 10px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;white-space:nowrap;color:var(--text);border-left:3px solid ${col};cursor:pointer" title="${hasNote ? 'Vedi note pratica' : 'Nessuna nota — clicca per vedere'}">
-        <span class="tbl-codice-wrap">
-          <span class="tbl-codice" style="color:var(--text)">${p.codice}</span>
-          <svg class="tbl-note-icon${hasNote ? ' has-note' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        </span>
-      </td>
-      <td style="padding:6px 10px;font-size:9px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.ente||'—'}</td>
-      <td style="padding:6px 10px;font-size:9px;font-weight:600;color:var(--accent2);white-space:nowrap">${impresa}</td>
-      <td class="tbl-stato-click" data-cod="${p.codice}" style="padding:6px 10px;font-size:9px;font-weight:700;color:${col};white-space:nowrap;cursor:pointer" title="Vedi storico cambi stato">${p.stato}</td>
-      <td style="padding:6px 10px;font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--text2);white-space:nowrap;text-align:center">${invio}</td>
-      <td style="padding:6px 10px;font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--text2);white-space:nowrap;text-align:center">${agg}</td>
-      <td style="padding:6px 10px;font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--text2);white-space:nowrap;text-align:center">${upd}</td>
-      <td style="padding:6px 10px;font-size:9px;text-align:center;white-space:nowrap">${badge}</td>
-      <td style="padding:6px 10px;font-size:12px;font-family:'Raleway',sans-serif;color:var(--text);text-align:right;white-space:nowrap;font-weight:700;letter-spacing:-0.01em">${fmt(p.metri)} m</td>
-      <td style="padding:6px 10px;font-size:9px;text-align:center;white-space:nowrap">${window._solBadge ? window._solBadge(p.codice) : "—"}</td>
-    </tr>`;
-  };
-
-  const clAut = prats.filter(p =>  p.codice.startsWith('AUT/'));
-  const clNo  = prats.filter(p => !p.codice.startsWith('AUT/'));
-  const sepRow = (label, badge, n) => `<tr><td colspan="10" style="padding:8px 10px 4px;background:var(--bg)">
-    <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--text)">${label}</span>
-    <span style="margin-left:6px;font-size:9px;color:var(--muted)">(${n})</span>
-    ${badge.includes('3a8c5c') ? `<span style="margin-left:8px;font-size:8px;padding:1px 7px;border-radius:10px;${badge}">incide sulle %</span>` : ''}
-  </td></tr>`;
-
-  const thRow = `<tr style="border-bottom:1px solid var(--border)">
-    ${_mkTh('Codice','codice','left','cl')}
-    ${_mkTh('Ente','ente','left','cl')}
-    ${_mkTh('Impresa','impresa','left','cl')}
-    ${_mkTh('Stato','stato','left','cl')}
-    ${_mkTh('Invio','invio','center','cl')}
-    ${_mkTh('Cambio Stato','update','center','cl')}
-    ${_mkTh('Update','realupd','center','cl')}
-    ${_mkTh('Prev. Rilascio','prev','center','cl')}
-    ${_mkTh('Metri','metri','right','cl')}
-    <th style="padding:5px 10px;font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted);text-align:center;font-weight:600;background:var(--surface2);white-space:nowrap">Solleciti</th>
-  </tr>`;
-
-  body.innerHTML = `${activeBar}
-    <table class="prat-table">
-      <thead>${thRow}</thead>
-      <tbody>
-        ${clAut.length ? sepRow('Autorizzazioni','background:#1E9E6A22;color:#1E9E6A;border:1px solid #1E9E6A44',clAut.length) + clAut.map(mkRow).join('') : ''}
-        ${clNo.length  ? sepRow('Nulla Osta / Ordinanze','background:#6B768522;color:#8890aa;border:1px solid #6B768544',clNo.length) + clNo.map(mkRow).join('') : ''}
-      </tbody>
-    </table>`;
-}
-
-// ── Aggiorna grafico cluster ──────────────────────────────────────────────────
-function _emAggiornaClusters(data) {
-  try {
-    const CLUSTER_MAP = { '1A':'1','1B':'1','2A':'2','2B':'2',
-      '1':'1','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7','8':'8' };
-    const clMap = {}, clTot = {};
-    data.forEach(r => {
-      const cl = CLUSTER_MAP[r.lotto]||r.lotto;
-      if (!clMap[cl]) { clMap[cl]={}; clTot[cl]=0; }
-      clMap[cl][r.stato] = (clMap[cl][r.stato]||0)+r.metri;
-      clTot[cl] += r.metri;
-    });
-    if (Object.keys(clMap).length > 0) renderCluster(clMap, clTot);
-  } catch(e) { console.warn('Cluster update error:', e); }
 }
 
 // ── CERCA PRATICA ─────────────────────────────────────────────────────────────
@@ -6342,50 +5988,6 @@ _hookScadenze();
   })();
 })();
 // ─────────────────────────────────────────────────────────────────────────────
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CLUSTER MOBILE LAYOUT
-// Gestisce il passaggio colonna→riga di #prevRilascioCol su schermi stretti.
-// Usa JS diretto sugli stili per essere immune da specificity CSS e inline style.
-// ─────────────────────────────────────────────────────────────────────────────
-function adjustClusterMobile() {
-  const col = document.getElementById('prevRilascioCol');
-  if (!col || col.style.display === 'none') return;
-  const mobile = window.innerWidth <= 768;
-  if (mobile) {
-    col.style.flexDirection   = 'row';
-    col.style.justifyContent  = 'space-around';
-    col.style.alignItems      = 'stretch';
-    col.style.borderLeft      = 'none';
-    col.style.borderTop       = '2px solid #C4CDD8';
-    col.style.marginLeft      = '0';
-    col.style.paddingLeft     = '0';
-    col.style.paddingTop      = '14px';
-    col.style.marginTop       = '12px';
-    col.style.minWidth        = '0';
-    col.style.width           = '100%';
-    col.style.gap             = '8px';
-    // i 3 figli si dividono la riga
-    Array.from(col.children).forEach(c => { c.style.flex = '1'; c.style.minWidth = '0'; });
-  } else {
-    col.style.flexDirection   = 'column';
-    col.style.justifyContent  = 'center';
-    col.style.alignItems      = '';
-    col.style.borderLeft      = '2px solid #C4CDD8';
-    col.style.borderTop       = '';
-    col.style.marginLeft      = '16px';
-    col.style.paddingLeft     = '16px';
-    col.style.paddingTop      = '';
-    col.style.marginTop       = '';
-    col.style.minWidth        = '110px';
-    col.style.width           = '';
-    col.style.gap             = '6px';
-    Array.from(col.children).forEach(c => { c.style.flex = ''; c.style.minWidth = ''; });
-  }
-}
-window.adjustClusterMobile = adjustClusterMobile;
-window.addEventListener('resize', adjustClusterMobile);
-window.addEventListener('DOMContentLoaded', adjustClusterMobile);
 
 </script>
 
