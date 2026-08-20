@@ -832,7 +832,8 @@ let currentViewMode = 'stato'; // 'stato' | 'lotto' | 'scavi'
 // Colori per lotto, assegnati dinamicamente sui lotti effettivamente presenti nei dati
 // (QTS usa A/B/C, diversi dagli 1-8/1A-2B di ENRI: niente più elenco hardcoded)
 const LOTTO_PALETTE = ['#3a8c5c','#4f8ef7','#e07b3a','#c9a227','#cc3333','#a07af7','#1E9E6A','#436A93','#D08A1A','#7A3DAA','#5cb87a','#89bfff'];
-const LOTTO_COLORS = {};
+// Colori ufficiali da specifica progetto QTS (Path A/B/C)
+const LOTTO_COLORS = { 'A':'#E8C61A', 'B':'#7A3DAA', 'C':'#2D6CDF' };
 function assignLottoColors(stats) {
   Object.keys(stats).sort((a,b)=>a.localeCompare(b,'it',{numeric:true})).forEach((id,i)=>{
     if (!LOTTO_COLORS[id]) LOTTO_COLORS[id] = LOTTO_PALETTE[i % LOTTO_PALETTE.length];
