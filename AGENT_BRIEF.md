@@ -109,6 +109,17 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
 
 ## 6. Log revisioni
 
+- **rev.19** — Rimosso il tasto/funzione "Siti QTS" da `mappa.html` e
+  `mappa_impresa_caricamento.html`: array `SITI`, controllo `SitiControl`,
+  pannello (`sitiPanel`/`sitiBtn`), ricerca (`filterSiti`), marker
+  (`goToSito`/`_sitoMarker`) — tutto rimosso, nessuna dipendenza esterna
+  residua (verificato via grep). In `mappa.html` il tasto "Pratiche" ha
+  preso il posto del tasto Siti come primo controllo Leaflet in topright
+  (tolto `margin-top:6px` e il commento "sotto Siti"). In
+  `mappa_impresa_caricamento.html` non esisteva un tasto "Pratiche"
+  equivalente da spostare: lì "Pratiche" è già una tab della sidebar
+  (`sbtab-pratiche`), non un controllo mappa flottante — nessuna azione
+  necessaria oltre alla rimozione. `node --check` OK su entrambi i file.
 - **rev.18** — Colori legenda ufficiali, fix lotti su
   `mappa_impresa_caricamento.html`, rimozione voce "Tracciato QTS" e
   pulizia codice morto in `mappa.html`.
