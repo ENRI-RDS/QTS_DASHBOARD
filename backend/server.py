@@ -1378,19 +1378,17 @@ async def _find_assignment(nome: str) -> dict | None:
 # ── Milestone di Progetto — dati serviti da qui (non più embedded in
 # milestone.html) così il controllo di accesso per ruolo è reale lato server,
 # non solo un redirect client-side aggirabile forzando localStorage.
+# NOTA: righe precedenti (1A/1B/2A/2B/1-8) erano il dato ENRI ereditato dal
+# fork, mai adattato allo schema lotti QTS (A/B/C) — bug segnalato e corretto
+# qui. Date "progetto/invio1/invio2/ottenim" sono le 4 milestone di
+# progettazione (ex tabella statica separata in milestone.html), uguali per
+# tutti i lotti perché relative a un'unica documentazione/permessi di
+# progetto complessivi. Date "avvio/p50/p90/p100" (Attività Civili) non
+# ancora disponibili per QTS (vedi AGENT_BRIEF.md §5.7-8) — placeholder "-".
 MILESTONE_IMPRESE_ROWS = [
-    {"lotto": "1A", "invio": "-", "ottenim": "-", "avvio": "31/05/2026", "p50": "-", "p90": "31/10/2026", "p100": "31/12/2026"},
-    {"lotto": "1B", "invio": "-", "ottenim": "-", "avvio": "31/05/2026", "p50": "-", "p90": "31/10/2026", "p100": "31/12/2026"},
-    {"lotto": "2A", "invio": "-", "ottenim": "-", "avvio": "31/05/2026", "p50": "-", "p90": "31/10/2026", "p100": "31/12/2026"},
-    {"lotto": "2B", "invio": "-", "ottenim": "-", "avvio": "31/05/2026", "p50": "-", "p90": "31/10/2026", "p100": "31/12/2026"},
-    {"lotto": "1", "invio": "30/09/2026", "ottenim": "30/09/2027", "avvio": "31/08/2026", "p50": "30/04/2027", "p90": "-", "p100": "15/11/2027"},
-    {"lotto": "2", "invio": "30/09/2026", "ottenim": "30/09/2027", "avvio": "31/08/2026", "p50": "30/04/2027", "p90": "-", "p100": "15/11/2027"},
-    {"lotto": "3", "invio": "30/09/2026", "ottenim": "30/09/2027", "avvio": "31/08/2026", "p50": "30/04/2027", "p90": "-", "p100": "15/11/2027"},
-    {"lotto": "4", "invio": "30/09/2026", "ottenim": "30/09/2027", "avvio": "31/08/2026", "p50": "30/04/2027", "p90": "-", "p100": "15/11/2027"},
-    {"lotto": "5", "invio": "30/09/2026", "ottenim": "30/09/2027", "avvio": "31/08/2026", "p50": "30/04/2027", "p90": "-", "p100": "15/11/2027"},
-    {"lotto": "6", "invio": "30/09/2026", "ottenim": "30/09/2027", "avvio": "31/10/2026", "p50": "31/05/2027", "p90": "-", "p100": "15/11/2027"},
-    {"lotto": "7", "invio": "30/09/2026", "ottenim": "30/09/2027", "avvio": "31/01/2027", "p50": "30/09/2027", "p90": "-", "p100": "31/03/2028"},
-    {"lotto": "8", "invio": "30/09/2026", "ottenim": "30/09/2027", "avvio": "31/01/2027", "p50": "30/09/2027", "p90": "-", "p100": "31/07/2028"},
+    {"lotto": "A", "progetto": "11/09/2026", "invio1": "30/09/2026", "invio2": "16/10/2026", "ottenim": "31/05/2027", "avvio": "-", "p50": "-", "p90": "-", "p100": "-"},
+    {"lotto": "B", "progetto": "11/09/2026", "invio1": "30/09/2026", "invio2": "16/10/2026", "ottenim": "31/05/2027", "avvio": "-", "p50": "-", "p90": "-", "p100": "-"},
+    {"lotto": "C", "progetto": "11/09/2026", "invio1": "30/09/2026", "invio2": "16/10/2026", "ottenim": "31/05/2027", "avvio": "-", "p50": "-", "p90": "-", "p100": "-"},
 ]
 
 MILESTONE_CONTRACT_ROWS = [
