@@ -471,3 +471,69 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
   riferimento a `dati.csv` nel file. Non collegato alla rimozione "cluster"
   (task separato su richiesta di Andrea). JS inline validato con
   `node --check` → OK.
+- **rev.22** — `index.html`: spostata la sezione "Attraversamenti SED"
+  (tabella completa + KPI Ferroviario/Autostradale/Idrico/Inviati/Ottenuti +
+  filtri) da sezione full-width separata (sotto `grid-main`, prima di
+  "Tutte le Pratiche") a blocco embedded (`#sedEmbedded`) dentro la card
+  "Avanzamento per Lotto" (colonna main di `grid-main`), subito dopo
+  `#flussoMeseBar`. Motivo: quello spazio restava vuoto perché `.card`
+  main-column viene stretchata da CSS grid (`align-items` default
+  `stretch`) all'altezza della colonna `.side` (donut + SED quick card),
+  più alta — residuo dell'area che occupavano le barre cluster ora rimosse.
+  Font/padding ridotti (~20-30%) via nuove regole CSS `#sedEmbedded ...`
+  per adattarsi allo spazio più stretto. Nessun id rinominato (`sedBadge`,
+  `sedKpiRow`, `sedKpiFerr/Auto/Idrico`, `sedBarInv*/Ott*`, `sedKpiInv/Ott`,
+  `sedProgressFill`, `sedBody`, `sedQ`, `sedF*`, tabella/`sedTbody`,
+  `sedFootL`, `sedCollapseBtn`, dropdown Excel) — tutte le funzioni JS
+  (`renderSed`, `sedSort`, `sedResetFilters`, `sedToggleCollapse`,
+  `toggleSedXlsDropdown`, `exportSedXlsx*`) accedono solo via
+  `getElementById`, nessuna dipendenza dalla gerarchia DOM rimossa.
+  Vecchio blocco `#sedSection` full-width eliminato per intero (era
+  duplicato). Verificato: 0 id duplicati nel file, `node --check` su JS
+  inline estratto → OK.
+  **Nota**: la card "SED — Permessi" nella sidebar (`#sedQuickCard`,
+  dentro `.side`) resta invariata e ora è ridondante con la vista
+  compatta embedded — da valutare se rimuoverla in una prossima sessione.
+- **rev.23** — `index.html`: rimossa la card "SED — Permessi" dalla
+  sidebar (`#sedQuickCard`, dentro `.side`), ridondante dopo rev.22
+  (stessi dati già mostrati in `#sedEmbedded` sotto le barre lotto).
+  Rimosso solo il markup (`sqBadge`, `sqInvPct`, `sqBarInv`, `sqOttPct`,
+  `sqBarOtt`, `sqRows`, `sqLottoRows`); le funzioni JS che li popolano
+  (righe ~1784-1838, dentro `loadSED()`) restano invariate — sono già
+  `if(el)`-guarded su ogni `getElementById`, quindi diventano no-op
+  silenziosi senza il markup, nessun errore console. Non ripulite per
+  ridurre rischio in questa sessione; da rimuovere in un secondo momento
+  se si vuole eliminare anche il codice morto. Verificato: 0 id duplicati,
+  `node --check` su JS inline → OK.
+- **rev.24** — `index.html`: rimosso il codice morto residuo di rev.23.
+  Eliminata l'intera funzione `updateQuickCard()` (~75 righe, popolava
+  `sqBadge/sqInvPct/sqBarInv/sqOttPct/sqBarOtt/sqRows/sqLottoRows`, tutti
+  id ormai inesistenti dopo la rimozione di `#sedQuickCard`) e il
+  monkey-patch `window.renderSed = function(keepPage){ _origRenderSed(keepPage); updateQuickCard(); }`
+  che la richiamava ad ogni render — ripristinato l'unico `window.renderSed`
+  originale (riga ~1431). Verificato: grep a zero risultati su
+  `sq(Badge|InvPct|BarInv|OttPct|BarOtt|Rows|LottoRows)` e su
+  `updateQuickCard`/`_origRenderSed`; 0 id duplicati nel file; `node --check`
+  su JS inline estratto → OK.
+- **rev.25** — `index.html`: revert di rev.22 su richiesta di Andrea dopo
+  feedback estetico negativo (mockup fornito, vedi conversazione). La
+  sezione SED torna ad essere una card full-width separata (`#sedSection`,
+  stesso pattern/margin di `#tabellaSection`: `margin:18px 28px 32px`),
+  posizionata subito prima di "Tutte le Pratiche" — **non più embedded**
+  dentro la card "Avanzamento per Lotto". Rispetto alla versione
+  pre-rev.22: font/padding tornati alle dimensioni standard (non più
+  compressi), e aggiunta un'icona per ciascuna delle 5 KPI box
+  (Ferroviario: binario, Autostradale: strada/monte, Idrico: goccia,
+  Permessi Inviati: paper-plane, Permessi Ottenuti: scudo/check) — SVG
+  stroke-based coerenti con lo stile icone già in uso nel file (es. icona
+  di ricerca), badge colorato dietro ciascuna icona (`background:
+  <colore-categoria>+"22"`, 22×22px, border-radius 6px). Rimossa la CSS
+  morta `#sedEmbedded ...` (compattazione font, non più necessaria).
+  Nessun id rinominato, stessa logica di rev.22 sul fatto che tutte le
+  funzioni JS accedono solo via `getElementById` — nessuna dipendenza
+  dalla posizione nel DOM. Verificato: 0 id duplicati, `node --check` su
+  JS inline → OK, nessun residuo `sedEmbedded` nel file. Bilanciamento
+  tag `<div>` verificato con conteggio regex: diff -1 pre-esistente anche
+  nel file originale (falso positivo dovuto a HTML generato via
+  concatenazione stringhe in JS, non un difetto introdotto da questa
+  modifica).
