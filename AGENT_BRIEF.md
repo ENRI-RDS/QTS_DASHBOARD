@@ -109,6 +109,30 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
 
 ## 6. Log revisioni
 
+- **rev.26** — `milestone.html`: rimosse le colonne "50%"/"90%" (gruppo
+  "Attività Civili") dalla tabella "Milestone Imprese", su richiesta di
+  Andrea, per dare più spazio orizzontale alla tabella "Contract
+  Milestone" accanto (ora scrollabile con 5 colonne dati + Lotto).
+  Restano "Avvio" e "100%"; colspan header "Attività Civili" 4→2. I campi
+  `p50`/`p90` restano nel modello dati e nel Gantt sotto (marker a rombo
+  intermedi sulle barre Imprese) — rimossi solo dalla tabella piatta, non
+  dal backend/gantt. `node --check` OK.
+- **rev.25** — `milestone.html`/`backend/server.py`: tabella "Contract
+  Milestone" ristrutturata da elenco piatto (6 righe, 1 milestone per riga)
+  a formato per-lotto (3 righe A/B/C, 1 colonna per milestone), simmetrica
+  alla tabella "Milestone Imprese" accanto — su richiesta di Andrea, più
+  leggibile a colpo d'occhio per lotto. Colonne: Firma | Fine Ripens. |
+  Invio Permessi (gruppo "Contratto", stesse date per tutti i lotti — sono
+  milestone contrattuali generali) | 50% Scavi | Completamento (gruppo
+  "Scavi", specifiche per lotto). Le milestone 4-5 ("50% completamento
+  scavi Lotto A e B" / "Completamento Lotto A e B") applicate a entrambi i
+  lotti A e B con la stessa data; la 6 ("Completamento Lotto C") solo su C,
+  che non ha una milestone 50% scavi propria nota → "-". Badge "6
+  milestone" → "3 lotti" (coerente col badge della tabella Imprese).
+  Gantt: righe Contract Milestone ora disegnano una barra firma→
+  completamento per lotto con marker a rombo per le 3 tappe intermedie
+  (stesso stile visivo delle righe Imprese), non più un singolo pallino
+  numerato per milestone. `node --check`/sintassi Python OK.
 - **rev.24** — `milestone.html`/`backend/server.py`: aggiornate le
   "Contract Milestone" con i dati contrattuali reali forniti da Andrea (6
   milestone, singola data ciascuna — non più il vecchio schema a step
