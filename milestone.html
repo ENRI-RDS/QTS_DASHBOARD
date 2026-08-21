@@ -217,7 +217,7 @@ tbody tr.group-row td{background:var(--surface2);font-family:var(--font-mono);fo
           </tr>
           <tr class="col-head">
             <th class="ch-base"></th>
-            <th class="ch-permit" colspan="3">Contratto</th>
+            <th class="ch-permit" colspan="3">Permitting</th>
             <th class="ch-scavi" colspan="2">Attività Civili</th>
           </tr>
         </thead><tbody id="tbody-contract"></tbody></table>
@@ -395,7 +395,8 @@ function buildGantt() {
     var yr = d.getFullYear();
     if (yr <= 2026) return '#41BBD9'; /* --retelit-sky — ciano */
     if (yr <= 2027) return '#1E9E6A'; /* --ok — verde */
-    return '#043F75';                 /* --retelit-blue — navy */
+    if (yr <= 2028) return '#043F75'; /* --retelit-blue — navy */
+    return '#436A93';                 /* --retelit-blue-75 — blu medio, 2029+ */
   }
 
   function colorLightForDate(dateStr, alpha) {
@@ -404,7 +405,8 @@ function buildGantt() {
     var yr = d.getFullYear();
     if (yr <= 2026) return 'rgba(65,187,217,' + alpha + ')';  /* sky */
     if (yr <= 2027) return 'rgba(30,158,106,' + alpha + ')';  /* ok green */
-    return 'rgba(4,63,117,' + alpha + ')';                     /* blue */
+    if (yr <= 2028) return 'rgba(4,63,117,' + alpha + ')';    /* navy */
+    return 'rgba(67,106,147,' + alpha + ')';                  /* blue-75, 2029+ */
   }
 
   /* compute total SVG height */
@@ -424,7 +426,7 @@ function buildGantt() {
     var _ys = xPos('01/01/' + _yCursor);
     var _ye = (_yCursor === T1.getFullYear()) ? (LW + CW) : xPos('01/01/' + (_yCursor + 1));
     if (_ys !== null && _ye !== null) {
-      var _bandFill = _yCursor <= 2026 ? '#41BBD9' : (_yCursor <= 2027 ? '#1E9E6A' : '#043F75');
+      var _bandFill = _yCursor <= 2026 ? '#41BBD9' : (_yCursor <= 2027 ? '#1E9E6A' : (_yCursor <= 2028 ? '#043F75' : '#436A93'));
       parts.push('<rect x="' + _ys + '" y="0" width="' + (_ye - _ys) + '" height="' + totalH + '" fill="' + _bandFill + '" opacity="0.07"/>');
     }
     _yCursor++;
@@ -443,7 +445,8 @@ function buildGantt() {
     var yr = +qDate.slice(6);
     if (yr <= 2026) return '#41BBD9'; /* --retelit-sky */
     if (yr <= 2027) return '#1E9E6A'; /* --ok green */
-    return '#043F75'; /* --retelit-blue, 2028+ */
+    if (yr <= 2028) return '#043F75'; /* --retelit-blue */
+    return '#436A93'; /* --retelit-blue-75, 2029+ */
   }
   quarters.forEach(function(q) {
     var qDate = q[0], qLabel = q[1], qIsYear = q[2];
