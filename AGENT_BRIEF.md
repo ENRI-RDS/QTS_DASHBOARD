@@ -109,6 +109,20 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
 
 ## 6. Log revisioni
 
+- **rev.24** — `milestone.html`/`backend/server.py`: aggiornate le
+  "Contract Milestone" con i dati contrattuali reali forniti da Andrea (6
+  milestone, singola data ciascuna — non più il vecchio schema a step
+  50%/70%/100% di completamento, mai popolato con dati reali: solo 2 righe
+  fittizie "Permits submission"/"Authorizations received" ereditate dal
+  fork). Nuova struttura tabella: N° | Milestone | Data (stile identico
+  alla ex tabella "Milestone Progettazione" rimossa in rev.22). Gantt:
+  righe `c` (Contract Milestone) ora disegnano un singolo pallino verde
+  con numero d'ordine invece della linea tratteggiata + quadratini 50/70%
+  + cerchio 100%. `MILESTONE_CONTRACT_ROWS` in `server.py` sostituito con
+  le 6 milestone reali (`n`, `milestone`, `data`), badge "9 milestone" →
+  "6 milestone" (era comunque disallineato dalle 2 righe reali prima
+  presenti — bug preesistente, ora risolto insieme all'aggiornamento
+  dati). `node --check`/sintassi Python OK.
 - **rev.23** — `milestone.html`: rimossa colonna "Cluster" (tabella
   "Scadenze Lotti · Milestone Imprese", inutile per QTS: lotti A/B/C non
   hanno sotto-cluster come ENRI, era valorizzata a `-` da rev.22) e ogni
