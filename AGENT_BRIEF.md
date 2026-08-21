@@ -537,3 +537,53 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
   nel file originale (falso positivo dovuto a HTML generato via
   concatenazione stringhe in JS, non un difetto introdotto da questa
   modifica).
+- **rev.26** — `index.html`: aggiunta sidebar di navigazione verticale
+  (`.app-sidebar`, 64px, `position:fixed`, sfondo `var(--retelit-blue)`)
+  su richiesta di Andrea, da mockup fornito. 6 icone SVG stroke-based
+  (stile Feather, coerenti con le altre icone già in uso nel file):
+  Dashboard (griglia 2×2, attiva/evidenziata su sfondo bianco → punta a
+  `index.html`, pagina corrente), Mappa (pin → `mappa.html`), Hub/
+  Documenti (foglio → `hub.html`), Avanz. Lavori/Cantieri (casetta →
+  `scavi.html`), Gantt/Avanzamento Temporale (barre+trend → `gantt.html`),
+  Impostazioni/Admin (ingranaggio, path Feather standard verificato →
+  `admin.html`). **Mapping icona→pagina è un'assunzione mia** — il
+  mockup non specificava le destinazioni, dedotte da: (a) i 3 link già
+  presenti nella topbar (Mappa, Avanz. Lavori→scavi.html, Hub), + (b)
+  Gantt e Admin come pagine più probabili per le 2 icone rimanenti
+  (chart/trending, gear). Da confermare con Andrea. `body` ha ora
+  `padding-left:64px` per lasciare spazio alla sidebar fissa; su mobile
+  (`@media max-width:768px`) la sidebar si nasconde (`display:none`) e
+  il padding torna a 0 — il topbar-right con i link Mappa/Avanz.
+  Lavori/Hub resta invariato e NON è stato rimosso (ridondante con la
+  sidebar ma lasciato per non rompere nulla, da valutare rimozione).
+  Implementata SOLO su `index.html` — se Andrea conferma il design, va
+  replicata sulle altre pagine (mappa.html, scavi.html, admin.html,
+  gantt.html, hub.html, ecc.) per coerenza UX in tutto il sito: task non
+  ancora fatto. Verificato: link puntano a file esistenti nel repo, 0 id
+  duplicati, `node --check` su JS inline → OK.
+- **rev.27** — `milestone.html`: aggiunta nuova sezione statica
+  "Milestone Progettazione" (4 righe, colonne N./Milestone/Descrizione/
+  Scadenza, coerente con lo stile `.section-block` già in uso), inserita
+  subito dopo il page-header e prima di `.tables-row` (Milestone
+  Imprese/Contract Milestone esistenti, invariate). Dati forniti da
+  Andrea via screenshot, applicabili a **tutti e 3 i lotti (A/B/C)**:
+  01 Progetto (Capitolo 5 consegna documentazione punti 1-2-3) →
+  11/09/2026; 02 Invio Permessi 1 (invio verso Provincia/Città
+  Metropolitana, ANAS, Autostrade ecc.) → 30/09/2026; 03 Invio Permessi
+  2 (invio verso tutti i Comuni interessati) → 16/10/2026; 04
+  Ottenimento (tutte le autorizzazioni) → 31/05/2027. Date-pill colorate
+  per anno (`dp-2026`/`dp-2027`, classi CSS già esistenti nel file).
+  Tabella statica (no JS, no fetch) — se le date cambiano vanno
+  aggiornate a mano in questo blocco HTML.
+- **rev.28** — Sidebar (`.app-sidebar`, vedi rev.26) propagata a
+  `milestone.html`, con l'icona Milestone marcata `active`. Aggiunta
+  anche una **settima icona Milestone** in `index.html` (tra Gantt e
+  Admin → `milestone.html`, path documento con check), dato che
+  mancava dal set di 6 icone di rev.26. `index.html` ha ora 7 link in
+  sidebar: Dashboard, Mappa, Hub, Avanz. Lavori, Gantt, Milestone, Admin.
+  Verificato: 0 id duplicati, `node --check` su entrambi i file → OK.
+  **Ancora da fare**: propagare la sidebar alle restanti pagine
+  (mappa.html, hub.html, scavi.html, gantt.html, admin.html, e le altre:
+  polizze_convenzioni, sopralluoghi, ai_alerts, imprese, imprese_scavi,
+  mappa_impresa_caricamento, cartella `pm/`) — task confermato da
+  Andrea ("va bene procedi") ma non ancora eseguito su queste pagine.
