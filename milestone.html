@@ -205,19 +205,14 @@ tbody tr.group-row td{background:var(--surface2);font-family:var(--font-mono);fo
           <div class="section-tag" style="color:var(--ok);">Contratto</div>
           <div class="section-title">Contract Milestone</div>
         </div>
-        <span class="section-badge badge-contract">9 milestone</span>
+        <span class="section-badge badge-contract">6 milestone</span>
       </div>
       <div class="table-wrap">
         <table><thead>
-          <tr class="group-head">
-            <th class="gh-base col-left" style="min-width:160px;">Milestone</th>
-            <th class="gh-compl">50%</th>
-            <th class="gh-compl">70%</th>
-            <th class="gh-compl">100%</th>
-          </tr>
           <tr class="col-head">
-            <th class="ch-base col-left"></th>
-            <th class="ch-compl" colspan="3">Completamento</th>
+            <th class="ch-base col-left" style="color:var(--muted);width:44px;">N.</th>
+            <th class="ch-base col-left" style="color:var(--muted);min-width:160px;">Milestone</th>
+            <th class="ch-base col-left" style="color:var(--muted);width:110px;">Data</th>
           </tr>
         </thead><tbody id="tbody-contract"></tbody></table>
       </div>
@@ -300,7 +295,7 @@ function _buildGanttRows() {
   });
   rows.push({t:'g', label:'CONTRACT MILESTONE'});
   CONTRACT.forEach(function(c) {
-    rows.push({t:'c', label:c.milestone, p50:(c.p50==='-'?null:c.p50), p70:(c.p70==='-'?null:c.p70), p100:c.p100});
+    rows.push({t:'c', label:c.milestone, n:c.n, data:c.data});
   });
   return rows;
 }
@@ -317,7 +312,7 @@ function _renderMilestoneData() {
   var tb2 = document.getElementById('tbody-contract');
   CONTRACT.forEach(function(c) {
     var tr = document.createElement('tr');
-    tr.innerHTML = '<td class="col-left">' + c.milestone + '</td><td>' + pill(c.p50) + '</td><td>' + pill(c.p70) + '</td><td>' + pill(c.p100) + '</td>';
+    tr.innerHTML = '<td class="col-id">' + c.n + '</td><td class="col-left">' + c.milestone + '</td><td>' + pill(c.data) + '</td>';
     tb2.appendChild(tr);
   });
 
@@ -509,31 +504,12 @@ function buildGantt() {
         parts.push('<text x="' + x2 + '" y="' + (cy+3.5) + '" font-size="7.5" fill="white" text-anchor="middle" font-weight="700" font-family="JetBrains Mono,monospace" style="pointer-events:none;">100</text>');
       }
     } else {
-      /* contract milestone: dots/squares */
-      var cPts = [];
-      [row.p50, row.p70, row.p100].forEach(function(dateVal) {
-        if (!dateVal || dateVal === '-') return;
-        var px = xPos(dateVal);
-        if (px !== null) cPts.push(px);
-      });
-      if (cPts.length >= 2) {
-        var minPx = Math.min.apply(null, cPts);
-        var maxPx = Math.max.apply(null, cPts);
-        parts.push('<line x1="' + minPx + '" y1="' + cy + '" x2="' + maxPx + '" y2="' + cy + '" stroke="#1E9E6A" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.35"/>');/* --ok */      }
-      [['p50','50%'],['p70','70%'],['p100','100%']].forEach(function(pair) {
-        var key = pair[0], lbl = pair[1];
-        var dateVal = row[key];
-        if (!dateVal || dateVal === '-') return;
-        var px = xPos(dateVal);
-        if (px === null) return;
-        if (lbl === '100%') {
-          parts.push('<circle cx="' + px + '" cy="' + cy + '" r="7" fill="#1E9E6A" data-tip="100%: ' + dateVal + '" style="cursor:default;"/>');/* --ok */
-          parts.push('<text x="' + px + '" y="' + (cy+3.5) + '" font-size="6.5" fill="white" text-anchor="middle" font-weight="700" font-family="JetBrains Mono,monospace" style="pointer-events:none;">100</text>');
-        } else {
-          parts.push('<rect x="' + (px-5) + '" y="' + (cy-5) + '" width="10" height="10" rx="2" fill="#EBFAF3" stroke="#1E9E6A" stroke-width="1.5" data-tip="' + lbl + ': ' + dateVal + '" style="cursor:default;"/>');/* --ok-bg / --ok */
-          parts.push('<text x="' + px + '" y="' + (cy-8) + '" font-size="7" font-family="JetBrains Mono,monospace" fill="#1E9E6A" text-anchor="middle" style="pointer-events:none;">' + lbl + '</text>');/* --ok */
-        }
-      });
+      /* contract milestone: singolo punto data */
+      var pxC = xPos(row.data);
+      if (pxC !== null) {
+        parts.push('<circle cx="' + pxC + '" cy="' + cy + '" r="7" fill="#1E9E6A" data-tip="' + row.label + ': ' + row.data + '" style="cursor:default;"/>');/* --ok */
+        parts.push('<text x="' + pxC + '" y="' + (cy+3.5) + '" font-size="7.5" fill="white" text-anchor="middle" font-weight="700" font-family="JetBrains Mono,monospace" style="pointer-events:none;">' + row.n + '</text>');
+      }
     }
 
     rowY += RH;
