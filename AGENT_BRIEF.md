@@ -109,6 +109,21 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
 
 ## 6. Log revisioni
 
+- **rev.27** — `milestone.html`: ottimizzato layout delle due tabelle
+  superiori (Milestone Imprese / Contract Milestone) per farle stare
+  affiancate senza scroll orizzontale e con altezze uniformi. `.tables-row`
+  passato da grid `3fr 2fr` (sbilanciato: a destra la tabella Contract con
+  6 colonne aveva meno spazio della Imprese con 7, da cui lo scroll
+  segnalato da Andrea) a `1fr 1fr` con `align-items:stretch` (prima
+  `start`, causa dell'altezza diversa tra i due box); entrambi i
+  `.section-block` figli ora `display:flex;flex-direction:column` e
+  `.table-wrap{flex:1}` così le due card si allungano alla stessa altezza
+  a prescindere da leggere differenze di contenuto. Colonna "Lotto"
+  fissata a `width:44px` (prima non vincolata, veniva sovradimensionata
+  dal layout automatico della tabella — causa della larghezza eccessiva
+  segnalata). Ridotto padding celle header/body (`14px`→`8px` orizzontale)
+  e dimensione/padding dei `.date-pill` per guadagnare spazio orizzontale.
+  `node --check` OK (nessuna modifica JS in questa revisione, solo CSS).
 - **rev.26** — `milestone.html`: rimosse le colonne "50%"/"90%" (gruppo
   "Attività Civili") dalla tabella "Milestone Imprese", su richiesta di
   Andrea, per dare più spazio orizzontale alla tabella "Contract
