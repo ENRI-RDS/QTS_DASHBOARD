@@ -109,6 +109,36 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
 
 ## 6. Log revisioni
 
+- **rev.23** — `milestone.html`: rimossa colonna "Cluster" (tabella
+  "Scadenze Lotti · Milestone Imprese", inutile per QTS: lotti A/B/C non
+  hanno sotto-cluster come ENRI, era valorizzata a `-` da rev.22) e ogni
+  riferimento — `<th>Cluster</th>`, `<td class="cluster-cell">`, `th.ch-base`
+  vuoto in eccesso nella riga di raggruppamento, `sub:'cl.'+r.cluster` nel
+  builder righe Gantt, sottotitolo pagina ("...per lotto e cluster"→"...per
+  lotto"), commento residuo ENRI "padding per Cluster 6/7" sull'asse
+  temporale del Gantt (già riferito a lotti/cluster inesistenti in QTS,
+  aggiornato a descrizione generica). Backend: campo `cluster` rimosso da
+  `MILESTONE_IMPRESE_ROWS` (3 righe A/B/C). `node --check`/sintassi Python
+  OK.
+- **rev.22** — `milestone.html`: eliminata la tabella statica "Milestone
+  Progettazione" (4 righe: Progetto/Invio Permessi 1/Invio Permessi 2/
+  Ottenimento, generiche per tutti i lotti). Le 4 date sono state spostate
+  come nuove colonne nella tabella "Scadenze Lotti · Milestone Imprese"
+  (gruppo "Permitting", ora 4 colonne — Progetto/Invio P.1/Invio P.2/
+  Ottenimento — invece di 2 — Invio P./Ottenimento P.), stesse date per
+  ogni lotto essendo milestone di progetto complessive, non per-lotto.
+  **Bug pre-esistente corretto in questa occasione**: `MILESTONE_IMPRESE_ROWS`
+  in `backend/server.py` conteneva ancora dati ENRI (lotti `1A/1B/2A/2B/1-8`,
+  12 righe, stesso bug di rev.17 ma mai applicato a questo file/endpoint) —
+  sostituiti con i 3 lotti reali QTS (`A/B/C`), badge "12 lotti"→"3 lotti".
+  Colonne "Attività Civili" (avvio/50%/90%/100%) impostate a placeholder
+  `-` per i 3 lotti: erano dati ENRI inventati, nessun dato reale QTS
+  disponibile ancora (vedi §5.7-8) — di conseguenza le barre "Imprese" nel
+  Gantt sotto non si disegnano più finché non arrivano dati reali (atteso:
+  prima erano fasulle, ora assenti finché non caricati). `cluster` per i
+  lotti A/B/C non ha un valore noto (QTS non ha sotto-cluster come ENRI) →
+  impostato a `-`, da correggere se emerge un dato reale. `node --check`
+  su JS inline e sintassi Python OK.
 - **rev.21** — **Bug fix critico**: "Distribuzione Stati" (donut) in
   `index.html` non si renderizzava mai quando nessun lotto aveva ancora
   superato lo stato IN ATTESA/IN REDAZIONE (caso reale QTS: tutti i lotti
