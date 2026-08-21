@@ -151,61 +151,12 @@ tbody tr.group-row td{background:var(--surface2);font-family:var(--font-mono);fo
     <div>
       <div class="page-eyebrow">QTS Platform · Pianificazione</div>
       <div class="page-h1">Milestone di Progetto</div>
-      <div class="page-sub">Scadenze contrattuali e milestone di impresa per lotto e cluster</div>
+      <div class="page-sub">Scadenze contrattuali e milestone di impresa per lotto</div>
     </div>
     <div class="legend-row">
       <div class="legend-chip chip-2026">Entro 2026</div>
       <div class="legend-chip chip-2027">Entro 2027</div>
       <div class="legend-chip chip-2028">Entro 2028</div>
-    </div>
-  </div>
-
-  <!-- MILESTONE PROGETTAZIONE — TUTTI I LOTTI -->
-  <div class="section-block">
-    <div class="section-head" style="border-left:3px solid var(--retelit-blue);">
-      <div class="section-icon si-imprese">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 21V4a1 1 0 0 1 1-1h11l4 4v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"/><path d="M15 3v4h4"/><path d="m9 13 2 2 4-4"/></svg>
-      </div>
-      <div class="section-head-text">
-        <div class="section-tag" style="color:var(--retelit-teal);">Lotti A · B · C</div>
-        <div class="section-title">Milestone Progettazione</div>
-      </div>
-      <span class="section-badge badge-imprese">4 milestone</span>
-    </div>
-    <div class="table-wrap">
-      <table><thead>
-        <tr class="col-head">
-          <th class="ch-base col-left" style="color:var(--muted);width:44px;">N.</th>
-          <th class="ch-base col-left" style="color:var(--muted);min-width:160px;">Milestone</th>
-          <th class="ch-base col-left" style="color:var(--muted);">Descrizione</th>
-          <th class="ch-base col-left" style="color:var(--muted);width:110px;">Scadenza</th>
-        </tr>
-      </thead><tbody>
-        <tr>
-          <td class="col-id">01</td>
-          <td class="col-left">Progetto</td>
-          <td class="col-left" style="white-space:normal;font-weight:400;color:var(--text2);">Capitolo 5 consegna della documentazione attesa punti 1-2-3</td>
-          <td><span class="date-pill dp-2026">11/09/2026</span></td>
-        </tr>
-        <tr>
-          <td class="col-id">02</td>
-          <td class="col-left">Invio Permessi 1</td>
-          <td class="col-left" style="white-space:normal;font-weight:400;color:var(--text2);">Completamento ed Invio di tutte le richieste verso tutti gli altri enti competenti (Provincia/Città Metropolitana, ANAS, Autostrade, ecc.)</td>
-          <td><span class="date-pill dp-2026">30/09/2026</span></td>
-        </tr>
-        <tr>
-          <td class="col-id">03</td>
-          <td class="col-left">Invio Permessi 2</td>
-          <td class="col-left" style="white-space:normal;font-weight:400;color:var(--text2);">Completamento ed Invio di tutte le richieste verso tutti i Comuni interessati</td>
-          <td><span class="date-pill dp-2026">16/10/2026</span></td>
-        </tr>
-        <tr>
-          <td class="col-id">04</td>
-          <td class="col-left">Ottenimento</td>
-          <td class="col-left" style="white-space:normal;font-weight:400;color:var(--text2);">Ottenimento di tutte le autorizzazioni</td>
-          <td><span class="date-pill dp-2027">31/05/2027</span></td>
-        </tr>
-      </tbody></table>
     </div>
   </div>
 
@@ -221,23 +172,24 @@ tbody tr.group-row td{background:var(--surface2);font-family:var(--font-mono);fo
           <div class="section-tag" style="color:var(--retelit-teal);">Scadenze Lotti</div>
           <div class="section-title">Milestone Imprese</div>
         </div>
-        <span class="section-badge badge-imprese">12 lotti</span>
+        <span class="section-badge badge-imprese">3 lotti</span>
       </div>
       <div class="table-wrap">
         <table><thead>
           <tr class="group-head">
             <th class="gh-base" style="text-align:center;">Lotto</th>
-            <th class="gh-base">Cluster</th>
-            <th class="gh-permit">Invio P.</th>
-            <th class="gh-permit">Ottenimento P.</th>
+            <th class="gh-permit">Progetto</th>
+            <th class="gh-permit">Invio P.1</th>
+            <th class="gh-permit">Invio P.2</th>
+            <th class="gh-permit">Ottenimento</th>
             <th class="gh-scavi">Avvio</th>
             <th class="gh-compl">50%</th>
             <th class="gh-compl">90%</th>
             <th class="gh-compl">100%</th>
           </tr>
           <tr class="col-head">
-            <th class="ch-base"></th><th class="ch-base"></th>
-            <th class="ch-permit" colspan="2">Permitting</th>
+            <th class="ch-base"></th>
+            <th class="ch-permit" colspan="4">Permitting</th>
             <th class="ch-scavi" colspan="4">Attività Civili</th>
           </tr>
         </thead><tbody id="tbody-imprese"></tbody></table>
@@ -344,7 +296,7 @@ var GANTT_ROWS = [];
 function _buildGanttRows() {
   var rows = [{t:'g', label:'LOTTI · IMPRESE'}];
   IMPRESE_ROWS.forEach(function(r) {
-    rows.push({t:'i', label:'Lotto ' + r.lotto, sub:'cl.' + r.cluster, avvio:r.avvio, p50:(r.p50==='-'?null:r.p50), p90:(r.p90==='-'?null:r.p90), p100:r.p100});
+    rows.push({t:'i', label:'Lotto ' + r.lotto, avvio:r.avvio, p50:(r.p50==='-'?null:r.p50), p90:(r.p90==='-'?null:r.p90), p100:r.p100});
   });
   rows.push({t:'g', label:'CONTRACT MILESTONE'});
   CONTRACT.forEach(function(c) {
@@ -358,7 +310,7 @@ function _renderMilestoneData() {
   var tb1 = document.getElementById('tbody-imprese');
   IMPRESE_ROWS.forEach(function(r) {
     var tr = document.createElement('tr');
-    tr.innerHTML = '<td class="col-id">' + r.lotto + '</td><td class="cluster-cell">' + r.cluster + '</td><td class="col-permit-first">' + pill(r.invio) + '</td><td>' + pill(r.ottenim) + '</td><td class="col-avvio">' + pill(r.avvio) + '</td><td class="col-compl">' + pill(r.p50) + '</td><td class="col-compl">' + pill(r.p90) + '</td><td class="col-compl">' + pill(r.p100) + '</td>';
+    tr.innerHTML = '<td class="col-id">' + r.lotto + '</td><td class="col-permit-first">' + pill(r.progetto) + '</td><td>' + pill(r.invio1) + '</td><td>' + pill(r.invio2) + '</td><td>' + pill(r.ottenim) + '</td><td class="col-avvio">' + pill(r.avvio) + '</td><td class="col-compl">' + pill(r.p50) + '</td><td class="col-compl">' + pill(r.p90) + '</td><td class="col-compl">' + pill(r.p100) + '</td>';
     tb1.appendChild(tr);
   });
 
@@ -414,7 +366,7 @@ function buildGantt() {
   var HDR = 52;   /* time axis header height */
 
   var T0 = new Date(2026, 0, 1);
-  var T1 = new Date(2029, 3, 1);  /* Apr 2029 — padding per Cluster 6/7 */
+  var T1 = new Date(2029, 3, 1);  /* Apr 2029 — padding finale asse temporale */
   var SPAN = T1 - T0;
   var CW = W - LW; /* chart width */
 
