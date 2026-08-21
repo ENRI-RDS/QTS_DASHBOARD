@@ -109,6 +109,36 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
 
 ## 6. Log revisioni
 
+- **rev.28** — `milestone.html`: rinomina colonne milestone contrattuali
+  e fix di due bug segnalati da Andrea.
+  - Header tabella "Milestone Imprese": `Invio P.1` → `Submission SED`,
+    `Invio P.2` → `Submission Comuni`.
+  - Header tabella "Contract Milestone", col-head gruppo: `Scavi` →
+    `Attività Civili`.
+  - **Bug pill senza sfondo per date 2029+**: `dateClass()` aveva un
+    cutoff esplicito a `yr <= 2028` con fallback `dp-none` (nessuno
+    sfondo/colore) per qualsiasi data successiva — riportato da Andrea
+    su `02/01/2029`. Corretto rimuovendo il limite: `yr > 2027` ricade
+    ora su `dp-2028` (navy), coerente con la logica a 3 fasce già usata
+    da `colorForDate()` nel Gantt sottostante (mai stata affetta dallo
+    stesso bug).
+  - **Bug "Gantt Milestone — Imprese vs Contratto non si popola tutto"**:
+    causa radice = `T1` (limite destro asse temporale) hardcoded ad
+    Apr-2029, con bande anno e griglia trimestri come array statici
+    fermi allo stesso anno. Qualsiasi riga con scadenza oltre quella
+    soglia veniva clampata (`Math.min(1, ratio)` in `xPos()`) sul bordo
+    destro, con barre accatastate/troncate invece che posizionate
+    correttamente. Fix: `T1` ora calcolato dinamicamente come la data
+    massima trovata in `GANTT_ROWS` (su tutti i campi data: avvio, p50,
+    p90, p100, firma, ripensamento, invio, scavi50, completamento) + 1
+    trimestre di padding, con minimo storico invariato ad Apr-2029 (se
+    non c'è nessuna data oltre quella soglia il comportamento resta
+    identico a prima). Bande anno e griglia trimestri/etichette non più
+    hardcoded ma generate in loop da `T0` a `T1`, quindi si estendono
+    automaticamente qualunque sia l'anno massimo nei dati (2029, 2030,
+    ...) senza bisogno di ritoccare il codice ad ogni cambio di
+    orizzonte temporale del progetto.
+  - JS inline estratto e validato con `node --check` → OK.
 - **rev.27** — `milestone.html`: ottimizzato layout delle due tabelle
   superiori (Milestone Imprese / Contract Milestone) per farle stare
   affiancate senza scroll orizzontale e con altezze uniformi. `.tables-row`
