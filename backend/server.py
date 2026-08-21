@@ -1392,8 +1392,12 @@ MILESTONE_IMPRESE_ROWS = [
 ]
 
 MILESTONE_CONTRACT_ROWS = [
-    {"milestone": "Permits submission", "p50": "-", "p70": "-", "p100": "31/12/2026"},
-    {"milestone": "Authorizations received", "p50": "-", "p70": "-", "p100": "31/12/2027"},
+    {"n": 1, "milestone": "Firma contratto", "data": "02/07/2026"},
+    {"n": 2, "milestone": "Fine Periodo di Ripensamento", "data": "02/01/2027"},
+    {"n": 3, "milestone": "Invio di tutte le richieste permessi", "data": "02/07/2027"},
+    {"n": 4, "milestone": "50% completamento scavi Lotto A e B", "data": "02/01/2028"},
+    {"n": 5, "milestone": "Completamento Lotto A e B", "data": "02/07/2028"},
+    {"n": 6, "milestone": "Completamento Lotto C", "data": "02/01/2029"},
 ]
 
 
