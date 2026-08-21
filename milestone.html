@@ -183,14 +183,12 @@ tbody tr.group-row td{background:var(--surface2);font-family:var(--font-mono);fo
             <th class="gh-permit">Invio P.2</th>
             <th class="gh-permit">Ottenimento</th>
             <th class="gh-scavi">Avvio</th>
-            <th class="gh-compl">50%</th>
-            <th class="gh-compl">90%</th>
             <th class="gh-compl">100%</th>
           </tr>
           <tr class="col-head">
             <th class="ch-base"></th>
             <th class="ch-permit" colspan="4">Permitting</th>
-            <th class="ch-scavi" colspan="4">Attività Civili</th>
+            <th class="ch-scavi" colspan="2">Attività Civili</th>
           </tr>
         </thead><tbody id="tbody-imprese"></tbody></table>
       </div>
@@ -313,7 +311,7 @@ function _renderMilestoneData() {
   var tb1 = document.getElementById('tbody-imprese');
   IMPRESE_ROWS.forEach(function(r) {
     var tr = document.createElement('tr');
-    tr.innerHTML = '<td class="col-id">' + r.lotto + '</td><td class="col-permit-first">' + pill(r.progetto) + '</td><td>' + pill(r.invio1) + '</td><td>' + pill(r.invio2) + '</td><td>' + pill(r.ottenim) + '</td><td class="col-avvio">' + pill(r.avvio) + '</td><td class="col-compl">' + pill(r.p50) + '</td><td class="col-compl">' + pill(r.p90) + '</td><td class="col-compl">' + pill(r.p100) + '</td>';
+    tr.innerHTML = '<td class="col-id">' + r.lotto + '</td><td class="col-permit-first">' + pill(r.progetto) + '</td><td>' + pill(r.invio1) + '</td><td>' + pill(r.invio2) + '</td><td>' + pill(r.ottenim) + '</td><td class="col-avvio">' + pill(r.avvio) + '</td><td class="col-compl">' + pill(r.p100) + '</td>';
     tb1.appendChild(tr);
   });
 
