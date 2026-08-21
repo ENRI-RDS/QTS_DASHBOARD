@@ -205,14 +205,22 @@ tbody tr.group-row td{background:var(--surface2);font-family:var(--font-mono);fo
           <div class="section-tag" style="color:var(--ok);">Contratto</div>
           <div class="section-title">Contract Milestone</div>
         </div>
-        <span class="section-badge badge-contract">6 milestone</span>
+        <span class="section-badge badge-contract">3 lotti</span>
       </div>
       <div class="table-wrap">
         <table><thead>
+          <tr class="group-head">
+            <th class="gh-base" style="text-align:center;">Lotto</th>
+            <th class="gh-permit">Firma</th>
+            <th class="gh-permit">Fine Ripens.</th>
+            <th class="gh-permit">Invio Permessi</th>
+            <th class="gh-scavi">50% Scavi</th>
+            <th class="gh-compl">Completamento</th>
+          </tr>
           <tr class="col-head">
-            <th class="ch-base col-left" style="color:var(--muted);width:44px;">N.</th>
-            <th class="ch-base col-left" style="color:var(--muted);min-width:160px;">Milestone</th>
-            <th class="ch-base col-left" style="color:var(--muted);width:110px;">Data</th>
+            <th class="ch-base"></th>
+            <th class="ch-permit" colspan="3">Contratto</th>
+            <th class="ch-scavi" colspan="2">Scavi</th>
           </tr>
         </thead><tbody id="tbody-contract"></tbody></table>
       </div>
@@ -295,7 +303,7 @@ function _buildGanttRows() {
   });
   rows.push({t:'g', label:'CONTRACT MILESTONE'});
   CONTRACT.forEach(function(c) {
-    rows.push({t:'c', label:c.milestone, n:c.n, data:c.data});
+    rows.push({t:'c', label:'Lotto ' + c.lotto, firma:c.firma, ripensamento:c.ripensamento, invio:c.invio, scavi50:(c.scavi50==='-'?null:c.scavi50), completamento:c.completamento});
   });
   return rows;
 }
@@ -312,7 +320,7 @@ function _renderMilestoneData() {
   var tb2 = document.getElementById('tbody-contract');
   CONTRACT.forEach(function(c) {
     var tr = document.createElement('tr');
-    tr.innerHTML = '<td class="col-id">' + c.n + '</td><td class="col-left">' + c.milestone + '</td><td>' + pill(c.data) + '</td>';
+    tr.innerHTML = '<td class="col-id">' + c.lotto + '</td><td class="col-permit-first">' + pill(c.firma) + '</td><td>' + pill(c.ripensamento) + '</td><td>' + pill(c.invio) + '</td><td class="col-avvio">' + pill(c.scavi50) + '</td><td class="col-compl">' + pill(c.completamento) + '</td>';
     tb2.appendChild(tr);
   });
 
@@ -504,11 +512,22 @@ function buildGantt() {
         parts.push('<text x="' + x2 + '" y="' + (cy+3.5) + '" font-size="7.5" fill="white" text-anchor="middle" font-weight="700" font-family="JetBrains Mono,monospace" style="pointer-events:none;">100</text>');
       }
     } else {
-      /* contract milestone: singolo punto data */
-      var pxC = xPos(row.data);
-      if (pxC !== null) {
-        parts.push('<circle cx="' + pxC + '" cy="' + cy + '" r="7" fill="#1E9E6A" data-tip="' + row.label + ': ' + row.data + '" style="cursor:default;"/>');/* --ok */
-        parts.push('<text x="' + pxC + '" y="' + (cy+3.5) + '" font-size="7.5" fill="white" text-anchor="middle" font-weight="700" font-family="JetBrains Mono,monospace" style="pointer-events:none;">' + row.n + '</text>');
+      /* contract milestone (per lotto): barra firma→completamento con marker intermedi */
+      var xc1 = xPos(row.firma);
+      var xc2 = xPos(row.completamento);
+      if (xc1 !== null && xc2 !== null) {
+        parts.push('<rect x="' + xc1 + '" y="' + (cy-7) + '" width="' + (xc2-xc1) + '" height="14" rx="7" fill="' + colorLightForDate(row.completamento, 0.28) + '" stroke="' + colorForDate(row.completamento) + '" stroke-width="1.5"/>');
+        parts.push('<circle cx="' + xc1 + '" cy="' + cy + '" r="3.5" fill="' + colorForDate(row.firma) + '" opacity="0.8" data-tip="Firma contratto: ' + row.firma + '" style="cursor:default;"/>');
+        [['ripensamento','Fine Ripensamento'],['invio','Invio Permessi'],['scavi50','50% Scavi']].forEach(function(pair) {
+          var key = pair[0], lbl = pair[1];
+          var dateVal = row[key];
+          if (!dateVal) return;
+          var xm = xPos(dateVal);
+          if (xm === null) return;
+          var cm = colorForDate(dateVal);
+          parts.push('<polygon points="' + xm + ',' + (cy-7) + ' ' + (xm+5) + ',' + cy + ' ' + xm + ',' + (cy+7) + ' ' + (xm-5) + ',' + cy + '" fill="' + cm + '" data-tip="' + lbl + ': ' + dateVal + '" style="cursor:default;"/>');
+        });
+        parts.push('<circle cx="' + xc2 + '" cy="' + cy + '" r="7" fill="' + colorForDate(row.completamento) + '" data-tip="Completamento: ' + row.completamento + '" style="cursor:default;"/>');
       }
     }
 
