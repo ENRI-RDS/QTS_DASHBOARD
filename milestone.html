@@ -179,8 +179,8 @@ tbody tr.group-row td{background:var(--surface2);font-family:var(--font-mono);fo
           <tr class="group-head">
             <th class="gh-base" style="text-align:center;">Lotto</th>
             <th class="gh-permit">Progetto</th>
-            <th class="gh-permit">Invio P.1</th>
-            <th class="gh-permit">Invio P.2</th>
+            <th class="gh-permit">Submission SED</th>
+            <th class="gh-permit">Submission Comuni</th>
             <th class="gh-permit">Ottenimento</th>
             <th class="gh-scavi">Avvio</th>
             <th class="gh-compl">100%</th>
@@ -218,7 +218,7 @@ tbody tr.group-row td{background:var(--surface2);font-family:var(--font-mono);fo
           <tr class="col-head">
             <th class="ch-base"></th>
             <th class="ch-permit" colspan="3">Contratto</th>
-            <th class="ch-scavi" colspan="2">Scavi</th>
+            <th class="ch-scavi" colspan="2">Attività Civili</th>
           </tr>
         </thead><tbody id="tbody-contract"></tbody></table>
       </div>
@@ -276,8 +276,7 @@ function dateClass(str) {
   var yr = d.getFullYear();
   if (yr <= 2026) return 'dp-2026';
   if (yr <= 2027) return 'dp-2027';
-  if (yr <= 2028) return 'dp-2028';
-  return 'dp-none';
+  return 'dp-2028'; /* riusata per 2028 e oltre, coerente col navy "else" di colorForDate nel Gantt */
 }
 
 function pill(str) {
@@ -367,7 +366,18 @@ function buildGantt() {
   var HDR = 52;   /* time axis header height */
 
   var T0 = new Date(2026, 0, 1);
-  var T1 = new Date(2029, 3, 1);  /* Apr 2029 — padding finale asse temporale */
+  var _dateKeys = ['avvio','p50','p90','p100','firma','ripensamento','invio','scavi50','completamento'];
+  var _allDates = [];
+  GANTT_ROWS.forEach(function(r) {
+    _dateKeys.forEach(function(k) {
+      var d = parseDateStr(r[k]);
+      if (d) _allDates.push(d);
+    });
+  });
+  var _minT1 = new Date(2029, 3, 1); /* Apr 2029 — padding minimo storico */
+  var _maxData = _allDates.length ? new Date(Math.max.apply(null, _allDates)) : _minT1;
+  var _paddedMax = new Date(_maxData.getFullYear(), _maxData.getMonth() + 3, 1); /* +1 trimestre di respiro */
+  var T1 = _paddedMax > _minT1 ? _paddedMax : _minT1;
   var SPAN = T1 - T0;
   var CW = W - LW; /* chart width */
 
@@ -408,30 +418,32 @@ function buildGantt() {
   /* background */
   parts.push('<rect width="' + W + '" height="' + totalH + '" fill="#F7F8FA"/>');/* --gray-50 */
 
-  /* year bands */
-  var xe26  = xPos('31/12/2026');
-  var xs27  = xPos('01/01/2027');
-  var xe27  = xPos('31/12/2027');
-  var xs28  = xPos('01/01/2028');
-  parts.push('<rect x="' + LW + '" y="0" width="' + (xe26 - LW) + '" height="' + totalH + '" fill="#41BBD9" opacity="0.08"/>');/* sky */
-  parts.push('<rect x="' + xs27 + '" y="0" width="' + (xe27 - xs27) + '" height="' + totalH + '" fill="#1E9E6A" opacity="0.07"/>');/* ok green */
-  parts.push('<rect x="' + xs28 + '" y="0" width="' + (LW + CW - xs28) + '" height="' + totalH + '" fill="#043F75" opacity="0.07"/>');/* blue */
-  /* quarter grid lines + labels */
-  var quarters = [
-    ['01/01/2026','2026',true],  ['01/04/2026','Q2',false],
-    ['01/07/2026','Q3',false],   ['01/10/2026','Q4',false],
-    ['01/01/2027','2027',true],  ['01/04/2027','Q2',false],
-    ['01/07/2027','Q3',false],   ['01/10/2027','Q4',false],
-    ['01/01/2028','2028',true],  ['01/04/2028','Q2',false],
-    ['01/07/2028','Q3',false],   ['01/10/2028','Q4',false],
-    ['01/01/2029','2029',true],  ['01/04/2029','Q2',false],
-  ];
+  /* year bands — un rect per ogni anno coperto dal range T0..T1 (era hardcoded fino al 2028) */
+  var _yCursor = T0.getFullYear();
+  while (_yCursor <= T1.getFullYear()) {
+    var _ys = xPos('01/01/' + _yCursor);
+    var _ye = (_yCursor === T1.getFullYear()) ? (LW + CW) : xPos('01/01/' + (_yCursor + 1));
+    if (_ys !== null && _ye !== null) {
+      var _bandFill = _yCursor <= 2026 ? '#41BBD9' : (_yCursor <= 2027 ? '#1E9E6A' : '#043F75');
+      parts.push('<rect x="' + _ys + '" y="0" width="' + (_ye - _ys) + '" height="' + totalH + '" fill="' + _bandFill + '" opacity="0.07"/>');
+    }
+    _yCursor++;
+  }
+  /* quarter grid lines + labels — generati dinamicamente da T0 a T1 (era array hardcoded fermo a Q2 2029) */
+  var quarters = [];
+  var _qy = T0.getFullYear(), _qm = 0;
+  while (_qy < T1.getFullYear() || (_qy === T1.getFullYear() && _qm <= T1.getMonth())) {
+    var _qDate = '01/' + (_qm + 1 < 10 ? '0' : '') + (_qm + 1) + '/' + _qy;
+    quarters.push([_qDate, _qm === 0 ? String(_qy) : ('Q' + (_qm / 3 + 1)), _qm === 0]);
+    _qm += 3;
+    if (_qm >= 12) { _qm = 0; _qy++; }
+  }
   /* labelColor: year label based on which year token is in qDate string */
   function qLabelColor(qDate) {
-    if (qDate.slice(6) === '2026') return '#41BBD9'; /* --retelit-sky */
-    if (qDate.slice(6) === '2027') return '#1E9E6A'; /* --ok green */
-    if (qDate.slice(6) === '2028') return '#043F75'; /* --retelit-blue */
-    return '#9AA5B4';
+    var yr = +qDate.slice(6);
+    if (yr <= 2026) return '#41BBD9'; /* --retelit-sky */
+    if (yr <= 2027) return '#1E9E6A'; /* --ok green */
+    return '#043F75'; /* --retelit-blue, 2028+ */
   }
   quarters.forEach(function(q) {
     var qDate = q[0], qLabel = q[1], qIsYear = q[2];
