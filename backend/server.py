@@ -80,6 +80,13 @@ solleciti_col = db["solleciti"]                # registro solleciti per tratta/p
 # Senza questo lock, due richieste concorrenti (es. solleciti di imprese diverse)
 # possono leggere la stessa versione e la seconda scrittura sovrascrive/perde la prima.
 _master_csv_lock = asyncio.Lock()
+# Lock per serializzare _sync_cantieri(): la funzione legge il progressivo massimo
+# di codice_cantiere per lotto (_max_codice_per_lotto) e poi lo incrementa in memoria
+# per ogni nuovo cantiere. _sync_cantieri è invocata da più punti (startup, dopo ogni
+# aggiornamento di Master.csv, sync admin manuale, approvazione pending_updates): senza
+# questo lock, due esecuzioni in overlap possono partire dallo stesso valore massimo e
+# assegnare lo stesso codice_cantiere (es. CA/4/1A) a due pratiche diverse dello stesso lotto.
+_sync_cantieri_lock = asyncio.Lock()
 cantieri_col  = db["cantieri"]                  # stato cantiere per pratica di autorizzazione
 sopralluoghi_col = db["sopralluoghi"]          # verbali di sopralluogo
 pol_conv_dates_col = db["pol_conv_dates"]      # prima data in cui CONVENZIONE/POLIZZA è comparsa per una pratica
@@ -3156,7 +3163,7 @@ async def _backfill_codici_cantiere(cache: dict) -> int:
     return n
 
 
-async def _sync_cantieri() -> int:
+async def _sync_cantieri_impl() -> int:
     """Raggruppa le tratte con AUTORIZZAZIONE OTTENUTA per pratica (ente, numero,
     lotto) e crea/aggiorna un documento cantiere per pratica. metri_totali conta
     TUTTE le tratte della pratica (autorizzazione ottenuta), indipendentemente
@@ -3345,6 +3352,17 @@ async def _sync_cantieri() -> int:
     if created:
         print(f"[sync_cantieri] creati {created} nuovi cantieri (per pratica)")
     return created
+
+
+async def _sync_cantieri() -> int:
+    """Wrapper con lock su _sync_cantieri_impl(): la funzione è invocata da più
+    punti concorrenti (startup, dopo ogni aggiornamento Master.csv, sync admin
+    manuale, approvazione pending_updates) e assegna codice_cantiere leggendo
+    prima il progressivo massimo per lotto e poi incrementandolo in memoria —
+    senza serializzazione, due esecuzioni in overlap possono partire dallo
+    stesso valore e produrre codice_cantiere duplicati sullo stesso lotto."""
+    async with _sync_cantieri_lock:
+        return await _sync_cantieri_impl()
 
 
 async def _push_cantieri_to_github() -> None:
