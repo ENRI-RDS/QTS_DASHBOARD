@@ -12,7 +12,7 @@
  *   <script src="js/api-config.js"></script>
  *
  * Then to point all pages at the backend, run once in the browser console:
- *   localStorage.setItem('qts_api_base', 'https://qts-dashboard-api.onrender.com')
+ *   localStorage.setItem('qts_api_base', 'https://qts-dashboard.onrender.com')
  *
  * To go back to static files, clear it:
  *   localStorage.removeItem('qts_api_base')
