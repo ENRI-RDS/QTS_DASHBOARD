@@ -952,6 +952,14 @@ window.addEventListener('pageshow', (e) => {
       return 'done';
     }
     if (stato === 'sospeso') {
+      // Se la ripresa stimata è nota, l'allarme dipende solo dal suo superamento:
+      // "late" se scaduta, "done" altrimenti — a prescindere dai giorni di inattività
+      // (un cantiere sospeso in attesa non richiede aggiornamenti costanti).
+      // Fallback sulla staleness (2/7gg) solo se la data non è stata compilata.
+      const ggRipresa = daysOverdue(r.data_ripresa_stimata);
+      if (ggRipresa !== null) {
+        return ggRipresa > 0 ? 'late' : 'done';
+      }
       if (dsUpdate <= 2) return 'done';
       if (dsUpdate <= 7) return 'soon';
       return 'late';
