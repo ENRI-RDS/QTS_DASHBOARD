@@ -5395,7 +5395,7 @@ _hookScadenze();
       // rev.215: letti via API da MongoDB (non più da solleciti.csv su GitHub
       // Pages, che dipendeva dal deploy Pages spesso bloccato/in coda — vedi
       // AGENT_BRIEF). Endpoint staff-autenticato, passa sempre per Render.
-      const apiUrl = (window.QTS && QTS.isEnabled ? QTS.apiBase : 'https://qts-dashboard-api.onrender.com') + '/api/staff/solleciti';
+      const apiUrl = (window.QTS && QTS.isEnabled ? QTS.apiBase : 'https://qts-dashboard.onrender.com') + '/api/staff/solleciti';
       const token = localStorage.getItem('_qts_session') || '';
       const r = await fetch(apiUrl, { cache: 'no-cache', headers: { 'x-session-token': token } });
       if (!r.ok) return;
