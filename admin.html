@@ -450,6 +450,20 @@
       <!-- DATI PRATICHE (admin) -->
       <div class="panel" id="panel-note">
         <p class="sub">Correggi stato, date e note di una pratica (autorizzazione/nulla osta/ordinanza). "Modifica dati" corregge lo stato attuale su tutte le tratte; "Storico note" mostra ogni nota inserita nel tempo (anche vecchia, di più caricamenti fa) e permette di correggerne il testo, propagando la correzione su tutte le tratte associate a quella nota. Le pratiche già OTTENUTO non compaiono qui.</p>
+
+        <details id="enriDetails" style="margin-bottom:14px;border:1px solid var(--retelit-mist);border-radius:10px;background:var(--retelit-ice)">
+          <summary style="cursor:pointer;padding:10px 14px;font-weight:700;font-size:12.5px;color:var(--retelit-teal);list-style:none;display:flex;align-items:center;gap:8px">
+            <span id="enriCount">Concomitanza ENRI: …</span>
+          </summary>
+          <div style="padding:0 14px 14px">
+            <p class="sub" style="margin:0 0 8px">Tratte con "CONCOMITANZA ENRI"=SI in Master.csv, incluse quelle senza numero pratica ancora assegnato (non compaiono nella tabella sotto finché non viene aperta la pratica).</p>
+            <table>
+              <thead><tr><th>Tratta</th><th>Ente</th><th>Lotto</th><th>Stato autorizzazione</th></tr></thead>
+              <tbody id="enriBody"><tr><td colspan="4" class="empty">Caricamento…</td></tr></tbody>
+            </table>
+          </div>
+        </details>
+
         <div class="row" style="gap:10px;margin-bottom:14px">
           <input type="text" id="noteSearch" placeholder="Filtra per TRATTA_ID, codice pratica (es. AUT/24/1A), ente o lotto…" style="flex:1" data-testid="note-search">
           <button class="btn btn-ghost btn-xs" id="noteRefreshBtn">Aggiorna</button>
@@ -1789,12 +1803,30 @@
     }catch(err){
       tbody.innerHTML = `<tr><td colspan="6" class="empty" style="color:#ef4444">Errore: ${escapeHtml(err.message)}</td></tr>`;
     }
+    loadConcomitanzaEnri();
+  }
+  async function loadConcomitanzaEnri(){
+    const body = $('enriBody'), count = $('enriCount');
+    try{
+      const d = await api('/api/admin/concomitanza-enri');
+      const rows = d.results || [];
+      count.textContent = `Concomitanza ENRI: ${d.count||0} tratte`;
+      body.innerHTML = rows.length ? rows.map(r => `<tr>
+        <td style="font-weight:700">${escapeHtml(r.tratta_id||'—')}</td>
+        <td>${escapeHtml(r.ente||'—')}</td>
+        <td>${escapeHtml(r.lotto||'—')}</td>
+        <td>${escapeHtml(r.stato_autorizzazione||'—')}</td>
+      </tr>`).join('') : '<tr><td colspan="4" class="empty">Nessuna tratta in concomitanza</td></tr>';
+    }catch(err){
+      count.textContent = 'Concomitanza ENRI: errore caricamento';
+      body.innerHTML = `<tr><td colspan="4" class="empty" style="color:#ef4444">Errore: ${escapeHtml(err.message)}</td></tr>`;
+    }
   }
   function renderNoteTable(){
     const tbody = $('noteResults');
     const f = (noteSearchEl?.value || '').trim().toLowerCase();
     let rows = !f ? NOTE_ALL : NOTE_ALL.filter(r => (
-      (r.codice||'') + ' ' + (r.tratta_ids||[r.tratta_id]).join(' ') + ' ' + (r.ente||'') + ' ' + (r.lotto||'') + ' ' + (r.stato_permesso||'')
+      (r.codice||'') + ' ' + (r.tratta_ids||[r.tratta_id]).join(' ') + ' ' + (r.ente||'') + ' ' + (r.lotto||'') + ' ' + (r.stato_permesso||'') + ' ' + (r.concomitanza_enri==='SI'?'concomitanza enri':'')
     ).toLowerCase().includes(f));
     if (NOTE_SORT.key) {
       const key = NOTE_SORT.key;
@@ -1808,8 +1840,10 @@
     if (!rows.length){ tbody.innerHTML = '<tr><td colspan="6" class="empty">Nessuna pratica trovata</td></tr>'; return; }
     tbody.innerHTML = rows.map((r, i) => {
       const { chip, txt } = _noteAuthorChip(r.note_attuale);
+      const enriTag = r.concomitanza_enri === 'SI'
+        ? `<span class="pend-tag" style="background:var(--retelit-teal)15;color:var(--retelit-teal);margin-left:6px" title="Concomitanza con progetto ENRI">ENRI</span>` : '';
       return `<tr>
-        <td style="font-weight:700">${escapeHtml(r.codice || '—')}</td>
+        <td style="font-weight:700">${escapeHtml(r.codice || '—')}${enriTag}</td>
         <td>${escapeHtml(r.ente || '—')}</td>
         <td>${escapeHtml(r.lotto || '—')}</td>
         <td class="stato-cell" style="color:${_noteStatoColor(r.stato_permesso)};font-weight:600">${escapeHtml(r.stato_permesso || '—')}</td>
