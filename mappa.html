@@ -1425,9 +1425,11 @@ function makePopupHtml(p, gmapsUrl) {
     ? `<div class="popup-detail-row"><span class="dl">Nulla Osta</span><span class="dv" style="color:${getColor(p.STATO_NULLAOSTA)}">${p.STATO_NULLAOSTA}</span></div>` : '';
   const ordHtml = p.STATO_ORDINANZA && p.STATO_ORDINANZA !== 'IN ATTESA'
     ? `<div class="popup-detail-row"><span class="dl">Ordinanza</span><span class="dv" style="color:${getColor(p.STATO_ORDINANZA)}">${p.STATO_ORDINANZA}</span></div>` : '';
+  const enriHtml = p.CONCOMITANZA_ENRI === 'SI'
+    ? `<div class="popup-detail-row"><span class="dl">Concomitanza ENRI</span><span class="dv" style="color:var(--retelit-teal);font-weight:700">SI</span></div>` : '';
 
   const enti = [p.ENTE, p['ENTE 2']].filter(Boolean).join(', ') || '—';
-  const hasDetail = motivoHtml || noHtml || ordHtml;
+  const hasDetail = motivoHtml || noHtml || ordHtml || enriHtml;
 
   // Cantiere collegato a questa tratta — sola lettura, nessuna azione
   const cantiere = (typeof RO_CANTIERI !== 'undefined')
@@ -1546,7 +1548,7 @@ function makePopupHtml(p, gmapsUrl) {
         </div>
         ${hasDetail ? `<div class="popup-section">
           <div class="popup-section-title">Dettaglio stato</div>
-          ${motivoHtml}${noHtml}${ordHtml}
+          ${motivoHtml}${noHtml}${ordHtml}${enriHtml}
         </div>` : ''}
         ${pratiche.length ? `<div class="popup-section">
           <div class="popup-section-title">Pratiche</div>
