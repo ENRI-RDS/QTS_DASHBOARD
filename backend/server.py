@@ -1200,6 +1200,13 @@ def _compute_tratta_summary(master_df: "pd.DataFrame") -> dict:
             "IN ATTESA" if need_ord == "SI" else "NON NECESSARIO"
         )
 
+        # CONCOMITANZA ENRI: flag SI/NO sulle singole righe (in genere sulla riga
+        # AUT, a volte duplicato anche sul NULLA OSTA della stessa tratta) ->
+        # se una qualsiasi riga della tratta e' SI, la tratta e' in concomitanza.
+        concomitanza_enri = "SI" if any(
+            _norm(r.get("CONCOMITANZA ENRI")) == "SI" for r in rows
+        ) else "NO"
+
         aut_ok = stato_aut == "OTTENUTO"
         no_ok  = stato_no == "OTTENUTO"
         ord_ok = stato_ord == "OTTENUTO"
@@ -1235,6 +1242,8 @@ def _compute_tratta_summary(master_df: "pd.DataFrame") -> dict:
             "PRATICA_AUT":          str(aut_row_corrente.get("PRATICA", "")).strip() if aut_row_corrente else "",
             "ENTE":                 ente_aut,
             "LUNGHEZZA":            rows[0].get("LUNGHEZZA", 0) if rows else 0,
+            "LOTTO":                _lotto_from_source(rows[0].get("Source.Name", "")) if rows else "",
+            "CONCOMITANZA_ENRI":    concomitanza_enri,
         }
     return result
 
@@ -1282,9 +1291,11 @@ async def _regenerate_derived_files(master_df: "pd.DataFrame", note: str = "") -
 
     Vengono aggiornati SOLO i campi calcolati da Master.csv:
     STATO_AUTORIZZAZIONE, STATO_LEGENDA, STATO_NULLAOSTA, STATO_ORDINANZA,
-    LAVORABILE, MOTIVO_NO, PRATICA, ENTE. Tutto il resto (fid, PROVINCIA,
-    COMUNE, ENTE 2, LUNGHEZZA, LOTTO, CONCOMITANZA_ENRI, geometria) resta
-    esattamente come nel QTS.geojson esistente.
+    LAVORABILE, MOTIVO_NO, PRATICA, ENTE, CONCOMITANZA_ENRI (da rev. con
+    colonna "CONCOMITANZA ENRI" in Master.csv, sostituisce la vecchia
+    colonna ORDINANZA/ORDINANZA NECESSARIA rimossa dal file sorgente).
+    Tutto il resto (fid, PROVINCIA, COMUNE, ENTE 2, LUNGHEZZA, LOTTO,
+    geometria) resta esattamente come nel QTS.geojson esistente.
 
     Fire-and-forget: eventuali errori vengono solo loggati.
     """
@@ -1312,6 +1323,7 @@ async def _regenerate_derived_files(master_df: "pd.DataFrame", note: str = "") -
                 props["STATO_ORDINANZA"]      = s["STATO_ORDINANZA"]
                 props["LAVORABILE"]           = s["LAVORABILE"]
                 props["MOTIVO_NO"]            = s["MOTIVO_NO"]
+                props["CONCOMITANZA_ENRI"]    = s["CONCOMITANZA_ENRI"]
                 if s["PRATICA"]:
                     props["PRATICA"] = s["PRATICA"]
                 if s["ENTE"]:
@@ -2014,6 +2026,7 @@ async def search_pratiche_admin(
     ))
     PREFIX = {"AUTORIZZAZIONE": "AUT", "NULLA OSTA": "NO", "ORDINANZA": "ORD"}
     out = []
+    has_concomitanza_col = "CONCOMITANZA ENRI" in latest.columns
     for _, grp in latest.groupby("_gkey", sort=False):
         with_note = grp[grp["NOTE"].astype(str).str.strip() != ""]
         rep = with_note.iloc[-1] if not with_note.empty else grp.iloc[0]
@@ -2037,9 +2050,34 @@ async def search_pratiche_admin(
             "data_prevista_rilascio": _it_date_to_iso(rep.get("DATA_PREVISTA_RILASCIO", "")),
             "data_approvazione": _it_date_to_iso(rep.get("DATA_APPROVAZIONE", "")),
             "n_sed": str(rep.get("N_SED", "")).strip(),
+            "concomitanza_enri": "SI" if (has_concomitanza_col and grp["CONCOMITANZA ENRI"].astype(str).str.strip().str.upper().eq("SI").any()) else "NO",
         })
     out.sort(key=lambda x: x["codice"])
     return {"results": out[:max(1, min(limit, 800))]}
+
+
+@app.get("/api/admin/concomitanza-enri")
+async def list_concomitanza_enri(sess: dict = Depends(_require_staff_session)):
+    """Elenco tratte con CONCOMITANZA ENRI = SI in Master.csv, a livello di
+    TRATTA_ID (indipendente dal numero PRATICA — a differenza di
+    /api/admin/pratiche-search, include anche le tratte la cui pratica non è
+    ancora stata numerata, che è la situazione attuale per la maggior parte
+    di esse)."""
+    df = await _read_master_csv()
+    if df is None or df.empty:
+        return {"results": [], "count": 0}
+    summary = _compute_tratta_summary(df)
+    out = [
+        {
+            "tratta_id": tid,
+            "ente": s["ENTE"],
+            "lotto": s["LOTTO"],
+            "stato_autorizzazione": s["STATO_AUTORIZZAZIONE"],
+        }
+        for tid, s in summary.items() if s.get("CONCOMITANZA_ENRI") == "SI"
+    ]
+    out.sort(key=lambda x: (x["lotto"], x["tratta_id"]))
+    return {"results": out, "count": len(out)}
 
 
 PRATICA_STATO_VALUES = [
