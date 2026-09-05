@@ -456,10 +456,11 @@
             <span id="enriCount">Concomitanza ENRI: …</span>
           </summary>
           <div style="padding:0 14px 14px">
-            <p class="sub" style="margin:0 0 8px">Tratte con "CONCOMITANZA ENRI"=SI in Master.csv, incluse quelle senza numero pratica ancora assegnato (non compaiono nella tabella sotto finché non viene aperta la pratica).</p>
+            <p class="sub" style="margin:0 0 8px">Tratte con "CONCOMITANZA ENRI"=SI in Master.csv, incluse quelle senza numero pratica QTS ancora assegnato (non compaiono nella tabella sotto finché non viene aperta la pratica). La pratica di autorizzazione è gestita e seguita nel progetto ENRI, non da Telebit: il campo PRATICA su queste righe va compilato con "&lt;numero&gt;_&lt;lotto ENRI&gt;" (es. "14_2" per AUT/14/2) — "Stato ENRI" è letto in tempo reale dal backend ENRI cercando quella pratica per ente+tipo+numero+lotto.</p>
+            <div id="enriSyncWarn" style="display:none;font-size:11.5px;color:var(--warn);margin-bottom:8px"></div>
             <table>
-              <thead><tr><th>Tratta</th><th>Ente</th><th>Lotto</th><th>Stato autorizzazione</th></tr></thead>
-              <tbody id="enriBody"><tr><td colspan="4" class="empty">Caricamento…</td></tr></tbody>
+              <thead><tr><th>Tratta</th><th>Ente</th><th>Lotto</th><th>Stato autorizzazione QTS</th><th>Rif. ENRI</th><th>Stato ENRI</th></tr></thead>
+              <tbody id="enriBody"><tr><td colspan="6" class="empty">Caricamento…</td></tr></tbody>
             </table>
           </div>
         </details>
@@ -1806,20 +1807,41 @@
     loadConcomitanzaEnri();
   }
   async function loadConcomitanzaEnri(){
-    const body = $('enriBody'), count = $('enriCount');
+    const body = $('enriBody'), count = $('enriCount'), warn = $('enriSyncWarn');
     try{
       const d = await api('/api/admin/concomitanza-enri');
       const rows = d.results || [];
       count.textContent = `Concomitanza ENRI: ${d.count||0} tratte`;
-      body.innerHTML = rows.length ? rows.map(r => `<tr>
+      warn.style.display = d.enri_error ? 'block' : 'none';
+      warn.textContent = d.enri_error || '';
+      body.innerHTML = rows.length ? rows.map(r => {
+        const refs = r.riferimenti_enri || [];
+        let rifCell, statoCell;
+        if (!refs.length){
+          rifCell = '<span style="color:var(--muted)">—</span>';
+          statoCell = '<span style="color:var(--muted)">riferimento non ancora inserito</span>';
+        } else {
+          rifCell = refs.map(x => escapeHtml(x.codice)).join('<br>');
+          statoCell = refs.map(x => {
+            const es = x.enri_stato;
+            if (!es) return '<span style="color:var(--muted)">non disponibile</span>';
+            if (!es.trovata) return '<span style="color:var(--warn)">pratica non trovata su ENRI</span>';
+            const okColor = es.stato_permesso === 'OTTENUTO' ? 'var(--ok)' : 'var(--warn)';
+            return `<span style="color:${okColor};font-weight:700">${escapeHtml(es.stato_permesso||'—')}</span>`;
+          }).join('<br>');
+        }
+        return `<tr>
         <td style="font-weight:700">${escapeHtml(r.tratta_id||'—')}</td>
         <td>${escapeHtml(r.ente||'—')}</td>
         <td>${escapeHtml(r.lotto||'—')}</td>
         <td>${escapeHtml(r.stato_autorizzazione||'—')}</td>
-      </tr>`).join('') : '<tr><td colspan="4" class="empty">Nessuna tratta in concomitanza</td></tr>';
+        <td>${rifCell}</td>
+        <td>${statoCell}</td>
+      </tr>`;
+      }).join('') : '<tr><td colspan="6" class="empty">Nessuna tratta in concomitanza</td></tr>';
     }catch(err){
       count.textContent = 'Concomitanza ENRI: errore caricamento';
-      body.innerHTML = `<tr><td colspan="4" class="empty" style="color:#ef4444">Errore: ${escapeHtml(err.message)}</td></tr>`;
+      body.innerHTML = `<tr><td colspan="6" class="empty" style="color:#ef4444">Errore: ${escapeHtml(err.message)}</td></tr>`;
     }
   }
   function renderNoteTable(){
