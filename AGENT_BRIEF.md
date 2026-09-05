@@ -1015,3 +1015,25 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
      lo spazio riservato alla sidebar). Le 3 pagine impresa restano
      invariate (già solo topbar). Verificato `node --check` sui 2 script
      inline di `hub.html`.
+- **rev.35** — Bug reale trovato da Andrea: le pagine Area Impresa
+  filtravano solo per LOTTO, non escludevano le pratiche/tratte con
+  CONCOMITANZA ENRI=SI (gestite da Sertori via ENRI, non dall'impresa del
+  lotto) — Telebit le avrebbe viste comunque, essendo nello stesso lotto
+  A/C. Fix in `backend/server.py`:
+  - Nuovo helper `_is_sertori(nome)` (case-insensitive) — le righe/tratte in
+    concomitanza restano visibili SOLO a un'impresa il cui nome è
+    esattamente "Sertori" (non ancora registrata come account impresa, ma
+    l'helper è pronto per quando lo sarà).
+  - `/api/imprese/pratiche`: esclude le righe Master.csv con
+    `CONCOMITANZA ENRI`=SI per chi non è Sertori.
+  - `/api/imprese/master-sed`: esclude le feature GeoJSON con
+    `CONCOMITANZA_ENRI`=SI (proprietà già presente via
+    `_compute_tratta_summary`) dallo stesso scoping.
+  - `/api/imprese/solleciti`: le tratte in concomitanza vengono tolte dal
+    set `tratte_impresa` prima della query solleciti.
+  - **`/api/imprese/cantieri` (tab Scavi di imprese_scavi.html) NON
+    toccato**: i documenti cantiere non hanno un flag concomitanza salvato,
+    e Andrea ha confermato che gli scavi non sono ancora assegnati a
+    nessuno per queste tratte (fase attuale = solo permessi) — nessuna
+    azione richiesta ora, da rivalutare quando gli scavi verranno assegnati.
+  - Verificato `python3 -m py_compile` OK.
