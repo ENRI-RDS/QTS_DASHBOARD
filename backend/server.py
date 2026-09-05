@@ -2181,6 +2181,113 @@ async def list_concomitanza_enri(sess: dict = Depends(_require_staff_session)):
     return {"results": out, "count": len(out), "enri_error": enri_error}
 
 
+@app.post("/api/admin/concomitanza-enri/sync-master")
+async def sync_concomitanza_enri_to_master(
+    x_upload_token: Annotated[str | None, Header(alias="x-upload-token")] = None,
+    token_q: Annotated[str | None, Query(alias="x_upload_token")] = None,
+    x_actor_nome: Annotated[str | None, Header(alias="x-actor-nome")] = None,
+):
+    """Scrive nel Master.csv di QTS le approvazioni ottenute su ENRI per le
+    pratiche in concomitanza — QTS non deve restare indefinitamente con lo
+    stato congelato al momento in cui la tratta è stata marcata concomitante
+    (rev.29/30): quando ENRI segna OTTENUTO, lo stesso stato va riportato
+    qui, altrimenti pratiche_search/index.html/mappa.html non lo vedrebbero
+    mai (leggono solo Master.csv, non chiamano ENRI in tempo reale).
+
+    Corrispondenza: per RIGA di Master.csv (non per tratta aggregata come in
+    /api/admin/concomitanza-enri — una tratta può avere righe AUTORIZZAZIONE
+    e NULLA OSTA con pratiche ENRI diverse), match su ENTE+TIPO_PERMESSO+
+    PRATICA-parsata (stessa identità di /api/external/pratica-status lato
+    ENRI), MAI su TRATTA_ID (i due progetti hanno numerazioni indipendenti).
+
+    Scrive solo le righe dove ENRI risulta OTTENUTO e la riga QTS non lo è
+    già (idempotente — rieseguibile senza creare versioni Master.csv inutili
+    se non ci sono nuove approvazioni). Non tocca NOTE per non perdere lo
+    storico esistente sulla riga; DATA_ULTIMA_MODIFICA viene valorizzata in
+    automatico da _apply_changes_to_df (stesso comportamento delle altre
+    scritture admin)."""
+    _check_token(x_upload_token or token_q)
+
+    async with _master_csv_lock:
+        df = await _read_master_csv()
+        if df is None or df.empty:
+            return {"ok": True, "aggiornate": 0, "dettaglio": [], "enri_error": None}
+
+        work = df.fillna("")
+        si_mask = work["CONCOMITANZA ENRI"].astype(str).str.strip().str.upper() == "SI"
+        si_rows = work[si_mask]
+        if si_rows.empty:
+            return {"ok": True, "aggiornate": 0, "dettaglio": [], "enri_error": None}
+
+        # Raccoglie una chiave di lookup PER RIGA (non per tratta): ogni riga
+        # ha una sola pratica ENRI di riferimento nel proprio campo PRATICA.
+        row_keys: dict[int, dict] = {}
+        lookup_keys: list[dict] = []
+        for idx, row in si_rows.iterrows():
+            tipo = _norm(row.get("TIPO_PERMESSO"))
+            parsed = _parse_enri_pratica_rif(row.get("PRATICA"))
+            if not parsed:
+                continue
+            numero, lotto = parsed
+            key = {"ente": str(row.get("ENTE", "")).strip(), "tipo_permesso": tipo, "numero": numero, "lotto": lotto}
+            row_keys[idx] = key
+            if key not in lookup_keys:
+                lookup_keys.append(key)
+
+        if not lookup_keys:
+            return {"ok": True, "aggiornate": 0, "dettaglio": [], "enri_error": None}
+
+        enri_results, enri_error = await _fetch_enri_pratica_status(lookup_keys)
+
+        changes = []
+        dettaglio = []
+        seen_targets = set()
+        for idx, key in row_keys.items():
+            res = enri_results.get((key["ente"], key["tipo_permesso"], key["numero"], key["lotto"]))
+            if not res or not res.get("trovata") or str(res.get("stato_permesso", "")).strip().upper() != "OTTENUTO":
+                continue
+            row = df.loc[idx]
+            if str(row.get("STATO_PERMESSO", "")).strip().upper() == "OTTENUTO":
+                continue  # già sincronizzata, nessuna scrittura inutile
+            tratta = str(row.get("TRATTA_ID", "")).strip()
+            ente_raw = str(row.get("ENTE", "")).strip()
+            tipo_raw = str(row.get("TIPO_PERMESSO", "")).strip()
+            pratica_raw = str(row.get("PRATICA", "")).strip()
+            # Master.csv contiene più righe storiche per la stessa tratta+tipo+pratica
+            # (una per cambio stato nel tempo, vedi permessiMap in index.html): dedup
+            # per evitare N change identiche che risolverebbero comunque sullo stesso
+            # last_idx in _apply_changes_to_df.
+            target = (tratta, ente_raw, tipo_raw, pratica_raw)
+            if target in seen_targets:
+                continue
+            seen_targets.add(target)
+            changes.append({
+                "tratta_id": tratta, "ente": ente_raw, "tipo_permesso": tipo_raw,
+                "original_pratica": pratica_raw,
+                "fields": {
+                    "STATO_PERMESSO": "OTTENUTO",
+                    "DATA_APPROVAZIONE": res.get("data_approvazione", "") or "",
+                },
+            })
+            dettaglio.append({
+                "tratta_id": tratta, "ente": ente_raw, "codice_enri": f"{key['numero']}_{key['lotto']}",
+                "data_approvazione": res.get("data_approvazione", ""),
+            })
+
+        if not changes:
+            return {"ok": True, "aggiornate": 0, "dettaglio": [], "enri_error": enri_error}
+
+        submission = {"type": "update", "in_place": True, "changes": changes}
+        new_df, summary = _apply_changes_to_df(df, submission)
+        reviewer = x_actor_nome or "sync-enri"
+        upload_id = await _write_master_csv(
+            new_df, note=f"Sync automatico ENRI: {summary.get('updated', 0)} pratica/e approvata/e ({reviewer})"
+        )
+    await _log_admin_action("sync_concomitanza_enri", f"{summary.get('updated', 0)} righe", x_actor_nome)
+    return {"ok": True, "aggiornate": summary.get("updated", 0), "dettaglio": dettaglio,
+            "new_upload_id": upload_id, "enri_error": enri_error}
+
+
 PRATICA_STATO_VALUES = [
     "IN ATTESA", "IN REDAZIONE", "IN FIRMA RDS", "INVIO PRELIMINARE",
     "INVIATO", "PROTOCOLLATO", "NECESSARIA INTEGRAZIONE",
