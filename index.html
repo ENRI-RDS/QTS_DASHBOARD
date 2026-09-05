@@ -333,6 +333,7 @@ window.loadXLSX = (function(){
   .bar-lotto-wrap { display:flex; flex-direction:column; align-items:flex-start; width:90px; flex-shrink:0; gap:2px; }
   .bar-lotto-num  { font-size:14px; font-weight:700; font-family:'Raleway', sans-serif; color:var(--text); letter-spacing:-0.01em; }
   .bar-lotto-comuni { font-size:10px; font-weight:600; color:var(--accent); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:90px; }
+  .bar-lotto-sertori { color:var(--accent2); }
   .bar-track {
     flex:1; height:28px; border-radius:6px; overflow:hidden;
     display:flex; background:var(--surface2); cursor:pointer;
@@ -3347,8 +3348,12 @@ function renderDashboard(data) {
     row.style.cursor = 'pointer';
     const msHtml = getMilestonesHtml(lotto);
     const impresa = IMPRESE_PER_LOTTO[lotto] || '';
+    // Se il lotto ha almeno una pratica in concomitanza ENRI, Sertori la affianca
+    // a Telebit (Sertori gestisce quelle pratiche via ENRI, non Telebit).
+    const hasConcomEnri = ((window._praticheDetailPerLotto || {})[lotto] || []).some(p => p.concomEnri);
+    const sertoriHtml = hasConcomEnri ? `<span class="bar-lotto-comuni bar-lotto-sertori">Sertori</span>` : '';
     const lottoHtml = impresa
-      ? `<div class="bar-lotto-wrap" title="${impresa}"><span class="bar-lotto-num">${lotto}</span><span class="bar-lotto-comuni">${impresa}</span></div>`
+      ? `<div class="bar-lotto-wrap" title="${impresa}${hasConcomEnri ? ' + Sertori' : ''}"><span class="bar-lotto-num">${lotto}</span><span class="bar-lotto-comuni">${impresa}</span>${sertoriHtml}</div>`
       : `<div class="bar-lotto-wrap"><span class="bar-lotto-num">${lotto}</span></div>`;
     row.innerHTML=`${lottoHtml}<div class="bar-track">${segsHtml}</div><span class="bar-pct">${pctLabel}</span><span class="bar-val" style="min-width:62px;text-align:right;font-size:12px;color:var(--text2);font-family:'Raleway',sans-serif;flex-shrink:0;font-weight:700;letter-spacing:-0.01em">${fmt(lottiTotale[lotto])} m</span>${msHtml}`;
     row.querySelectorAll('.bar-seg').forEach(seg=>{
