@@ -1090,3 +1090,30 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
   seguire; se scrive ma i valori restano diversi da quanto atteso, serve
   vedere `dettaglio` (loggato ma non ancora mostrato in tabella).
   Verificato `python3 -m py_compile` e `node --check` su entrambi i file.
+- **rev.39** — Bug reale trovato: pratiche in concomitanza ENRI non si
+  aggiornavano su `index.html` nonostante `_sync_enri_to_master` scrivesse
+  correttamente la nuova riga su Master.csv (confermato da Andrea via
+  Master.csv scaricato: riga `IN FIRMA RDS` presente con `DATA_ULTIMA_
+  MODIFICA` valorizzata per tutte le tratte in concomitanza). Causa radice:
+  `_processMasterText()` in `index.html` faceva `text.trim().split('\n')`
+  PRIMA di interpretare le virgolette — ogni riga scritta da
+  `_sync_enri_to_master` ha NOTE con newline letterale incorporato
+  (`"SP45\n[ENRI] ..."`, quotato correttamente da `pandas.to_csv`), quindi lo
+  split naive spezzava quella riga in due a metà record, azzerando
+  tratta/prat/stato sulla riga risultante → scartata silenziosamente da
+  `if (!tratta || !prat || !stato) continue`. `permessiMap` restava quindi
+  sull'ultima riga valida, cioè `IN REDAZIONE`. Bug sistemico: colpisce
+  OGNI riga toccata dal sync ENRI (nota `[ENRI] ...` sempre accodata con
+  `\n`), non un caso isolato. Fix: `_processMasterText` ora usa un
+  tokenizer CSV quote-aware che spezza record solo su `\n`/separatore FUORI
+  da campi quotati (gestisce anche `""` come quote escape); `lines`/
+  `splitLine` mantenuti come alias per compatibilità col resto della
+  funzione (nessun'altra riga toccata). Verificato in Node contro il
+  Master.csv reale di Andrea: 155/155 righe ora parsate correttamente,
+  incluse tutte le righe `IN FIRMA RDS` con nota `[ENRI]`.
+  **Da verificare**: `gantt.html` (riga ~773) ha lo stesso pattern
+  `text.trim().split('\n')` su un CSV diverso (dati Gantt, non Master.csv) —
+  non risulta ancora rotto perché quel CSV non ha campi con newline
+  incorporato, ma è lo stesso bug potenziale se in futuro un campo note lì
+  contenesse `\n`. Non toccato in questa sessione (nessuna nota "a capo" in
+  quel CSV a oggi).
