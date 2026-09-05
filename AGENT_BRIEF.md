@@ -1140,3 +1140,39 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
     ENRI (nessuna riga gemella `IN FIRMA RDS`), non un bug del parser.
     Verificato `node --check` (via estrazione script inline) su tutti gli
     script di `mappa.html`.
+- **rev.41** — Richiesta Andrea: allineare `mappa.html` QTS al file
+  `mappa.html` di ENRI per tasto Sopralluogo e "Apri con Google" (file ENRI
+  fornito come riferimento, non applicato 1:1 all'intero file — solo le due
+  feature richieste). Confronto diretto:
+  - **Tasto Sopralluogo** (`cantiereHtml`, link a `sopralluoghi.html?lotto=
+    ...&cantiere=...&indirizzo=...`): già identico byte-per-byte tra i due
+    progetti — nessuna modifica.
+  - **Popup SED / "Apri con Google Maps" lì**: già identico — nessuna
+    modifica.
+  - **Popup tratta principale (`makePopupHtml`), pulsante "Apri in Google
+    Maps"**: QTS aveva ancora un blocco a tutta larghezza in fondo al popup
+    (versione vecchia, pre-refactor ENRI); ENRI l'ha sostituito con
+    un'icona compatta nell'header, accanto al pulsante di chiusura ✕.
+    Applicata la stessa struttura a QTS: icona `<a class="popup-close-btn"
+    href="${gmapsUrl}">` con pin SVG prima del bottone ✕, rimosso il vecchio
+    blocco `<div style="padding:0 16px 12px">...Apri in Google Maps</div>`
+    in fondo al popup. Nessun'altra riga della funzione toccata (stessa
+    logica dati, solo riposizionamento markup). Verificato `node --check`
+    su tutti gli script inline di `mappa.html`.
+- **rev.42** — Richiesta Andrea: popup mappa tratta "troppo grosso e
+  invasivo" + si apre sopra la tratta selezionata. Portate 2 ottimizzazioni
+  già presenti su ENRI (dati QTS-specifici invariati, es. `praticheHtml`
+  resta la versione semplice di QTS senza ente/badge concomitanza — quello
+  è codice ENRI-specifico, non portato):
+  1. **Sezione "Pratiche" fusa nella griglia campi** (`popup-field full`,
+     chip in flex-wrap) invece di `.popup-section` separata sotto con
+     titolo+bordo — elimina un blocco verticale intero quando la tratta ha
+     pratiche associate (caso comune). `hasDetail` nel calcolo margin-bottom
+     ora confronta con `cantiereHtml` invece di `pratiche.length` (coerente
+     con ENRI, dato che pratiche non è più una sezione a parte).
+  2. **`offset: L.point(360, -10)`** su `layer.bindPopup()` (solo desktop,
+     `isMobile` resta centrato in basso come prima): il bordo sinistro del
+     popup (max-width 640, metà=320+margine) resta sempre a destra del
+     punto cliccato, quindi non copre più la tratta selezionata. Su mobile
+     nessun offset laterale (schermo stretto, non ha senso spostarlo).
+  Verificato `node --check` su tutti gli script inline di `mappa.html`.
