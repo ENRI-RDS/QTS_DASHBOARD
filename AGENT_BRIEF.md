@@ -1060,3 +1060,33 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
   `enri_error="ENRI_SYNC_TOKEN non configurato..."`). Da fare lato Andrea:
   stesso valore in QTS_SYNC_TOKEN (Render ENRI) e ENRI_SYNC_TOKEN (Render
   QTS), poi redeploy di entrambi.
+- **rev.38** — Bug reale trovato con Andrea: dopo aver corretto l'ente
+  "PROVINCIA DI MB"→"PROVINCIA DI MONZA E BRIANZA" su Master.csv QTS (che
+  ha risolto il matching, confermato dalla GET /api/admin/concomitanza-enri
+  che ora trova le pratiche), il trigger manuale del sync da admin.html
+  continuava ad apparire come "non ha fatto nulla" — nessun messaggio,
+  nessun errore. Causa reale: **il frontend nascondeva completamente
+  l'esito** quando `aggiornate === 0` o la chiamata falliva — il blocco
+  `try { if (s.aggiornate > 0) {...} } catch { /* sync silenzioso */ }` in
+  `loadConcomitanzaEnri()` non mostrava mai nulla in quei due casi, quindi
+  Andrea non aveva modo di distinguere "0 modifiche perché già allineato"
+  da "0 modifiche perché il sync sta fallendo silenziosamente" — diagnosi
+  bloccata dalla UI stessa, non (necessariamente) dalla logica di sync.
+  Fix in `admin.html`: ora il banner `warn` mostra sempre un esito —
+  successo (verde), `enri_error` esplicito (giallo), "nessuna modifica,
+  N/M pratiche trovate su ENRI già allineate" (grigio), o l'errore
+  dell'eccezione (rosso) se la chiamata fallisce del tutto. Backend
+  `_sync_enri_to_master()`: aggiunti `pratiche_totali`/`pratiche_trovate`
+  alla risposta (anche nel path "nessuna modifica") per dare quel
+  conteggio diagnostico anche quando `dettaglio` è vuoto (conteneva solo
+  le pratiche con differenze reali, non quelle controllate e già
+  allineate — fuorviante come proxy di "quante ne ho controllate").
+  **Nessun bug trovato nella logica di matching/scrittura stessa**
+  (`_sync_enri_to_master`/`_apply_changes_to_df`): stessa identità
+  ente+tipo+pratica della GET che già funziona, stesso `_read_master_csv()`
+  con cache invalidata per versione. Prossimo passo per Andrea: rilanciare
+  il sync ora che il banner mostra l'esito reale — se dice "enri_error" o
+  "0/N trovate" nonostante la GET trovi tutto, è un indizio nuovo da
+  seguire; se scrive ma i valori restano diversi da quanto atteso, serve
+  vedere `dettaglio` (loggato ma non ancora mostrato in tabella).
+  Verificato `python3 -m py_compile` e `node --check` su entrambi i file.
