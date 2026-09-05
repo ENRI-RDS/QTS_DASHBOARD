@@ -2116,9 +2116,35 @@ async function _loadSEDInner() {
       const csvResp = csvResp_text ? { ok: true, text: async () => csvResp_text } : { ok: false };
       if (csvResp.ok) {
         const csvText = await csvResp.text();
-        const rows = csvText.split('\n');
-        const _sep = rows[0].includes('\t') ? '\t' : (rows[0].includes(';') ? ';' : ',');
-        const headers = rows[0].split(_sep).map(h => h.trim().replace(/^"|"$/g,''));
+        // Parser CSV quote-aware: split solo su '\n'/separatore FUORI da campi
+        // quotati. Necessario perché le righe scritte da _sync_enri_to_master
+        // (backend) hanno NOTE con newline letterale incorporato (es. "SP45\n
+        // [ENRI] ...", quotato correttamente da pandas to_csv) — uno split
+        // naive su '\n' spezzava quella riga in due, azzerando N_SED/PRATICA
+        // e facendola scartare, così i popup SED restavano sull'ultimo stato
+        // valido (IN REDAZIONE) per le pratiche in concomitanza ENRI. Stesso
+        // bug e stesso fix di index.html/_processMasterText.
+        const firstLineEnd = csvText.indexOf('\n');
+        const firstLine = (firstLineEnd === -1 ? csvText : csvText.slice(0, firstLineEnd)).replace(/\r/, '');
+        const _sep = firstLine.includes('\t') ? '\t' : (firstLine.includes(';') ? ';' : ',');
+        const rows = [];
+        { let row = [], cur = '', inQ = false;
+          const src = csvText.replace(/\r\n/g, '\n');
+          for (let i = 0; i < src.length; i++) {
+            const ch = src[i];
+            if (inQ) {
+              if (ch === '"') { if (src[i+1] === '"') { cur += '"'; i++; } else { inQ = false; } }
+              else cur += ch;
+            } else if (ch === '"') { inQ = true; }
+            else if (ch === _sep) { row.push(cur.trim()); cur = ''; }
+            else if (ch === '\n') { row.push(cur.trim()); rows.push(row); row = []; cur = ''; }
+            else cur += ch;
+          }
+          if (cur !== '' || row.length) { row.push(cur.trim()); rows.push(row); }
+        }
+        if (rows.length && rows[rows.length - 1].every(c => c === '')) rows.pop();
+
+        const headers = rows[0];
         const idx = n => headers.findIndex(h => h.toUpperCase() === n.toUpperCase());
         const iNSed  = idx('N_SED'),    iTipo  = idx('TIPO_PERMESSO');
         const iEnte  = idx('ENTE'),     iStato = idx('STATO_PERMESSO');
@@ -2127,9 +2153,8 @@ async function _loadSEDInner() {
         const iLotto = idx('LOTTO'),    iSrc   = idx('Source.Name');
 
         const permMap = {}; // key: nSed|pratica|tipo → best row
-        rows.slice(1).forEach(row => {
-          if (!row.trim()) return;
-          const cols = row.split(_sep).map(c => c.trim().replace(/^"|"$/g,''));
+        rows.slice(1).forEach(cols => {
+          if (!cols.length || cols.every(c => c === '')) return;
           const nSed = cols[iNSed]; if (!nSed) return;
           const prat = iPrat >= 0 ? cols[iPrat]||'' : '';
           const tipo = iTipo >= 0 ? cols[iTipo]||'' : '';
