@@ -2081,7 +2081,21 @@ async def search_pratiche_admin(
     has_concomitanza_col = "CONCOMITANZA ENRI" in latest.columns
     for _, grp in latest.groupby("_gkey", sort=False):
         with_note = grp[grp["NOTE"].astype(str).str.strip() != ""]
-        rep = with_note.iloc[-1] if not with_note.empty else grp.iloc[0]
+        # Riga rappresentativa per stato/date: quella con DATA_ULTIMA_MODIFICA
+        # più recente (stesso criterio di permessiMap in index.html) — non
+        # semplicemente grp.iloc[0]. Su una pratica multi-tratta, se nessuna
+        # riga del gruppo ha NOTE (l'ENRI-sync la scrive solo se ENRI restituisce
+        # un campo nota valorizzato), grp.iloc[0] può essere una tratta mai
+        # toccata dal sync → stato_permesso stantio anche a sync riuscito.
+        if "DATA_ULTIMA_MODIFICA" in grp.columns:
+            dum_parsed = pd.to_datetime(grp["DATA_ULTIMA_MODIFICA"], format="%d/%m/%Y", errors="coerce")
+        else:
+            dum_parsed = None
+        rep = grp.loc[dum_parsed.idxmax()].copy() if dum_parsed is not None and dum_parsed.notna().any() else grp.iloc[0].copy()
+        if not with_note.empty:
+            # La nota mostrata resta comunque l'ultima inserita, non
+            # necessariamente sulla riga più recente per stato/date.
+            rep["NOTE"] = with_note.iloc[-1]["NOTE"]
         tipo = str(rep.get("TIPO_PERMESSO", "")).strip()
         pratica_num = str(rep.get("PRATICA", "")).strip()
         lotto = rep.get("_lotto", "") or _lotto_from_source(rep.get("Source.Name", ""))
