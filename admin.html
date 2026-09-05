@@ -1855,9 +1855,12 @@
       const s = await api('/api/admin/concomitanza-enri/sync-master', { method: 'POST', headers: authHeaders() });
       warn.style.display = 'block';
       if (s.aggiornate > 0) {
+        // loadConcomitanzaEnri() resetta sempre warn a inizio funzione: il messaggio
+        // di successo va scritto DOPO il reload, altrimenti sparisce subito.
+        await loadConcomitanzaEnri(false); // ricarica la tabella con lo stato appena scritto
+        warn.style.display = 'block';
         warn.style.color = 'var(--ok)';
         warn.textContent = `✓ ${s.aggiornate} pratica/e sincronizzata/e da ENRI su Master.csv (nuova versione ${s.new_upload_id||''}).`;
-        await loadConcomitanzaEnri(false); // ricarica la tabella con lo stato appena scritto
       } else if (s.enri_error) {
         warn.style.color = 'var(--warn)';
         warn.textContent = `Sync ENRI non riuscito: ${s.enri_error}`;
