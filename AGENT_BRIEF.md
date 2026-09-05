@@ -964,3 +964,54 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
     (non eseguibile da Claude, richiede Mongo+ENRI raggiungibile); Andrea
     corregge l'inconsistenza ente "17_2" (rev.30, ancora aperta) prima
     che il sync possa scrivere correttamente su quella pratica.
+- **rev.34** — Tre richieste di Andrea nella stessa sessione:
+  1. **Sync ENRI→QTS esteso a ogni cambio di stato (non solo OTTENUTO)**.
+     `_sync_enri_to_master()` (nuova funzione condivisa, estratta dal corpo
+     di `sync_concomitanza_enri_to_master`) ora confronta riga per riga
+     `STATO_PERMESSO`, `DATA_RICHIESTA`, `DATA_APPROVAZIONE`,
+     `DATA_PREVISTA_RILASCIO` con la risposta ENRI e scrive qualunque campo
+     diverso (non solo quando ENRI=OTTENUTO), sempre a livello di riga
+     Master.csv (match ENTE+TIPO_PERMESSO+PRATICA-parsata, mai TRATTA_ID,
+     invariato da rev.33). Un valore ENRI vuoto non sovrascrive mai il dato
+     QTS esistente. **NOTE non è mai sovrascritta**: se ENRI restituisce una
+     `nota`, viene ACCODATA con tag `[ENRI] ...` solo se quel testo non è
+     già presente in coda (idempotente sui poll ripetuti), per non perdere
+     lo storico note QTS. Verificati con Andrea i campi esposti da
+     `/api/external/pratica-status` lato ENRI (incollato `server.py` ENRI
+     aggiornato): `stato_permesso`, `data_richiesta`, `data_approvazione`,
+     `data_prevista_rilascio`, `nota`, `trovata` — schema confermato,
+     nessuna assunzione.
+  2. **Propagazione automatica via polling**, non più solo manuale
+     dall'apertura della tab "Note pratiche" di admin.html (che resta
+     comunque disponibile, ora chiama `_sync_enri_to_master` condivisa).
+     Nuovo task in background avviato allo startup (`_enri_sync_poll_loop`,
+     stesso pattern di `_startup_sync_cantieri`): dorme
+     `ENRI_SYNC_POLL_SECONDS` (env, default 1800s/30min) e richiama
+     `_sync_enri_to_master("sync-enri-auto")`; no-op silenzioso se
+     `ENRI_SYNC_TOKEN` non è configurato. Verificato `python3 -m py_compile`
+     OK.
+  3. **`index.html`**: nei lotti A e C (quelli con pratiche in concomitanza
+     ENRI) il chip "Avanzamento per Lotto" ora mostra "Sertori" sotto
+     "Telebit", colore distinto (`--accent2`, teal, già nel palette token
+     — nessun hex hardcoded nuovo). Derivato dinamicamente da
+     `window._praticheDetailPerLotto[lotto].some(p => p.concomEnri)`, non
+     hardcoded sui lotti A/C: se in futuro la concomitanza comparisse su un
+     altro lotto, "Sertori" comparirebbe lì automaticamente. Non toccato il
+     modale "Lotto — Dettaglio" (mostra solo Telebit, invariato da
+     rev.32 — un lotto ha sempre anche pratiche non-concomitanti).
+     Verificato `node --check` su tutti e 6 gli script inline.
+  4. **Sidebar rimossa per il ruolo impresa in `hub.html`**: le tre pagine
+     impresa-facing (`imprese.html`, `imprese_scavi.html`,
+     `mappa_impresa_caricamento.html`) non avevano mai una sidebar di
+     navigazione tra pagine (solo `.app-sidebar` — nav-rail icone verso
+     index/scavi/mappa/polizze/sopralluoghi/gantt/milestone/admin — presente
+     su `admin.html`/`index.html`/`scavi.html`/`mappa.html`/`hub.html`/ecc.,
+     mai su quelle 3): il problema reale era che `hub.html`, pagina di
+     ingresso comune a tutti i ruoli, mostrava quella sidebar completa anche
+     alle imprese, che però vedono solo le card impresa dopo il login.
+     Fix: nello script IIFE che già nascondeva le icone Admin/Gantt per i
+     ruoli non abilitati, aggiunto un branch per `ruolo === 'impresa'` che
+     nasconde l'intera `.app-sidebar` e azzera `body.padding-left` (recupera
+     lo spazio riservato alla sidebar). Le 3 pagine impresa restano
+     invariate (già solo topbar). Verificato `node --check` sui 2 script
+     inline di `hub.html`.
