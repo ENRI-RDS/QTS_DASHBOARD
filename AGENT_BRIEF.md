@@ -700,3 +700,127 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
   polizze_convenzioni, sopralluoghi, ai_alerts, imprese, imprese_scavi,
   mappa_impresa_caricamento, cartella `pm/`) — task confermato da
   Andrea ("va bene procedi") ma non ancora eseguito su queste pagine.
+- **rev.29** — Colonna Master.csv `ORDINANZA`/`ORDINANZA NECESSARIA`
+  rimossa dal file sorgente (nessuna riga TIPO_PERMESSO=ORDINANZA nei dati
+  attuali), sostituita da Andrea con nuova colonna `CONCOMITANZA ENRI`
+  (SI/vuoto, flag tratta in concomitanza col progetto ENRI). Il codice
+  legacy per ORDINANZA (`_TIPO_PREFIX`, `_build_pratica`, `STATO_ORDINANZA`
+  ecc.) NON è stato rimosso — resta innocuo (degrada a "NON NECESSARIO"/
+  nessun match) ma è dead code in attesa di pulizia se Andrea conferma che
+  ORDINANZA non tornerà mai più come TIPO_PERMESSO.
+  - `backend/server.py`: `_compute_tratta_summary` calcola nuovo campo
+    `CONCOMITANZA_ENRI` per TRATTA_ID (SI se una qualsiasi riga della
+    tratta ha `CONCOMITANZA ENRI`=SI) e `LOTTO` (da `Source.Name`).
+    `_regenerate_derived_files` ora scrive `CONCOMITANZA_ENRI` su
+    QTS.geojson (prima il campo era esplicitamente escluso/statico,
+    ereditato da QGIS — ora Master.csv è la fonte di verità).
+    Nuovo endpoint `GET /api/admin/concomitanza-enri` (solo staff):
+    elenco tratte SI a livello di TRATTA_ID, **indipendente dal numero
+    PRATICA**. Aggiunto anche campo `concomitanza_enri` (SI/NO) ai
+    risultati di `/api/admin/pratiche-search`.
+  - **Bug scoperto durante l'implementazione**: tutte le 23 tratte
+    attualmente in concomitanza (su 111 totali, verificato sul
+    Master.csv reale caricato da Andrea) hanno ancora `PRATICA` vuoto
+    (pratica non numerata) — `pratiche-search` esclude per design le
+    righe senza numero pratica, quindi un badge lì sarebbe rimasto
+    invisibile con i dati attuali. Per questo è stato aggiunto l'endpoint
+    dedicato sopra, che non dipende dal numero pratica.
+  - `admin.html` (tab "Dati pratiche"): badge pillola "ENRI" sul codice
+    pratica quando `concomitanza_enri`=SI (visibile solo dopo che la
+    pratica avrà un numero); ricercabile digitando "enri" nella barra di
+    ricerca. Aggiunto blocco `<details>` collassabile sopra la tabella
+    ("Concomitanza ENRI: N tratte") che carica da
+    `/api/admin/concomitanza-enri` — questo è il punto dove le 23 tratte
+    attuali sono effettivamente visibili oggi.
+  - `mappa.html`: nuova riga "Concomitanza ENRI: SI" nel popup di
+    dettaglio tratta (sezione "Dettaglio stato", accanto a Nulla Osta/
+    Ordinanza), da `p.CONCOMITANZA_ENRI` (proprietà GeoJSON rigenerata
+    da Master.csv). Non toccato `mappa_impresa_caricamento.html`
+    (stessa struttura popup, logica duplicata) — da valutare se
+    propagare anche lì, non richiesto esplicitamente da Andrea.
+  - Verificato: `node --check` su JS inline di admin.html e mappa.html →
+    OK; `_compute_tratta_summary` testata isolatamente sul Master.csv
+    reale (111 tratte, 23 concomitanza SI); nessun id duplicato reale
+    introdotto (falso positivo grep su `data-testid="dropzone"`, non
+    modificato in questa sessione). Non testato end-to-end con
+    backend+Mongo in esecuzione (solo unit-test isolato delle funzioni
+    pandas) — verificare dopo il deploy che `/api/admin/concomitanza-enri`
+    e il popup mappa rispondano coi dati reali.
+- **rev.30** — Sincronizzazione cross-progetto con ENRI per le tratte in
+  concomitanza: la pratica di autorizzazione per quelle tratte è gestita e
+  seguita nel progetto ENRI (Telebit non se ne occupa su QTS), quindi il
+  Master.csv di QTS resta fermo su di esse a tempo indefinito — serve lo
+  stato reale letto da ENRI. Deciso con Andrea: NON rinumerare i TRATTA_ID
+  tra i due progetti (troppo rischioso su sistemi già in produzione con
+  storico). **Corrispondenza reale (chiarita da Andrea con un secondo
+  Master.csv)**: non è per TRATTA_ID ma per PRATICA — sulle righe con
+  CONCOMITANZA ENRI=SI, Andrea valorizza il campo PRATICA con
+  `<numero>_<lotto ENRI>` (es. "14_2") invece del numero pratica QTS, per
+  indicare a quale pratica ENRI (formato interno "AUT/14/2"/"NO/32/2")
+  fa riferimento quella riga. Più tratte QTS possono puntare alla stessa
+  pratica ENRI (N:1), e una stessa tratta QTS può avere riferimenti diversi
+  per AUTORIZZAZIONE e NULLA OSTA (1:N) — gestito.
+  - **QTS `backend/server.py`**: nuova config `ENRI_API_BASE` (default
+    `https://enri-dashboard-api.onrender.com`) ed `ENRI_SYNC_TOKEN` (env
+    var da impostare su Render QTS, deve combaciare con `QTS_SYNC_TOKEN`
+    lato ENRI). Nuovo `_parse_enri_pratica_rif()` (split su "_" del campo
+    PRATICA), nuovo `_fetch_enri_pratica_status()` con cache in-process
+    5 minuti (`_enri_sync_cache`/`_ENRI_SYNC_TTL`, chiave = JSON delle
+    lookup keys) — ENRI è su Render free tier e può essere addormentato,
+    oltre a non voler chiamare l'API ad ogni refresh del pannello admin.
+    `/api/admin/concomitanza-enri` riscritto: per ogni riga SI estrae
+    {ente, tipo_permesso, numero, lotto} dal campo PRATICA, deduplica le
+    chiavi di lookup, chiama in batch (POST) l'endpoint ENRI e arricchisce
+    ogni tratta con `riferimenti_enri: [{codice, enri_stato}, ...]` (array,
+    non singolo valore — vedi N:1/1:N sopra). Righe con PRATICA non ancora
+    nel formato atteso restano con `riferimenti_enri: []` ("non ancora
+    inserito"), non causano errori.
+  - **ENRI `backend/server.py`** (file NON nel repo QTS — Andrea gestisce
+    il deploy separatamente su un altro servizio Render, base url
+    `https://enri-dashboard-api.onrender.com`): nuovo endpoint
+    `POST /api/external/pratica-status` **read-only**, body
+    `{"items": [{"ente","tipo_permesso","numero","lotto"}, ...]}`, protetto
+    da un token dedicato **`QTS_SYNC_TOKEN`** (env var da creare,
+    volutamente separato da `UPLOAD_TOKEN` che ha permessi di scrittura —
+    principio del privilegio minimo: se questo token trapela, espone solo
+    stato_permesso/date/nota delle pratiche esplicitamente richieste, mai
+    l'intero Master.csv né azioni admin). Cerca la pratica con lo stesso
+    criterio di identità usato da `/api/admin/pratiche-search` di ENRI
+    (ente+tipo_permesso+numero+lotto, lotto derivato da `_lotto_from_source`
+    su Source.Name). Il file patchato è stato consegnato ad Andrea come
+    `enri_server_patched.py` (diff minimale, solo additivo) da applicare
+    manualmente al repo ENRI e deployare — Claude non ha accesso diretto
+    al repo/Render di ENRI in questa sessione. **Nota**: una prima versione
+    di questo endpoint (keyed per TRATTA_ID, `GET /api/external/tratte-status`)
+    era stata consegnata ad Andrea PRIMA di vedere i dati reali — scartata e
+    sostituita nella stessa sessione, mai deployata.
+  - **admin.html**: pannello "Concomitanza ENRI" (rev.29) esteso con due
+    colonne — "Rif. ENRI" (uno o più codici tipo "AUT/14/2", uno per riga
+    se la tratta ne ha più di uno) e "Stato ENRI" (verde se OTTENUTO, ambra
+    altrimenti, grigio se non trovata/non disponibile/non ancora inserita).
+    Banner di avviso (`#enriSyncWarn`) se la chiamata a ENRI fallisce.
+  - **⚠️ Inconsistenza nei dati trovata e segnalata ad Andrea, non ancora
+    corretta**: il riferimento "17_2" (AUTORIZZAZIONE) compare sia su
+    TR_0034 con ente "COMUNE DI PADERNO DUGNANO" sia su TR_0041/TR_0064/
+    TR_0065 con ente "PROVINCIA DI MILANO" — stesso codice pratica ENRI,
+    due enti diversi nel Master.csv QTS. Probabile refuso su una delle due
+    (verificare quale ente ha realmente la pratica AUT/17/2 su ENRI):
+    finché non corretto, una delle due lookup fallirà sempre ("pratica non
+    trovata su ENRI") perché la ricerca lato ENRI include l'ente nella
+    chiave di identità.
+  - **Scoperta rilevante durante l'analisi di ENRI**: esiste già in ENRI
+    una collection Mongo `concomitanza_col` + endpoint
+    `GET /api/concomitanze` / `POST /api/admin/concomitanze/import`, con
+    `fonte` default letteralmente `"ENRI-QTS"` — ma è un concetto diverso
+    (TRATTA_ID *lato ENRI* che richiedono un tubo aggiuntivo per la
+    sovrapposizione fisica con QTS in fase di scavo, non lo stato della
+    pratica). Non approfondito oltre — il meccanismo per PRATICA sopra
+    risolve comunque il bisogno attuale, non serve più incrociarlo.
+  - **Ancora da fare**: (1) Andrea corregge l'inconsistenza ente su "17_2";
+    (2) applica `enri_server_patched.py` (versione POST pratica-status,
+    non quella precedente) al repo ENRI e deploya; (3) imposta lo stesso
+    valore segreto come `QTS_SYNC_TOKEN` (env ENRI) e `ENRI_SYNC_TOKEN`
+    (env QTS su Render); (4) verifica end-to-end in produzione (non
+    testabile da Claude: richiede i due backend live + Mongo reale).
+    mappa.html non ancora esteso con lo stato live ENRI (per ora resta
+    solo il flag SI/NO statico da Master.csv, rev.29).
