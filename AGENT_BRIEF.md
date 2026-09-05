@@ -1176,3 +1176,13 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
      punto cliccato, quindi non copre più la tratta selezionata. Su mobile
      nessun offset laterale (schermo stretto, non ha senso spostarlo).
   Verificato `node --check` su tutti gli script inline di `mappa.html`.
+- **rev.43** — Richiesta Andrea: nel popup tratta, campo "Cluster" → "Impresa".
+  Aggiunta `IMPRESE_PER_LOTTO = {A:Telebit, B:Telebit, C:Telebit}` (stessa
+  mappa statica già usata in `index.html`, mancava in `mappa.html` dove
+  l'unico `IMPRESE` era un oggetto vuoto — commento originale "QTS non ha
+  una mappa lotto→impresa" era ormai superato). Nuova variabile
+  `impresaTratta`: `Sertori` se `CONCOMITANZA_ENRI === 'SI'` (stessa
+  precedenza usata in `index.html`/`IMPRESE_PER_LOTTO[p.lotto]`), altrimenti
+  `IMPRESE_PER_LOTTO[p.LOTTO]`. Sostituito il campo Cluster nella griglia
+  popup con questo valore, nessun'altra riga toccata. Verificato
+  `node --check` su tutti gli script inline di `mappa.html`.
