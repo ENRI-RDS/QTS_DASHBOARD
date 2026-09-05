@@ -824,3 +824,143 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
     testabile da Claude: richiede i due backend live + Mongo reale).
     mappa.html non ancora esteso con lo stato live ENRI (per ora resta
     solo il flag SI/NO statico da Master.csv, rev.29).
+- **rev.31** — Task (2) di rev.30 completato: `enri_server_patched.py`
+  (consegnato ad Andrea, non nel repo QTS) integrato nel `server.py` di
+  ENRI più recente fornito da Andrea, che nel frattempo aveva già
+  l'endpoint `GET /api/cantieri/scavi-timeseries` (assente nella versione
+  base su cui era stato costruito il patch) — integrazione fatta a mano,
+  nessuna regressione: `QTS_SYNC_TOKEN`, `_check_qts_sync_token()` e
+  `POST /api/external/pratica-status` aggiunti senza toccare
+  `scavi-timeseries`. Verificato `python3 -m py_compile` OK, nessuna
+  route duplicata, `Header`/`Annotated` già importati.
+  - **Bug trovato e corretto durante l'integrazione**: il confronto lotto
+    in `/api/external/pratica-status` era case-sensitive
+    (`work["_lotto"] == lotto`), ma `_lotto_from_source()` normalizza
+    sempre in maiuscolo lato ENRI (lotti reali `1A/1B/2A/2B/...`) mentre
+    il lotto arriva da QTS come sottostringa grezza del campo PRATICA
+    (es. "14_2a" invece di "14_2A") senza normalizzazione — con lotti a
+    lettera il lookup avrebbe silenziosamente fallito ("pratica non
+    trovata") ad ogni discrepanza di maiuscole/minuscole in quel campo
+    Excel. Fix: `lotto = str(it.get("lotto","")).strip().upper()` prima
+    del confronto. **Non serve modificare nulla lato QTS** (il campo
+    PRATICA resta libero, la normalizzazione ora è tutta sul lato ENRI).
+  - Verificata anche la logica lato QTS (`_parse_enri_pratica_rif`,
+    `_fetch_enri_pratica_status`, `/api/admin/concomitanza-enri`): le
+    chiavi ente/tipo_permesso/numero combaciano col confronto ENRI
+    (entrambi upper-case su ente e tipo_permesso), nessuna altra
+    incoerenza trovata.
+  - File integrato consegnato ad Andrea come `server.py` (da applicare al
+    repo ENRI, non in questo repo QTS) — **ancora da fare**: (1) Andrea
+    corregge l'inconsistenza ente su "17_2" (rev.30, non ancora fatta);
+    (2) deploy del nuovo `server.py` su Render ENRI; (3) imposta
+    `QTS_SYNC_TOKEN` (env ENRI) = `ENRI_SYNC_TOKEN` (env QTS, già presente
+    lato QTS da rev.30); (4) test end-to-end in produzione.
+  - **`index.html` QTS**: nessun riferimento a concomitanza/ENRI trovato
+    nel file attuale (la feature vive solo in `admin.html` e `mappa.html`,
+    rev.29/30) — chiesto ad Andrea cosa intende aggiornare lì prima di
+    intervenire, per non introdurre modifiche non richieste.
+- **rev.32** — Chiarimento da Andrea: le pratiche in concomitanza ENRI
+  sono gestite da **Sertori**, non da Telebit (Telebit resta il
+  contrattista generico per Lotto A/B/C). Corretto in `admin.html`
+  (tooltip pannello Concomitanza ENRI) e in 2 commenti/docstring di
+  `backend/server.py` (incluso un refuso residuo: il commento citava
+  ancora l'endpoint scartato `/api/external/tratte-status` invece di
+  `/api/external/pratica-status`).
+  - **`index.html`**: aggiunta lettura colonna `CONCOMITANZA ENRI` dal
+    Master.csv (stesso `findCol` pattern delle altre colonne), propagata
+    come flag booleano `concomEnri` attraverso l'intera pipeline dati
+    lato client — `permessiMap` (OR logico sui merge/aggiornamenti riga,
+    il flag non deve mai sparire quando arriva una riga più recente senza
+    quella colonna valorizzata), `praticheByLotto`/`_praticheDetailPerLotto`
+    (OR logico su tutte le tratte della stessa pratica) e
+    `_masterByTratta` (per eventuali popup mappa embedded in index.html).
+    In `getAllPrats()` — il punto unico da cui derivano tabella, filtri,
+    KPI e la card di dettaglio pratica — l'`impresa` mostrata ora è
+    `'Sertori'` se `concomEnri` è true, altrimenti il default
+    `IMPRESE_PER_LOTTO[lotto]` (Telebit) invariato. Aggiornati anche i
+    due path paralleli usati dal modale "colonne" (`_colGetDisplay`/
+    `_colGetSort`, filtro e ordinamento colonna Impresa) e la card di
+    dettaglio pratica (sezione "Impresa" con icona). **Non toccati**
+    i punti che mostrano l'impresa a livello di LOTTO intero (modale
+    "Lotto — Dettaglio", grafico a barre per lotto, header gruppo lotto
+    nelle tabelle KPI): lì il default Telebit resta corretto, dato che
+    un lotto ha sempre anche pratiche non-concomitanti.
+  - Verificato `node --check` su tutti e 6 i blocchi `<script>` inline di
+    `index.html` → OK.
+  - **Nota per Andrea**: questo fix copre solo `index.html`. Chiarito che
+    NON è ancora un aggiornamento "live" da ENRI — è comunque il flag
+    statico SI/NO letto da Master.csv (come su `mappa.html`, rev.29), solo
+    che ora sull'impresa mostrata compare "Sertori" invece di "Telebit".
+    L'auto-refresh dello **stato** della pratica letto in tempo reale da
+    ENRI (come già avviene in `admin.html` via
+    `/api/admin/concomitanza-enri`) NON è stato ancora implementato su
+    `index.html`/`mappa.html` — confermato con Andrea: `mappa.html` è
+    solo staff-facing, quindi non ci sono vincoli di privilegio a
+    riusare lì l'endpoint staff-only. **Ancora da fare, prossima
+    sessione**: (1) estendere `mappa.html` per chiamare
+    `/api/admin/concomitanza-enri` (o un endpoint equivalente) nel popup
+    tratta invece del solo flag statico SI/NO; (2) valutare se
+    aggiungere anche su `index.html` uno stato live (richiede decidere
+    dove/come mostrarlo, dato che lì il dato è per-pratica aggregato da
+    più tratte, non per-tratta come in mappa.html).
+- **rev.33** — Nuova richiesta di Andrea: quando ENRI segna OTTENUTO una
+  pratica in concomitanza, l'aggiornamento deve essere **scritto/persistito**
+  nel Master.csv di QTS (non solo mostrato live in admin.html come da
+  rev.30/32) — altrimenti `pratiche-search`, `index.html` e `mappa.html`
+  (che leggono solo Master.csv, mai ENRI in tempo reale) resterebbero
+  indefinitamente allo stato congelato. Confermato con Andrea: match per
+  **codice pratica** (ENTE+TIPO_PERMESSO+PRATICA-parsata), MAI per
+  TRATTA_ID.
+  - **Nuovo endpoint `POST /api/admin/concomitanza-enri/sync-master`**
+    (`backend/server.py`, protetto da `x-upload-token` come le altre
+    scritture admin). A differenza di `/api/admin/concomitanza-enri`
+    (aggregato per TRATTA_ID), itera **riga per riga** di Master.csv: una
+    tratta può avere righe AUTORIZZAZIONE e NULLA OSTA con due pratiche
+    ENRI diverse, quindi il match dev'essere per riga, non per tratta.
+    Per ogni riga con `CONCOMITANZA ENRI`=SI e PRATICA nel formato
+    `<numero>_<lotto>`: lookup batch su ENRI (`_fetch_enri_pratica_status`,
+    stesso helper di rev.30), e se il risultato è OTTENUTO e la riga QTS
+    non lo è già, scrive `STATO_PERMESSO=OTTENUTO` +
+    `DATA_APPROVAZIONE=<da ENRI>` **in-place** (stesso pattern di
+    `update_admin_pratica`, `_apply_changes_to_df` con `in_place=True`)
+    — non tocca NOTE per non perdere lo storico. Idempotente: nessuna
+    scrittura/nessuna nuova versione Master.csv se non ci sono nuove
+    approvazioni. `_write_master_csv` già rigenera da sé i derivati e il
+    push GitHub (nessuna modifica necessaria lì).
+  - **Bug potenziale trovato e corretto in fase di test**: Master.csv ha
+    più righe storiche per la stessa tratta+tipo+pratica (una per cambio
+    stato nel tempo — confermato sul CSV reale caricato da Andrea: 44
+    righe SI collassano a 7 chiavi ENRI uniche ma restano più righe per
+    TRATTA_ID). Senza dedup l'endpoint avrebbe accodato N `changes`
+    identiche per la stessa tratta (innocuo perché `_apply_changes_to_df`
+    risolve comunque sull'ultima riga, ma sporco nella risposta
+    `dettaglio`) — aggiunto dedup esplicito su (tratta, ente, tipo,
+    pratica) prima di costruire le `changes`.
+  - **`admin.html`**: `loadConcomitanzaEnri()` ora, dopo il refresh
+    normale (GET, invariato, nessun side-effect), chiama in automatico
+    `sync-master` (POST) e se sono state applicate scritture ricarica la
+    tabella mostrando un banner verde con il conteggio e il nuovo
+    upload_id; se il sync fallisce (es. token upload non impostato in
+    questa sessione) fallisce silenziosamente senza rompere la vista.
+    Parametro `triggerSync=false` per evitare loop di ricorsione sul
+    ricaricamento post-sync. Fix minore: il colore di `#enriSyncWarn` ora
+    viene sempre resettato a inizio funzione (prima poteva restare verde
+    da un sync riuscito anche quando appariva un vero `enri_error` al
+    giro successivo).
+  - Validato a mano (senza rete verso ENRI) il parsing/dedup sul
+    `Master.csv` reale caricato da Andrea: 155 righe totali, 44 con
+    CONCOMITANZA ENRI=SI, 7 chiavi ENRI uniche corrette.
+  - **Trigger attuale = quando l'admin apre/aggiorna il tab "Note
+    pratiche" di admin.html** (non un webhook/push da ENRI in tempo reale
+    — ENRI non ha modo di notificare QTS quando un admin approva una
+    pratica, l'architettura resta pull-based come da rev.30). Se Andrea
+    vuole un aggiornamento più "immediato" (es. ad ogni upload di
+    Master.csv su ENRI, o su un cron), va aggiunta una chiamata
+    server-to-server esplicita da ENRI verso questo endpoint — non
+    implementato, da valutare se serve davvero dato il costo aggiuntivo
+    (ENRI dovrebbe conoscere URL+token di QTS, accoppiamento nella
+    direzione opposta a quella attuale).
+  - **Ancora da fare**: test end-to-end reale con i due backend live
+    (non eseguibile da Claude, richiede Mongo+ENRI raggiungibile); Andrea
+    corregge l'inconsistenza ente "17_2" (rev.30, ancora aperta) prima
+    che il sync possa scrivere correttamente su quella pratica.
