@@ -1049,3 +1049,14 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
   `ruolo`/`isImpresa` sono già noti dalla risposta server — copre sia il
   primo login sia i successivi. Verificato `node --check` sui 2 script
   inline di `hub.html`.
+- **rev.37** — Rimosso il campo "Cluster" dal popup tratta di
+  `mappa_impresa_caricamento.html` (richiesta Andrea) — `.popup-grid` è
+  auto-flow (`grid-template-columns:1fr 1fr 1fr`), nessun buco lasciato
+  dagli altri campi. Verificato `node --check` sui 5 script inline.
+  Chiarito con Andrea perché il Master.csv risultava invariato dopo il
+  deploy di rev.34: `ENRI_SYNC_TOKEN` non è ancora impostato su Render QTS
+  (confermato "No/non so"), quindi sia il trigger manuale che il polling
+  fanno no-op silenzioso (`_fetch_enri_pratica_status` ritorna
+  `enri_error="ENRI_SYNC_TOKEN non configurato..."`). Da fare lato Andrea:
+  stesso valore in QTS_SYNC_TOKEN (Render ENRI) e ENRI_SYNC_TOKEN (Render
+  QTS), poi redeploy di entrambi.
