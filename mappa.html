@@ -859,6 +859,10 @@ const STATO_COLORS = {
 window.STATO_COLORS = STATO_COLORS;
 // QTS non ha una mappa lotto→impresa in Master.csv (a differenza di ENRI): vuota finché non disponibile
 const IMPRESE = {};
+// Mappa statica lotto→impresa esecutrice (stessa usata in index.html, IMPRESE_PER_LOTTO):
+// i lotti A/B/C sono tutti Telebit; le pratiche in concomitanza ENRI sono gestite da
+// Sertori (vedi CONCOMITANZA_ENRI in makePopupHtml), quindi hanno la precedenza.
+const IMPRESE_PER_LOTTO = { 'A': 'Telebit', 'B': 'Telebit', 'C': 'Telebit' };
 
 let map, allLayers=[], currentFilter='TUTTI', lottoStats={};
 let currentViewMode = 'stato'; // 'stato' | 'lotto' | 'scavi'
@@ -1427,6 +1431,8 @@ function makePopupHtml(p, gmapsUrl) {
     ? `<div class="popup-detail-row"><span class="dl">Ordinanza</span><span class="dv" style="color:${getColor(p.STATO_ORDINANZA)}">${p.STATO_ORDINANZA}</span></div>` : '';
   const enriHtml = p.CONCOMITANZA_ENRI === 'SI'
     ? `<div class="popup-detail-row"><span class="dl">Concomitanza ENRI</span><span class="dv" style="color:var(--retelit-teal);font-weight:700">SI</span></div>` : '';
+  // Pratiche in concomitanza ENRI sono gestite da Sertori (non dall'impresa del lotto)
+  const impresaTratta = p.CONCOMITANZA_ENRI === 'SI' ? 'Sertori' : (IMPRESE_PER_LOTTO[p.LOTTO] || IMPRESE[p.LOTTO] || '—');
 
   const enti = [p.ENTE, p['ENTE 2']].filter(Boolean).join(', ') || '—';
   const hasDetail = motivoHtml || noHtml || ordHtml || enriHtml;
@@ -1533,8 +1539,8 @@ function makePopupHtml(p, gmapsUrl) {
             <span class="popup-field-val">${p.COMUNE||'—'}</span>
           </div>
           <div class="popup-field">
-            <span class="popup-field-label">Cluster</span>
-            <span class="popup-field-val">${p.CLUSTER||'—'}</span>
+            <span class="popup-field-label">Impresa</span>
+            <span class="popup-field-val">${impresaTratta}</span>
           </div>
           <div class="popup-field">
             <span class="popup-field-label">Lunghezza</span>
