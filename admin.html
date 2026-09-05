@@ -1806,12 +1806,13 @@
     }
     loadConcomitanzaEnri();
   }
-  async function loadConcomitanzaEnri(){
+  async function loadConcomitanzaEnri(triggerSync) {
     const body = $('enriBody'), count = $('enriCount'), warn = $('enriSyncWarn');
     try{
       const d = await api('/api/admin/concomitanza-enri');
       const rows = d.results || [];
       count.textContent = `Concomitanza ENRI: ${d.count||0} tratte`;
+      warn.style.color = 'var(--warn)';
       warn.style.display = d.enri_error ? 'block' : 'none';
       warn.textContent = d.enri_error || '';
       body.innerHTML = rows.length ? rows.map(r => {
@@ -1842,6 +1843,25 @@
     }catch(err){
       count.textContent = 'Concomitanza ENRI: errore caricamento';
       body.innerHTML = `<tr><td colspan="6" class="empty" style="color:#ef4444">Errore: ${escapeHtml(err.message)}</td></tr>`;
+      return;
+    }
+    // Sync automatico verso Master.csv: ogni volta che il pannello viene aperto/
+    // aggiornato, scrive su Master.csv le approvazioni ENRI non ancora recepite
+    // (idempotente — non scrive nulla se non ci sono nuove approvazioni, vedi
+    // /api/admin/concomitanza-enri/sync-master). triggerSync=false evita loop
+    // infiniti sulla ricorsione di ricaricamento dopo una scrittura riuscita.
+    if (triggerSync === false) return;
+    try {
+      const s = await api('/api/admin/concomitanza-enri/sync-master', { method: 'POST', headers: authHeaders() });
+      if (s.aggiornate > 0) {
+        warn.style.display = 'block';
+        warn.style.color = 'var(--ok)';
+        warn.textContent = `✓ ${s.aggiornate} pratica/e sincronizzata/e da ENRI su Master.csv (nuova versione ${s.new_upload_id||''}).`;
+        await loadConcomitanzaEnri(false); // ricarica la tabella con lo stato appena scritto
+      }
+    } catch (err) {
+      // Sync silenzioso: se fallisce (es. token upload non configurato in questa
+      // sessione admin) non blocca la visualizzazione, che resta comunque valida.
     }
   }
   function renderNoteTable(){
