@@ -3624,19 +3624,37 @@ async function loadMaster() {
 }
 
 function _processMasterText(text) {
-    const lines = text.trim().split('\n').map(l => l.replace(/\r/,''));
-    const sep = lines[0].includes('\t') ? '\t' : (lines[0].includes(';') ? ';' : ',');
+    // Parser CSV quote-aware: split su '\n'/sep SOLO fuori da campi quotati.
+    // Necessario perché le righe scritte da _sync_enri_to_master (backend) hanno
+    // NOTE con newline letterale incorporato (es. "SP45\n[ENRI] ...", quotato
+    // correttamente da pandas to_csv) — uno split naive su '\n' prima di leggere
+    // le virgolette spezzava quella riga in due, azzerando tratta/prat/stato e
+    // facendola scartare silenziosamente da permessiMap, così le pratiche in
+    // concomitanza ENRI restavano bloccate sull'ultimo stato valido (IN REDAZIONE).
+    const firstLineEnd = text.indexOf('\n');
+    const firstLine = (firstLineEnd === -1 ? text : text.slice(0, firstLineEnd)).replace(/\r/, '');
+    const sep = firstLine.includes('\t') ? '\t' : (firstLine.includes(';') ? ';' : ',');
 
-    const splitLine = (line) => {
-      const result = []; let cur = '', inQ = false;
-      for (const ch of line) {
-        if (ch === '"') { inQ = !inQ; }
-        else if (ch === sep && !inQ) { result.push(cur.trim()); cur = ''; }
-        else { cur += ch; }
+    const rows = [];
+    { let row = [], cur = '', inQ = false;
+      const src = text.replace(/\r\n/g, '\n');
+      for (let i = 0; i < src.length; i++) {
+        const ch = src[i];
+        if (inQ) {
+          if (ch === '"') {
+            if (src[i+1] === '"') { cur += '"'; i++; } else { inQ = false; }
+          } else cur += ch;
+        } else if (ch === '"') { inQ = true; }
+        else if (ch === sep) { row.push(cur.trim()); cur = ''; }
+        else if (ch === '\n') { row.push(cur.trim()); rows.push(row); row = []; cur = ''; }
+        else cur += ch;
       }
-      result.push(cur.trim());
-      return result;
-    };
+      if (cur !== '' || row.length) { row.push(cur.trim()); rows.push(row); }
+    }
+    if (rows.length && rows[rows.length - 1].every(c => c === '')) rows.pop();
+
+    const lines = rows; // ogni elemento è già un array di campi (compat con splitLine sotto)
+    const splitLine = (line) => line;
 
     const headers = splitLine(lines[0]);
     const findCol = (...names) => {
