@@ -1853,15 +1853,23 @@
     if (triggerSync === false) return;
     try {
       const s = await api('/api/admin/concomitanza-enri/sync-master', { method: 'POST', headers: authHeaders() });
+      warn.style.display = 'block';
       if (s.aggiornate > 0) {
-        warn.style.display = 'block';
         warn.style.color = 'var(--ok)';
         warn.textContent = `✓ ${s.aggiornate} pratica/e sincronizzata/e da ENRI su Master.csv (nuova versione ${s.new_upload_id||''}).`;
         await loadConcomitanzaEnri(false); // ricarica la tabella con lo stato appena scritto
+      } else if (s.enri_error) {
+        warn.style.color = 'var(--warn)';
+        warn.textContent = `Sync ENRI non riuscito: ${s.enri_error}`;
+      } else {
+        warn.style.color = 'var(--muted)';
+        warn.textContent = `Nessuna modifica da sincronizzare (${s.pratiche_trovate ?? 0}/${s.pratiche_totali ?? 0} pratiche trovate su ENRI, già allineate).`;
       }
     } catch (err) {
-      // Sync silenzioso: se fallisce (es. token upload non configurato in questa
-      // sessione admin) non blocca la visualizzazione, che resta comunque valida.
+      warn.style.display = 'block';
+      warn.style.color = '#ef4444';
+      warn.textContent = `Errore durante il sync ENRI: ${err.message}`;
+      // Non blocca comunque la visualizzazione della tabella, che resta valida.
     }
   }
   function renderNoteTable(){
