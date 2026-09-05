@@ -1037,3 +1037,15 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
     nessuno per queste tratte (fase attuale = solo permessi) — nessuna
     azione richiesta ora, da rivalutare quando gli scavi verranno assegnati.
   - Verificato `python3 -m py_compile` OK.
+- **rev.36** — Bug segnalato da Andrea: al primo login come impresa la
+  sidebar `.app-sidebar` compariva comunque nell'hub per un istante (spariva
+  solo tornando indietro dopo aver aperto un'altra pagina). Causa: l'hide
+  (rev.34) girava solo nell'IIFE di parse-time che legge `_qts_role` da
+  localStorage — al primissimo login quella chiave non è ancora stata
+  scritta (lo è solo dopo la verifica server in `_showHub`), quindi la
+  sidebar restava visibile finché non si ricaricava una pagina con il ruolo
+  già cache-ato. Fix: stessa logica di hide (nascondi `.app-sidebar`,
+  azzera `body.padding-left`) aggiunta anche dentro `_showHub()`, dove
+  `ruolo`/`isImpresa` sono già noti dalla risposta server — copre sia il
+  primo login sia i successivi. Verificato `node --check` sui 2 script
+  inline di `hub.html`.
