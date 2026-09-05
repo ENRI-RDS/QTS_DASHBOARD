@@ -73,6 +73,12 @@ ENRI_API_BASE = os.environ.get("ENRI_API_BASE", "https://enri-dashboard-api.onre
 ENRI_SYNC_TOKEN = os.environ.get("ENRI_SYNC_TOKEN", "").strip()
 _ENRI_SYNC_TTL = 300  # secondi — ENRI è su Render free tier e può essere addormentato
 _enri_sync_cache: dict[str, tuple[float, dict]] = {}
+# Polling automatico periodico (oltre al trigger manuale da admin.html): scrive
+# su Master.csv qualunque cambio di stato/data/nota rilevato su ENRI, non solo
+# OTTENUTO — vedi _sync_enri_to_master(). Intervallo configurabile via env,
+# default 30 minuti (rispetta comunque la cache _ENRI_SYNC_TTL lato fetch).
+ENRI_SYNC_POLL_SECONDS = int(os.environ.get("ENRI_SYNC_POLL_SECONDS", "1800") or "1800")
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # DB
@@ -785,6 +791,23 @@ async def _on_startup():
         except Exception as e:
             print(f"[startup] _sync_cantieri: {e}")
     asyncio.create_task(_startup_sync_cantieri())
+
+    # Polling automatico ENRI→QTS (oltre al trigger manuale in admin.html):
+    # propaga periodicamente qualunque cambio di stato/data/nota rilevato su
+    # ENRI per le pratiche in concomitanza. Nessun effetto se ENRI_SYNC_TOKEN
+    # non è configurato (idle loop, nessuna chiamata sprecata).
+    async def _enri_sync_poll_loop():
+        while True:
+            await asyncio.sleep(ENRI_SYNC_POLL_SECONDS)
+            if not ENRI_SYNC_TOKEN:
+                continue
+            try:
+                result = await _sync_enri_to_master("sync-enri-auto")
+                if result.get("aggiornate"):
+                    print(f"[enri-sync-poll] {result['aggiornate']} riga/e aggiornata/e da ENRI")
+            except Exception as e:
+                print(f"[enri-sync-poll] errore: {e}")
+    asyncio.create_task(_enri_sync_poll_loop())
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -2181,18 +2204,17 @@ async def list_concomitanza_enri(sess: dict = Depends(_require_staff_session)):
     return {"results": out, "count": len(out), "enri_error": enri_error}
 
 
-@app.post("/api/admin/concomitanza-enri/sync-master")
-async def sync_concomitanza_enri_to_master(
-    x_upload_token: Annotated[str | None, Header(alias="x-upload-token")] = None,
-    token_q: Annotated[str | None, Query(alias="x_upload_token")] = None,
-    x_actor_nome: Annotated[str | None, Header(alias="x-actor-nome")] = None,
-):
-    """Scrive nel Master.csv di QTS le approvazioni ottenute su ENRI per le
-    pratiche in concomitanza — QTS non deve restare indefinitamente con lo
-    stato congelato al momento in cui la tratta è stata marcata concomitante
-    (rev.29/30): quando ENRI segna OTTENUTO, lo stesso stato va riportato
-    qui, altrimenti pratiche_search/index.html/mappa.html non lo vedrebbero
-    mai (leggono solo Master.csv, non chiamano ENRI in tempo reale).
+_ENRI_SYNCED_FIELDS = ("STATO_PERMESSO", "DATA_RICHIESTA", "DATA_APPROVAZIONE", "DATA_PREVISTA_RILASCIO")
+
+
+async def _sync_enri_to_master(actor: str) -> dict:
+    """Scrive nel Master.csv di QTS lo stato aggiornato su ENRI per le
+    pratiche in concomitanza — QTS non deve restare indefinitamente con i
+    dati congelati al momento in cui la tratta è stata marcata concomitante
+    (rev.29/30): OGNI cambio di stato/data rilevato su ENRI va riportato
+    qui (non solo OTTENUTO, rev.34), altrimenti pratiche_search/index.html/
+    mappa.html non lo vedrebbero mai (leggono solo Master.csv, non chiamano
+    ENRI in tempo reale).
 
     Corrispondenza: per RIGA di Master.csv (non per tratta aggregata come in
     /api/admin/concomitanza-enri — una tratta può avere righe AUTORIZZAZIONE
@@ -2200,14 +2222,16 @@ async def sync_concomitanza_enri_to_master(
     PRATICA-parsata (stessa identità di /api/external/pratica-status lato
     ENRI), MAI su TRATTA_ID (i due progetti hanno numerazioni indipendenti).
 
-    Scrive solo le righe dove ENRI risulta OTTENUTO e la riga QTS non lo è
-    già (idempotente — rieseguibile senza creare versioni Master.csv inutili
-    se non ci sono nuove approvazioni). Non tocca NOTE per non perdere lo
-    storico esistente sulla riga; DATA_ULTIMA_MODIFICA viene valorizzata in
-    automatico da _apply_changes_to_df (stesso comportamento delle altre
-    scritture admin)."""
-    _check_token(x_upload_token or token_q)
-
+    Campi sincronizzati da ENRI: STATO_PERMESSO, DATA_RICHIESTA,
+    DATA_APPROVAZIONE, DATA_PREVISTA_RILASCIO (sovrascritti se il valore ENRI
+    è valorizzato e diverso da quello attuale su QTS) e NOTE (mai
+    sovrascritta: la nota ENRI viene ACCODATA con tag "[ENRI] ..." solo se
+    diversa dall'ultima già riportata, per non perdere lo storico QTS
+    esistente sulla riga e non duplicare ad ogni polling). Scrive/crea una
+    nuova versione di Master.csv solo se almeno una riga ha almeno un campo
+    diverso — idempotente, nessuna versione inutile se ENRI non è cambiato.
+    Chiamata sia dall'endpoint manuale (trigger da admin.html) sia dal
+    polling periodico in background (vedi ENRI_SYNC_POLL_SECONDS)."""
     async with _master_csv_lock:
         df = await _read_master_csv()
         if df is None or df.empty:
@@ -2244,11 +2268,9 @@ async def sync_concomitanza_enri_to_master(
         seen_targets = set()
         for idx, key in row_keys.items():
             res = enri_results.get((key["ente"], key["tipo_permesso"], key["numero"], key["lotto"]))
-            if not res or not res.get("trovata") or str(res.get("stato_permesso", "")).strip().upper() != "OTTENUTO":
+            if not res or not res.get("trovata"):
                 continue
             row = df.loc[idx]
-            if str(row.get("STATO_PERMESSO", "")).strip().upper() == "OTTENUTO":
-                continue  # già sincronizzata, nessuna scrittura inutile
             tratta = str(row.get("TRATTA_ID", "")).strip()
             ente_raw = str(row.get("ENTE", "")).strip()
             tipo_raw = str(row.get("TIPO_PERMESSO", "")).strip()
@@ -2260,18 +2282,37 @@ async def sync_concomitanza_enri_to_master(
             target = (tratta, ente_raw, tipo_raw, pratica_raw)
             if target in seen_targets:
                 continue
+
+            fields = {}
+            for col in _ENRI_SYNCED_FIELDS:
+                enri_key = {"STATO_PERMESSO": "stato_permesso", "DATA_RICHIESTA": "data_richiesta",
+                            "DATA_APPROVAZIONE": "data_approvazione",
+                            "DATA_PREVISTA_RILASCIO": "data_prevista_rilascio"}[col]
+                new_val = str(res.get(enri_key, "") or "").strip()
+                if not new_val:
+                    continue  # non svuotare un dato QTS con un campo ENRI vuoto
+                if str(row.get(col, "")).strip() != new_val:
+                    fields[col] = new_val
+
+            enri_nota = str(res.get("nota", "") or "").strip()
+            if enri_nota:
+                tag = f"[ENRI] {enri_nota}"
+                existing_note = str(row.get("NOTE", "") or "")
+                if tag not in existing_note:
+                    fields["NOTE"] = f"{existing_note}\n{tag}".strip() if existing_note else tag
+
+            if not fields:
+                continue  # già sincronizzata, nessuna scrittura inutile
             seen_targets.add(target)
             changes.append({
                 "tratta_id": tratta, "ente": ente_raw, "tipo_permesso": tipo_raw,
                 "original_pratica": pratica_raw,
-                "fields": {
-                    "STATO_PERMESSO": "OTTENUTO",
-                    "DATA_APPROVAZIONE": res.get("data_approvazione", "") or "",
-                },
+                "fields": fields,
             })
             dettaglio.append({
                 "tratta_id": tratta, "ente": ente_raw, "codice_enri": f"{key['numero']}_{key['lotto']}",
-                "data_approvazione": res.get("data_approvazione", ""),
+                "campi_aggiornati": list(fields.keys()),
+                "stato_enri": res.get("stato_permesso", ""),
             })
 
         if not changes:
@@ -2279,13 +2320,24 @@ async def sync_concomitanza_enri_to_master(
 
         submission = {"type": "update", "in_place": True, "changes": changes}
         new_df, summary = _apply_changes_to_df(df, submission)
-        reviewer = x_actor_nome or "sync-enri"
         upload_id = await _write_master_csv(
-            new_df, note=f"Sync automatico ENRI: {summary.get('updated', 0)} pratica/e approvata/e ({reviewer})"
+            new_df, note=f"Sync automatico ENRI: {summary.get('updated', 0)} pratica/e aggiornata/e ({actor})"
         )
-    await _log_admin_action("sync_concomitanza_enri", f"{summary.get('updated', 0)} righe", x_actor_nome)
+    await _log_admin_action("sync_concomitanza_enri", f"{summary.get('updated', 0)} righe", actor)
     return {"ok": True, "aggiornate": summary.get("updated", 0), "dettaglio": dettaglio,
             "new_upload_id": upload_id, "enri_error": enri_error}
+
+
+@app.post("/api/admin/concomitanza-enri/sync-master")
+async def sync_concomitanza_enri_to_master(
+    x_upload_token: Annotated[str | None, Header(alias="x-upload-token")] = None,
+    token_q: Annotated[str | None, Query(alias="x_upload_token")] = None,
+    x_actor_nome: Annotated[str | None, Header(alias="x-actor-nome")] = None,
+):
+    """Wrapper HTTP (trigger manuale da admin.html) su _sync_enri_to_master —
+    vedi anche il polling periodico automatico avviato allo startup."""
+    _check_token(x_upload_token or token_q)
+    return await _sync_enri_to_master(x_actor_nome or "sync-enri")
 
 
 PRATICA_STATO_VALUES = [
