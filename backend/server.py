@@ -1,7 +1,7 @@
 """
-QTS Dashboard — Backend API
+ENRI Dashboard — Backend API
 ============================
-FastAPI service for the QTS-RDS/dashboard project.
+FastAPI service for the ENRI-RDS/dashboard project.
 
 Storage model
 -------------
@@ -19,6 +19,7 @@ import asyncio
 import base64
 import hashlib
 import hmac
+import csv
 import io
 import json
 import os
@@ -48,11 +49,11 @@ MONGO_URL = os.environ["MONGO_URL"]
 DB_NAME = os.environ["DB_NAME"]
 
 # DATA_DIR is the directory containing the git-committed seed files
-# (Master.csv, QTS.geojson, etc.). It's READ-ONLY in the new model.
+# (Master.csv, QGIS.geojson, etc.). It's READ-ONLY in the new model.
 DATA_DIR = Path(os.environ.get("DATA_DIR", ROOT_DIR.parent)).resolve()
 
 _default_origins = (
-    "https://qts-rds.github.io,"
+    "https://enri-rds.github.io,"
     "http://localhost:3000,"
     "http://localhost:5500,"
     "http://127.0.0.1:5500"
@@ -62,17 +63,15 @@ ALLOWED_ORIGINS = [
 ]
 
 UPLOAD_TOKEN = os.environ.get("UPLOAD_TOKEN", "").strip()
+
+# Token dedicato, separato da UPLOAD_TOKEN, per l'endpoint read-only di
+# sincronizzazione cross-progetto usato dal backend di QTS (tratte in
+# concomitanza gestite qui su ENRI). Nessun privilegio di scrittura:
+# se compromesso, espone solo stato_autorizzazione/stato_nullaosta delle
+# tratte esplicitamente richieste, non l'intero Master.csv né azioni admin.
+QTS_SYNC_TOKEN = os.environ.get("QTS_SYNC_TOKEN", "").strip()
 ALLOWED_EXT = {".csv", ".xlsx", ".xls", ".geojson", ".json"}
 MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "25"))
-
-# Sincronizzazione cross-progetto con ENRI: le tratte con CONCOMITANZA ENRI=SI
-# in Master.csv hanno la pratica di autorizzazione gestita là, non da Telebit
-# su QTS. ENRI_SYNC_TOKEN deve combaciare con QTS_SYNC_TOKEN configurato sul
-# backend ENRI (endpoint dedicato /api/external/tratte-status, sola lettura).
-ENRI_API_BASE = os.environ.get("ENRI_API_BASE", "https://enri-dashboard-api.onrender.com").rstrip("/")
-ENRI_SYNC_TOKEN = os.environ.get("ENRI_SYNC_TOKEN", "").strip()
-_ENRI_SYNC_TTL = 300  # secondi — ENRI è su Render free tier e può essere addormentato
-_enri_sync_cache: dict[str, tuple[float, dict]] = {}
 
 # ─────────────────────────────────────────────────────────────────────────────
 # DB
@@ -89,25 +88,25 @@ solleciti_col = db["solleciti"]                # registro solleciti per tratta/p
 # Senza questo lock, due richieste concorrenti (es. solleciti di imprese diverse)
 # possono leggere la stessa versione e la seconda scrittura sovrascrive/perde la prima.
 _master_csv_lock = asyncio.Lock()
-# Lock per serializzare _sync_cantieri(): la funzione legge il progressivo massimo
-# di codice_cantiere per lotto (_max_codice_per_lotto) e poi lo incrementa in memoria
-# per ogni nuovo cantiere. _sync_cantieri è invocata da più punti (startup, dopo ogni
-# aggiornamento di Master.csv, sync admin manuale, approvazione pending_updates): senza
-# questo lock, due esecuzioni in overlap possono partire dallo stesso valore massimo e
-# assegnare lo stesso codice_cantiere (es. CA/4/1A) a due pratiche diverse dello stesso lotto.
-_sync_cantieri_lock = asyncio.Lock()
+# Lock per serializzare _sync_cantieri(): senza di esso due esecuzioni concorrenti
+# (es. startup + trigger da approve_pending_update, o due approvazioni ravvicinate,
+# entrambe lanciate come asyncio.create_task non awaitate) possono leggere lo stesso
+# _max_codice_per_lotto() prima che l'altra abbia inserito il proprio documento,
+# assegnando lo stesso codice_cantiere (es. "CA/2/1A") a due pratiche diverse.
+_cantieri_sync_lock = asyncio.Lock()
 cantieri_col  = db["cantieri"]                  # stato cantiere per pratica di autorizzazione
 sopralluoghi_col = db["sopralluoghi"]          # verbali di sopralluogo
 pol_conv_dates_col = db["pol_conv_dates"]      # prima data in cui CONVENZIONE/POLIZZA è comparsa per una pratica
 access_logs_col = db["access_logs"]            # log accessi (ex-JSONBin) — un documento per binId, {utenti:[...], accessi:[...]}
 gantt_overrides_col = db["gantt_overrides"]    # override manuali riga Gantt (pct/date/label) per lotto, indip. da invii impresa
 gantt_rates_col = db["gantt_rates"]            # regole tasso scavo (m/giorno) per scope: "global" | "lotto:<ID>" | "impresa:<NOME>" | "pratica:<CODICE>"
+concomitanza_col = db["concomitanza"]          # tratte con lavorazione aggiuntiva concomitante (es. ENRI-QTS, tubo aggiuntivo), keyed per TRATTA_ID
 gridfs = AsyncIOMotorGridFSBucket(db, bucket_name="files")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # App
 # ─────────────────────────────────────────────────────────────────────────────
-app = FastAPI(title="QTS Dashboard API", version="2.0.0")
+app = FastAPI(title="ENRI Dashboard API", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -140,6 +139,11 @@ def _check_token(token: str | None) -> None:
         raise HTTPException(401, "Invalid or missing upload token")
 
 
+def _check_qts_sync_token(token: str | None) -> None:
+    if not QTS_SYNC_TOKEN or token != QTS_SYNC_TOKEN:
+        raise HTTPException(401, "Invalid or missing sync token")
+
+
 async def _log_admin_action(azione: str, target: str, actor_nome: str | None) -> None:
     """Audit trail per le azioni protette da UPLOAD_TOKEN (non da sessione, quindi
     `actor_nome` è auto-dichiarato dal client — utile per tracciare, non per provare)."""
@@ -155,6 +159,13 @@ async def _log_admin_action(azione: str, target: str, actor_nome: str | None) ->
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def _parse_it_date(s: str):
+    try:
+        return datetime.strptime(str(s).strip(), "%d/%m/%Y")
+    except Exception:
+        return None
 
 
 def _media_type(name: str) -> str:
@@ -310,8 +321,12 @@ async def _require_milestone_session(
 # vengono più pubblicati sul repo GitHub pubblico (vedi _push_to_github).
 SENSITIVE_FILES = {
     "Master.csv",
-    "QTS.geojson",
-    "SED_QTS.geojson",
+    "QGIS.geojson",
+    "Riepilogo_progettazione.csv",
+    "SED_classificato.geojson",
+    "Cantieri.csv",
+    "sopralluoghi.csv",
+    "solleciti.csv",
 }
 
 
@@ -332,7 +347,7 @@ def _guard_sensitive_read(rel: str, sess: dict) -> None:
 @app.get("/api/")
 async def root():
     return {
-        "service": "qts-dashboard-api",
+        "service": "enri-dashboard-api",
         "status": "ok",
         "time": _now_iso(),
         "version": "2.0.0",
@@ -529,6 +544,11 @@ async def upload_file(
     out_name = target.strip() or (file.filename or "uploaded")
     out_bytes = raw
 
+    # Safety net: anche se il client non passa convert_to_csv=false, il file
+    # parametri (multi-foglio) non va MAI appiattito in CSV a un solo foglio.
+    if out_name == PARAMETRI_FILENAME:
+        convert_to_csv = False
+
     if ext in {".xlsx", ".xls"} and convert_to_csv:
         try:
             df = pd.read_excel(io.BytesIO(raw))
@@ -602,9 +622,9 @@ async def upload_file(
         rel, x_actor_nome,
     )
 
-    # Se è Master.csv, rigenera anche QTS.geojson e sincronizza GitHub — stesso
-    # comportamento di approve/delete/restore, altrimenti un upload manuale
-    # lascia mappa e barre ferme alla versione precedente.
+    # Se è Master.csv, rigenera anche i file derivati (Riepilogo_progettazione.csv,
+    # QGIS.geojson) e sincronizza GitHub — stesso comportamento di approve/delete/restore,
+    # altrimenti un upload manuale lascia mappa e barre ferme alla versione precedente.
     if rel == MASTER_FILENAME:
         asyncio.create_task(_push_current_master_to_github())
     elif rel in GITHUB_PATHS:
@@ -752,10 +772,10 @@ async def restore_upload(
 
 @app.on_event("startup")
 async def _on_startup():
-    print(f"[qts-dashboard] DATA_DIR (seed) = {DATA_DIR}")
-    print(f"[qts-dashboard] DB_NAME         = {DB_NAME}")
-    print(f"[qts-dashboard] CORS            = {ALLOWED_ORIGINS}")
-    print(f"[qts-dashboard] UPLOAD_TOKEN    = {'set' if UPLOAD_TOKEN else 'OFF (open)'}")
+    print(f"[enri-dashboard] DATA_DIR (seed) = {DATA_DIR}")
+    print(f"[enri-dashboard] DB_NAME         = {DB_NAME}")
+    print(f"[enri-dashboard] CORS            = {ALLOWED_ORIGINS}")
+    print(f"[enri-dashboard] UPLOAD_TOKEN    = {'set' if UPLOAD_TOKEN else 'OFF (open)'}")
     # Indici MongoDB — evitano full collection scan sulle query più frequenti
     try:
         await uploads_col.create_index([("filename", 1), ("deleted_at", 1), ("uploaded_at", -1)])
@@ -767,7 +787,7 @@ async def _on_startup():
         await cantieri_col.create_index("lotto")
         await sopralluoghi_col.create_index("codice_verbale")
         await gantt_rates_col.create_index("scope", unique=True)
-        print("[qts-dashboard] Indici MongoDB verificati/creati")
+        print("[enri-dashboard] Indici MongoDB verificati/creati")
     except Exception as e:
         print(f"[startup] creazione indici: {e}")
     # Backfill: ensure pre-existing upload records have a deleted_at field
@@ -779,12 +799,16 @@ async def _on_startup():
     # delle richieste HTTP (es. /api/health) durante il boot dopo un cold-start.
     async def _startup_sync_cantieri():
         try:
-            created = await _sync_cantieri()
-            if created:
-                asyncio.create_task(_push_cantieri_to_github())
+            await _sync_cantieri()
         except Exception as e:
             print(f"[startup] _sync_cantieri: {e}")
     asyncio.create_task(_startup_sync_cantieri())
+    # Backfill sopralluoghi.csv: il vecchio seed statico è stato rimosso dal
+    # repo, rigeneriamo subito il derivato da Mongo così compare in "File
+    # correnti" senza dover aspettare il prossimo verbale/eliminazione.
+    _schedule_sopralluoghi_csv_regen("backfill startup")
+    # Backfill solleciti.csv: idem, così compare subito in "File correnti".
+    _schedule_solleciti_csv_regen("backfill startup")
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -798,7 +822,7 @@ async def _on_startup():
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Sessione firmata — risolve il problema per cui chiunque potesse fare
-# `localStorage.setItem('_qts_user', 'Nome Impresa')` e impersonare quel
+# `localStorage.setItem('_enri_user', 'Nome Impresa')` e impersonare quel
 # nome senza conoscere il codice di accesso (il codice era verificato SOLO
 # da Google Apps Script al login, mai dal backend sulle chiamate successive).
 #
@@ -906,6 +930,266 @@ async def logs_put(payload: dict, sess: dict = Depends(_require_session)):
     return {"ok": True}
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Parametri di configurazione (rischio ROS, squadre, capacità, azioni) — rev.??
+# Fonte unica: xlsx caricato da admin.html tramite /api/upload (stesso
+# meccanismo GridFS di Master.csv). Il parsing avviene qui, server-side:
+# il frontend (stato_lotti.html) consuma solo /api/parametri (JSON), mai
+# l'xlsx direttamente — nessuna soglia/peso/produttività è hardcoded in JS.
+# ─────────────────────────────────────────────────────────────────────────────
+PARAMETRI_FILENAME = "Parametri_configurazione_dashboard_ENRI.xlsx"
+
+
+def _pf(row: dict, key: str, default=None):
+    v = row.get(key)
+    return default if v is None else v
+
+
+def _pf_bool_si(row: dict, key: str) -> bool:
+    v = row.get(key)
+    return str(v).strip().lower() == "sì" or str(v).strip().lower() == "si"
+
+
+def _find_header_row(ws, anchor_text: str, max_scan: int = 20) -> int | None:
+    """Cerca nella colonna A, entro le prime `max_scan` righe, la cella che
+    contiene esattamente `anchor_text` e ne restituisce l'indice (1-based).
+    Usato invece di numeri di riga fissi così lo sheet resta parsabile anche
+    se il PM inserisce/rimuove righe di intestazione o note sopra la tabella."""
+    for i in range(1, max_scan + 1):
+        v = ws.cell(row=i, column=1).value
+        if v is not None and str(v).strip() == anchor_text:
+            return i
+    return None
+
+
+def _sheet_table(ws, anchor_text: str, max_scan: int = 20) -> list[dict]:
+    """Legge la tabella che inizia con l'header trovato da `_find_header_row`.
+    Ferma la lettura alla prima riga completamente vuota. Le chiavi del dict
+    sono le intestazioni originali (testo colonna A..N), non rinominate qui —
+    la rinomina in snake_case avviene nel parser specifico di ogni sezione."""
+    hdr_row = _find_header_row(ws, anchor_text, max_scan)
+    if hdr_row is None:
+        return []
+    headers = [c.value for c in ws[hdr_row]]
+    rows = []
+    r = hdr_row + 1
+    while True:
+        cells = [ws.cell(row=r, column=ci + 1).value for ci in range(len(headers))]
+        if all(c is None for c in cells):
+            break
+        row = {}
+        for h, v in zip(headers, cells):
+            if h is not None:
+                row[str(h).strip()] = v
+        rows.append(row)
+        r += 1
+        if r > hdr_row + 500:  # safety stop
+            break
+    return rows
+
+
+def _xlsx_date_to_it(v):
+    """Normalizza una cella data del PARAMETRI xlsx in stringa gg/mm/aaaa.
+    openpyxl restituisce un oggetto datetime/date se la cella è formattata
+    come Data in Excel, una stringa se è General/Testo: il frontend
+    (parseDateIT) si aspetta sempre e solo il formato gg/mm/aaaa."""
+    if v is None or v == "":
+        return v
+    if hasattr(v, "strftime"):
+        return v.strftime("%d/%m/%Y")
+    return v
+
+
+def _parse_parametri_xlsx(raw: bytes) -> dict:
+    import openpyxl
+    wb = openpyxl.load_workbook(io.BytesIO(raw), data_only=True)
+
+    out: dict = {}
+
+    # ── Parametri globali ──
+    globali = {}
+    for row in _sheet_table(wb["Parametri globali"], "Codice"):
+        codice = row.get("Codice")
+        if not codice:
+            continue
+        globali[str(codice).strip()] = {
+            "ambito": row.get("Ambito"),
+            "parametro": row.get("Parametro"),
+            "valore": row.get("Valore"),
+            "unita": row.get("Unità"),
+            "tipo_dato": row.get("Tipo dato"),
+            "modificabile": _pf_bool_si(row, "Modificabile"),
+            "descrizione": row.get("Descrizione / regola"),
+        }
+    out["globali"] = globali
+
+    # ── Regole squadre per stato cantiere ──
+    regole_squadre = {}
+    for row in _sheet_table(wb["Regole squadre cantiere"], "Stato cantiere"):
+        stato = row.get("Stato cantiere")
+        if not stato:
+            continue
+        regole_squadre[str(stato).strip()] = {
+            "squadre_standard": row.get("Squadre standard"),
+            "operativo": _pf_bool_si(row, "Conta come operativo"),
+            "modificabile": _pf_bool_si(row, "Modificabile"),
+            "regola": row.get("Regola"),
+            "note": row.get("Note"),
+        }
+    out["regole_squadre_cantiere"] = regole_squadre
+
+    # ── Eccezioni squadre per singolo cantiere ──
+    eccezioni = []
+    for row in _sheet_table(wb["Eccezioni per cantiere"], "Codice cantiere"):
+        if not row.get("Codice cantiere"):
+            continue
+        eccezioni.append({
+            "codice_cantiere": row.get("Codice cantiere"),
+            "lotto": row.get("Lotto"),
+            "impresa": row.get("Impresa"),
+            "stato_cantiere": row.get("Stato cantiere"),
+            "squadre_standard": row.get("Squadre standard"),
+            "squadre_override": row.get("Squadre override"),
+            "squadre_effettive": row.get("Squadre effettive"),
+            "data_validita": row.get("Data validità"),
+            "motivazione": row.get("Motivazione"),
+        })
+    out["eccezioni_cantiere"] = eccezioni
+
+    # ── Tempi autorizzativi ──
+    tempi = {}
+    for row in _sheet_table(wb["Tempi autorizzativi"], "Codice"):
+        codice = row.get("Codice")
+        if not codice:
+            continue
+        tempi[str(codice).strip()] = {
+            "tipologia": row.get("Tipologia ente / pratica"),
+            "giorni_attesi": row.get("Giorni attesi"),
+            "soglia_attenzione": row.get("Soglia attenzione"),
+            "soglia_critica": row.get("Soglia critica"),
+            "unita": row.get("Unità"),
+            "peso_milestone_30gg": row.get("Peso se milestone ≤30gg"),
+            "modificabile": _pf_bool_si(row, "Modificabile"),
+            "note": row.get("Note"),
+            "giorni_redazione_pratiche": row.get("Giorni redazione pratiche"),
+        }
+    out["tempi_autorizzativi"] = tempi
+
+    # ── Rischio ROS: fattori (pesi) + classi ──
+    ws_ros = wb["Rischio ROS"]
+    fattori = []
+    for row in _sheet_table(ws_ros, "Codice fattore"):
+        if not row.get("Codice fattore"):
+            continue
+        fattori.append({
+            "codice": row.get("Codice fattore"),
+            "fattore": row.get("Fattore"),
+            "peso": row.get("Peso"),
+            "misura": row.get("Misura utilizzata"),
+            "soglia_attenzione": row.get("Soglia attenzione"),
+            "soglia_critica": row.get("Soglia critica"),
+            "normalizzazione": row.get("Normalizzazione proposta"),
+            "attivo": _pf_bool_si(row, "Attivo"),
+            "note": row.get("Note"),
+        })
+    peso_totale_attivi = round(sum(float(f["peso"] or 0) for f in fattori if f["attivo"]), 6)
+    classi = []
+    for row in _sheet_table(ws_ros, "Classe"):
+        if not row.get("Classe"):
+            continue
+        classi.append({
+            "classe": row.get("Classe"),
+            "punteggio_min": row.get("Punteggio minimo"),
+            "punteggio_max": row.get("Punteggio massimo"),
+            "colore": row.get("Colore"),
+            "descrizione": row.get("Descrizione"),
+            "azione": row.get("Azione dashboard"),
+        })
+    out["rischio_ros"] = {
+        "fattori": fattori,
+        "peso_totale_attivi": peso_totale_attivi,
+        "peso_valido": abs(peso_totale_attivi - 1.0) < 0.001,
+        "classi": classi,
+    }
+
+    # ── Regole azioni ──
+    azioni = []
+    for row in _sheet_table(wb["Regole azioni"], "Priorità"):
+        if row.get("Codice") is None:
+            continue
+        azioni.append({
+            "priorita": row.get("Priorità"),
+            "codice": row.get("Codice"),
+            "condizione": row.get("Condizione oggettiva"),
+            "dato_da_mostrare": row.get("Dato da mostrare"),
+            "azione": row.get("Azione suggerita"),
+            "responsabile": row.get("Responsabile"),
+            "calcolo_quantita": row.get("Calcolo quantità"),
+            "affidabilita_minima": row.get("Affidabilità minima"),
+            "note": row.get("Note"),
+        })
+    azioni.sort(key=lambda a: (a["priorita"] if isinstance(a["priorita"], (int, float)) else 999))
+    out["regole_azioni"] = azioni
+
+    # ── Parametri per lotto (override globali) ──
+    per_lotto = {}
+    for row in _sheet_table(wb["Parametri per lotto"], "Lotto"):
+        lotto = row.get("Lotto")
+        if lotto is None or str(lotto).strip() == "":
+            continue
+        per_lotto[str(lotto).strip()] = {
+            "cluster": row.get("Cluster"),
+            "impresa": row.get("Impresa"),
+            "milestone_contrattuale": _xlsx_date_to_it(row.get("Milestone contrattuale")),
+            "produttivita_standard_squadra": row.get("Produttività standard squadra"),
+            "squadre_lotto_override": row.get("Squadre lotto (override manuale)"),
+            "giorni_lavorativi_settimana": row.get("Giorni lavorativi/settimana"),
+            "efficienza_prevista": row.get("Efficienza prevista"),
+            "produttivita_disponibile": row.get("Produttività disponibile (da squadre effettive)"),
+            "fonte": row.get("Fonte / motivazione"),
+            "data_validita": row.get("Data validità"),
+            "note": row.get("Note"),
+            "data_avvio_progettazione": _xlsx_date_to_it(row.get("Data avvio progettazione")),
+        }
+    out["parametri_lotto"] = per_lotto
+
+    # Nota: lo sheet "Esempio calcolo" è una sandbox del PM per validare le
+    # formule a mano (contiene ipotesi/celle di prova, non parametri) — non
+    # viene esposto da /api/parametri e non è usato dal motore di calcolo.
+
+    return out
+
+
+# Cache in-process: rifà il parsing solo se cambia la versione (gridfs_id/mtime).
+_parametri_cache: dict = {"key": None, "data": None}
+
+
+async def _load_parametri() -> tuple[dict, dict]:
+    """Restituisce (parametri_json, meta). meta include source/uploaded_at
+    per far vedere in dashboard da dove arrivano i numeri."""
+    cur = await _current_upload(PARAMETRI_FILENAME)
+    if cur:
+        cache_key = str(cur.get("gridfs_id"))
+        meta = {"source": "mongo", "filename": PARAMETRI_FILENAME, "uploaded_at": cur.get("uploaded_at")}
+        if _parametri_cache["key"] != cache_key:
+            raw = await _read_gridfs(cur["gridfs_id"])
+            _parametri_cache["key"] = cache_key
+            _parametri_cache["data"] = _parse_parametri_xlsx(raw)
+        return _parametri_cache["data"], meta
+
+    # Fallback: file seed committato nel repo (nessun upload ancora fatto)
+    path = DATA_DIR / PARAMETRI_FILENAME
+    if path.exists() and path.is_file():
+        cache_key = f"disk:{path.stat().st_mtime}"
+        meta = {"source": "disk", "filename": PARAMETRI_FILENAME, "uploaded_at": None}
+        if _parametri_cache["key"] != cache_key:
+            _parametri_cache["key"] = cache_key
+            _parametri_cache["data"] = _parse_parametri_xlsx(path.read_bytes())
+        return _parametri_cache["data"], meta
+
+    raise HTTPException(404, f"Nessun file parametri caricato ({PARAMETRI_FILENAME}) — caricalo da admin.html")
+
+
 MASTER_FILENAME = "Master.csv"
 ROW_KEY_COLS = ("TRATTA_ID", "ENTE", "TIPO_PERMESSO")  # natural key for an update
 
@@ -972,27 +1256,61 @@ async def _read_master_csv() -> "pd.DataFrame":
     return df
 
 
-QGIS_FILENAME = "QTS.geojson"  # geometria principale tratte, keyed by TRATTA_ID
+QGIS_FILENAME      = "QGIS.geojson"
+RIEPILOGO_FILENAME = "Riepilogo_progettazione.csv"
+CANTIERI_FILENAME  = "Cantieri.csv"
+SOPRALLUOGHI_FILENAME = "sopralluoghi.csv"
+SOLLECITI_FILENAME = "solleciti.csv"
 
 
-GITHUB_REPO     = os.environ.get("GITHUB_REPO", "QTS-RDS/dashboard")
+async def _read_riepilogo_csv() -> "pd.DataFrame | None":
+    """Legge Riepilogo_progettazione.csv (Mongo se presente, altrimenti seed su
+    disco). Usato per recuperare CLUSTER/PROVINCIA/COMUNE per TRATTA_ID: questi
+    campi non esistono in Master.csv, solo in Riepilogo (ereditati da QGIS.geojson).
+    Ritorna None se il file non e' ancora disponibile (fail-soft: i cantieri
+    vengono comunque creati, solo senza questi campi)."""
+    try:
+        cur = await _current_upload(RIEPILOGO_FILENAME)
+        if cur:
+            raw = await _read_gridfs(cur["gridfs_id"])
+        else:
+            path = DATA_DIR / RIEPILOGO_FILENAME
+            if not path.exists():
+                return None
+            raw = path.read_bytes()
+        sep = _detect_sep(raw)
+        for enc in ("utf-8", "cp1252", "latin-1"):
+            try:
+                return pd.read_csv(
+                    io.BytesIO(raw), sep=sep, dtype=str, keep_default_na=False,
+                    encoding=enc, on_bad_lines="warn",
+                )
+            except (UnicodeDecodeError, UnicodeError):
+                continue
+        return pd.read_csv(io.BytesIO(raw), sep=sep, dtype=str, keep_default_na=False, encoding="utf-8", encoding_errors="replace")
+    except Exception as e:
+        print(f"[_read_riepilogo_csv] errore: {e}")
+        return None
+
+
+GITHUB_REPO     = os.environ.get("GITHUB_REPO", "ENRI-RDS/dashboard")
 GITHUB_BRANCH   = os.environ.get("GITHUB_BRANCH", "main")
 GITHUB_CSV_PATH = os.environ.get("GITHUB_CSV_PATH", "Master.csv")
 
 # Mappa file dashboard -> path nel repo GitHub (override via env se servono sottocartelle)
 GITHUB_PATHS: dict = {
-    "Master.csv":       GITHUB_CSV_PATH,
-    "QTS.geojson":      os.environ.get("GITHUB_QGIS_PATH", "QTS.geojson"),
-    "solleciti.csv":    os.environ.get("GITHUB_SOLLECITI_PATH", "solleciti.csv"),
-    "sopralluoghi.csv": os.environ.get("GITHUB_SOPRALLUOGHI_PATH", "sopralluoghi.csv"),
-    "SED_QTS.geojson":  os.environ.get("GITHUB_SED_PATH", "SED_QTS.geojson"),
+    "Master.csv":                  GITHUB_CSV_PATH,
+    "Riepilogo_progettazione.csv": os.environ.get("GITHUB_RIEPILOGO_PATH", "Riepilogo_progettazione.csv"),
+    "QGIS.geojson":                os.environ.get("GITHUB_QGIS_PATH", "QGIS.geojson"),
+    "QTS.geojson":                 os.environ.get("GITHUB_QTS_PATH", "QTS.geojson"),
+    "SED_classificato.geojson":    os.environ.get("GITHUB_SED_PATH", "SED_classificato.geojson"),
 }
 
 
 _GITHUB_PUSH_TIMES: dict[str, str] = {}   # label/basename -> ISO timestamp ultimo push riuscito
 
 async def _push_to_github(file_bytes: bytes, path: str = None, label: str = None) -> None:
-    """Aggiorna un file su GitHub via API (Master.csv, QTS.geojson, SED_QTS.geojson, ...).
+    """Aggiorna un file su GitHub via API (Master.csv, QGIS.geojson, Riepilogo_progettazione.csv, ...).
     In caso di conflitto sha (409 — qualcun altro ha scritto sullo stesso file nel frattempo,
     es. una modifica manuale in parallelo) rilegge lo sha aggiornato e riprova fino a 3 volte."""
     path  = path or GITHUB_CSV_PATH
@@ -1046,7 +1364,7 @@ async def _push_to_github(file_bytes: bytes, path: str = None, label: str = None
 
 async def _push_current_master_to_github() -> None:
     """Legge la versione corrente di Master.csv da MongoDB, la pusha su GitHub
-    e rigenera QTS.geojson (usata da delete/restore)."""
+    e rigenera QGIS.geojson + Riepilogo_progettazione.csv (usata da delete/restore)."""
     try:
         df = await _read_master_csv()
         github_buf = io.StringIO()
@@ -1059,9 +1377,9 @@ async def _push_current_master_to_github() -> None:
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# Derivazione QTS.geojson da Master.csv
+# Derivazione QGIS.geojson + Riepilogo_progettazione.csv da Master.csv
 # ─────────────────────────────────────────────────────────────────────────────
-# Regole verificate contro un export reale delle tratte (Master.csv/QTS.geojson):
+# Regole verificate contro un export reale di Riepilogo_progettazione.csv:
 #   - STATO_LEGENDA è sempre identico a STATO_AUTORIZZAZIONE (0 eccezioni su 692 righe)
 #   - LAVORABILE = SI solo se STATO_AUTORIZZAZIONE = OTTENUTO E (se richiesto)
 #     anche il/i NULLA OSTA sono OTTENUTI (idem ORDINANZA se richiesta)
@@ -1209,13 +1527,6 @@ def _compute_tratta_summary(master_df: "pd.DataFrame") -> dict:
             "IN ATTESA" if need_ord == "SI" else "NON NECESSARIO"
         )
 
-        # CONCOMITANZA ENRI: flag SI/NO sulle singole righe (in genere sulla riga
-        # AUT, a volte duplicato anche sul NULLA OSTA della stessa tratta) ->
-        # se una qualsiasi riga della tratta e' SI, la tratta e' in concomitanza.
-        concomitanza_enri = "SI" if any(
-            _norm(r.get("CONCOMITANZA ENRI")) == "SI" for r in rows
-        ) else "NO"
-
         aut_ok = stato_aut == "OTTENUTO"
         no_ok  = stato_no == "OTTENUTO"
         ord_ok = stato_ord == "OTTENUTO"
@@ -1251,8 +1562,6 @@ def _compute_tratta_summary(master_df: "pd.DataFrame") -> dict:
             "PRATICA_AUT":          str(aut_row_corrente.get("PRATICA", "")).strip() if aut_row_corrente else "",
             "ENTE":                 ente_aut,
             "LUNGHEZZA":            rows[0].get("LUNGHEZZA", 0) if rows else 0,
-            "LOTTO":                _lotto_from_source(rows[0].get("Source.Name", "")) if rows else "",
-            "CONCOMITANZA_ENRI":    concomitanza_enri,
         }
     return result
 
@@ -1293,21 +1602,32 @@ async def _store_derived_file(filename: str, data: bytes, content_type: str, not
 
 
 async def _regenerate_derived_files(master_df: "pd.DataFrame", note: str = "") -> dict:
-    """Rigenera QTS.geojson a partire da Master.csv (patch in place delle
-    proprieta' di stato). Riepilogo_progettazione.csv e' stato eliminato
-    (ridondante: QTS.geojson gia' contiene COMUNE/PROVINCIA/LOTTO/ENTE per
-    TRATTA_ID — vedi _sync_cantieri che li legge direttamente da qui).
+    """Rigenera QGIS.geojson e Riepilogo_progettazione.csv a partire da Master.csv.
+
+    Verificato sui file reali: Riepilogo_progettazione.csv e' ESATTAMENTE la
+    tabella attributi di QGIS.geojson esportata in CSV (stesse 21 colonne,
+    stesso ordine, stessi valori, stesso numero di righe — confrontato riga
+    per riga su TR_0103 e sull'intero file). Per questo la patch avviene UNA
+    SOLA VOLTA sulle properties di QGIS.geojson, e Riepilogo viene poi
+    derivato direttamente da quello: i due file non possono piu' disallinearsi.
 
     Vengono aggiornati SOLO i campi calcolati da Master.csv:
     STATO_AUTORIZZAZIONE, STATO_LEGENDA, STATO_NULLAOSTA, STATO_ORDINANZA,
-    LAVORABILE, MOTIVO_NO, PRATICA, ENTE, CONCOMITANZA_ENRI (da rev. con
-    colonna "CONCOMITANZA ENRI" in Master.csv, sostituisce la vecchia
-    colonna ORDINANZA/ORDINANZA NECESSARIA rimossa dal file sorgente).
-    Tutto il resto (fid, PROVINCIA, COMUNE, ENTE 2, LUNGHEZZA, LOTTO,
-    geometria) resta esattamente come nel QTS.geojson esistente.
+    LAVORABILE, MOTIVO_NO, PRATICA, ENTE.
+    Tutto il resto (fid, TIPOLOGIA, PROVINCIA, COMUNE, CLUSTER, ROUTE, ENTE 2,
+    LUNGHEZZA, SPAN, LOTTO, PROTOCOLLO_AUT, CAMPO AWS, geometria) resta
+    esattamente come nel QGIS.geojson esistente.
 
     Fire-and-forget: eventuali errori vengono solo loggati.
     """
+    # Ordine colonne confermato sul file reale (json.load preserva l'ordine delle key)
+    RIEPILOGO_COLUMNS = [
+        "fid", "TIPOLOGIA", "PROVINCIA", "COMUNE", "CLUSTER", "ROUTE", "ENTE", "ENTE 2",
+        "LUNGHEZZA", "SPAN", "LOTTO", "TRATTA_ID", "MOTIVO_NO", "STATO_AUTORIZZAZIONE",
+        "STATO_NULLAOSTA", "STATO_ORDINANZA", "PROTOCOLLO_AUT", "PRATICA", "LAVORABILE",
+        "STATO_LEGENDA", "CAMPO AWS",
+    ]
+
     out_ids: dict = {}
     try:
         summary = _compute_tratta_summary(master_df)
@@ -1320,7 +1640,8 @@ async def _regenerate_derived_files(master_df: "pd.DataFrame", note: str = "") -
             print(f"[Sync] {QGIS_FILENAME} non trovato — skip rigenerazione")
             return out_ids
 
-        # ── Patch in place delle proprieta' di stato su QTS.geojson ─────────
+        # ── 1. Patch in place delle proprieta' di stato su QGIS.geojson ─────────
+        riepilogo_rows = []
         for feat in geo["features"]:
             props = feat.get("properties") or {}
             tid = str(props.get("TRATTA_ID") or "").strip()
@@ -1332,20 +1653,30 @@ async def _regenerate_derived_files(master_df: "pd.DataFrame", note: str = "") -
                 props["STATO_ORDINANZA"]      = s["STATO_ORDINANZA"]
                 props["LAVORABILE"]           = s["LAVORABILE"]
                 props["MOTIVO_NO"]            = s["MOTIVO_NO"]
-                props["CONCOMITANZA_ENRI"]    = s["CONCOMITANZA_ENRI"]
                 if s["PRATICA"]:
                     props["PRATICA"] = s["PRATICA"]
                 if s["ENTE"]:
                     props["ENTE"] = s["ENTE"]
             feat["properties"] = props
+            # Riga corrispondente per Riepilogo_progettazione.csv — stesse colonne,
+            # stessi valori, derivati dalla stessa feature appena patchata.
+            riepilogo_rows.append({col: props.get(col, "") for col in RIEPILOGO_COLUMNS})
 
         geo_bytes = json.dumps(geo, ensure_ascii=False).encode("utf-8")
         out_ids["qgis"] = await _store_derived_file(QGIS_FILENAME, geo_bytes, "application/geo+json", note)
-        asyncio.create_task(_push_to_github(geo_bytes, path=GITHUB_PATHS["QTS.geojson"], label=QGIS_FILENAME))
+        asyncio.create_task(_push_to_github(geo_bytes, path=GITHUB_PATHS["QGIS.geojson"], label=QGIS_FILENAME))
+
+        # ── 2. Riepilogo_progettazione.csv: derivato 1:1 da QGIS.geojson ────────
+        riep_df = pd.DataFrame(riepilogo_rows, columns=RIEPILOGO_COLUMNS)
+        rbuf = io.StringIO()
+        riep_df.to_csv(rbuf, index=False)  # virgola, come il file originale
+        rdata = rbuf.getvalue().encode("utf-8")
+        out_ids["riepilogo"] = await _store_derived_file(RIEPILOGO_FILENAME, rdata, "text/csv", note)
+        asyncio.create_task(_push_to_github(rdata, path=GITHUB_PATHS["Riepilogo_progettazione.csv"], label=RIEPILOGO_FILENAME))
 
         print(f"[Sync] Rigenerati: {list(out_ids.keys())} ({len(summary)} tratte, note={note!r})")
     except Exception as e:
-        print(f"[Sync] Errore rigenerazione QTS.geojson: {type(e).__name__}: {e}")
+        print(f"[Sync] Errore rigenerazione QGIS/Riepilogo: {type(e).__name__}: {e}")
     return out_ids
 
 
@@ -1406,28 +1737,31 @@ async def _find_assignment(nome: str) -> dict | None:
 # ── Milestone di Progetto — dati serviti da qui (non più embedded in
 # milestone.html) così il controllo di accesso per ruolo è reale lato server,
 # non solo un redirect client-side aggirabile forzando localStorage.
-# NOTA: righe precedenti (1A/1B/2A/2B/1-8) erano il dato ENRI ereditato dal
-# fork, mai adattato allo schema lotti QTS (A/B/C) — bug segnalato e corretto
-# qui. Date "progetto/invio1/invio2/ottenim" sono le 4 milestone di
-# progettazione (ex tabella statica separata in milestone.html), uguali per
-# tutti i lotti perché relative a un'unica documentazione/permessi di
-# progetto complessivi. Date "avvio/p50/p90/p100" (Attività Civili) non
-# ancora disponibili per QTS (vedi AGENT_BRIEF.md §5.7-8) — placeholder "-".
 MILESTONE_IMPRESE_ROWS = [
-    {"lotto": "A", "progetto": "11/09/2026", "invio1": "30/09/2026", "invio2": "16/10/2026", "ottenim": "31/05/2027", "avvio": "-", "p50": "-", "p90": "-", "p100": "-"},
-    {"lotto": "B", "progetto": "11/09/2026", "invio1": "30/09/2026", "invio2": "16/10/2026", "ottenim": "31/05/2027", "avvio": "-", "p50": "-", "p90": "-", "p100": "-"},
-    {"lotto": "C", "progetto": "11/09/2026", "invio1": "30/09/2026", "invio2": "16/10/2026", "ottenim": "31/05/2027", "avvio": "-", "p50": "-", "p90": "-", "p100": "-"},
+    {"lotto": "1A", "cluster": "1–3", "invio": "-", "ottenim": "-", "avvio": "31/05/2026", "p50": "-", "p90": "31/10/2026", "p100": "31/12/2026"},
+    {"lotto": "1B", "cluster": "1", "invio": "-", "ottenim": "-", "avvio": "31/05/2026", "p50": "-", "p90": "31/10/2026", "p100": "31/12/2026"},
+    {"lotto": "2A", "cluster": "2", "invio": "-", "ottenim": "-", "avvio": "20/07/2026", "p50": "-", "p90": "31/10/2026", "p100": "31/12/2026"},
+    {"lotto": "2B", "cluster": "2", "invio": "-", "ottenim": "-", "avvio": "06/07/2026", "p50": "-", "p90": "31/10/2026", "p100": "31/12/2026"},
+    {"lotto": "1", "cluster": "3", "invio": "30/09/2026", "ottenim": "30/09/2027", "avvio": "31/08/2026", "p50": "30/04/2027", "p90": "-", "p100": "15/11/2027"},
+    {"lotto": "2", "cluster": "3", "invio": "30/09/2026", "ottenim": "30/09/2027", "avvio": "31/08/2026", "p50": "30/04/2027", "p90": "-", "p100": "15/11/2027"},
+    {"lotto": "3", "cluster": "3", "invio": "30/09/2026", "ottenim": "30/09/2027", "avvio": "31/08/2026", "p50": "30/04/2027", "p90": "-", "p100": "15/11/2027"},
+    {"lotto": "4", "cluster": "3", "invio": "30/09/2026", "ottenim": "30/09/2027", "avvio": "31/08/2026", "p50": "30/04/2027", "p90": "-", "p100": "15/11/2027"},
+    {"lotto": "5", "cluster": "3", "invio": "30/09/2026", "ottenim": "30/09/2027", "avvio": "31/08/2026", "p50": "30/04/2027", "p90": "-", "p100": "15/11/2027"},
+    {"lotto": "6", "cluster": "3–4", "invio": "30/09/2026", "ottenim": "30/09/2027", "avvio": "31/10/2026", "p50": "31/05/2027", "p90": "-", "p100": "15/11/2027"},
+    {"lotto": "7", "cluster": "6–7", "invio": "30/09/2026", "ottenim": "30/09/2027", "avvio": "31/01/2027", "p50": "30/09/2027", "p90": "-", "p100": "31/03/2028"},
+    {"lotto": "8", "cluster": "5", "invio": "30/09/2026", "ottenim": "30/09/2027", "avvio": "31/01/2027", "p50": "30/09/2027", "p90": "-", "p100": "31/07/2028"},
 ]
 
-# Contract milestone: date contrattuali generali (Firma/Ripensamento/Invio
-# permessi) uguali per tutti i lotti; "50% completamento scavi" e
-# "Completamento" invece specifiche — A/B condividono le stesse date
-# (milestone 4-5 fornite da Andrea "Lotto A e B"), C ha solo una data di
-# completamento propria (milestone 6, nessun 50% scavi noto per C → "-").
 MILESTONE_CONTRACT_ROWS = [
-    {"lotto": "A", "firma": "02/07/2026", "ripensamento": "02/01/2027", "invio": "02/07/2027", "scavi50": "02/01/2028", "completamento": "02/07/2028"},
-    {"lotto": "B", "firma": "02/07/2026", "ripensamento": "02/01/2027", "invio": "02/07/2027", "scavi50": "02/01/2028", "completamento": "02/07/2028"},
-    {"lotto": "C", "firma": "02/07/2026", "ripensamento": "02/01/2027", "invio": "02/07/2027", "scavi50": "-", "completamento": "02/01/2029"},
+    {"milestone": "Permits submission", "p50": "-", "p70": "-", "p100": "31/12/2026"},
+    {"milestone": "Authorizations received", "p50": "-", "p70": "-", "p100": "31/12/2027"},
+    {"milestone": "Cluster 1", "p50": "-", "p70": "31/12/2026", "p100": "30/04/2027"},
+    {"milestone": "Cluster 2", "p50": "31/12/2026", "p70": "-", "p100": "31/05/2027"},
+    {"milestone": "Cluster 3", "p50": "31/05/2027", "p70": "-", "p100": "31/03/2028"},
+    {"milestone": "Cluster 4", "p50": "-", "p70": "-", "p100": "31/03/2028"},
+    {"milestone": "Cluster 5", "p50": "-", "p70": "-", "p100": "30/06/2028"},
+    {"milestone": "Cluster 6", "p50": "-", "p70": "-", "p100": "31/12/2028"},
+    {"milestone": "Cluster 7", "p50": "-", "p70": "-", "p100": "31/12/2028"},
 ]
 
 
@@ -1437,6 +1771,16 @@ async def get_milestone(sess: dict = Depends(_require_milestone_session)):
     al redirect client-side già presente sulla pagina — qui il controllo è
     reale perché il ruolo viene dal token firmato server-side."""
     return {"imprese": MILESTONE_IMPRESE_ROWS, "contract": MILESTONE_CONTRACT_ROWS}
+
+
+@app.get("/api/parametri")
+async def get_parametri(sess: dict = Depends(_require_staff_session)):
+    """Parametri di configurazione (rischio ROS, squadre, capacità, azioni,
+    tempi autorizzativi) usati da stato_lotti.html. Parsati server-side dallo
+    xlsx caricato via admin.html — nessun valore è hardcoded nel frontend.
+    403 per il ruolo 'impresa' (dato interno di pianificazione, non pratiche)."""
+    data, meta = await _load_parametri()
+    return {**data, "_meta": meta}
 
 
 @app.get("/api/enti")
@@ -1450,6 +1794,59 @@ async def get_enti(sess: dict = Depends(_require_session)):
         key=lambda x: x.lower()
     )
     return {"enti": enti}
+
+
+@app.get("/api/concomitanze")
+async def get_concomitanze(sess: dict = Depends(_require_session)):
+    """Elenco TRATTA_ID con lavorazione aggiuntiva concomitante (es. tubo extra
+    per sovrapposizione con un altro progetto). Dato tecnico sulla tratta fisica,
+    non legato a una specifica impresa: nessuno scoping per lotto, visibile a
+    qualunque sessione valida (staff o impresa)."""
+    docs = [d async for d in concomitanza_col.find({})]
+    return {
+        "tratta_ids": [d["_id"] for d in docs],
+        "nota_by_tratta": {d["_id"]: d.get("nota", "") for d in docs},
+        "count": len(docs),
+    }
+
+
+@app.post("/api/admin/concomitanze/import")
+async def import_concomitanze(
+    payload: dict,
+    x_upload_token: Annotated[str | None, Header(alias="x-upload-token")] = None,
+):
+    """Sostituisce l'intero elenco concomitanze per una 'fonte' (es. 'ENRI-QTS').
+    Body: {fonte: str, nota: str, tratta_ids: [...]} oppure un GeoJSON
+    FeatureCollection con TRATTA_ID nelle properties di ogni feature — in tal
+    caso i TRATTA_ID vengono estratti automaticamente. Richiede x-upload-token."""
+    _check_token(x_upload_token)
+    fonte = str((payload or {}).get("fonte", "")).strip() or "ENRI-QTS"
+    nota = str((payload or {}).get("nota", "")).strip() or "Tubo aggiuntivo"
+
+    if payload.get("type") == "FeatureCollection":
+        tratta_ids = sorted({
+            str((f.get("properties") or {}).get("TRATTA_ID", "")).strip()
+            for f in payload.get("features", [])
+            if str((f.get("properties") or {}).get("TRATTA_ID", "")).strip()
+        })
+    else:
+        tratta_ids = sorted({str(t).strip() for t in payload.get("tratta_ids", []) if str(t).strip()})
+
+    if not tratta_ids:
+        raise HTTPException(400, "Nessun TRATTA_ID trovato nel payload")
+
+    # Upsert per _id (non delete+insert): un TRATTA_ID può in teoria comparire
+    # anche in un'altra 'fonte' futura, l'_id deve restare univoco a livello
+    # di intera collection, non solo all'interno della fonte.
+    await concomitanza_col.delete_many({"fonte": fonte, "_id": {"$nin": tratta_ids}})
+    for tid in tratta_ids:
+        await concomitanza_col.update_one(
+            {"_id": tid},
+            {"$set": {"fonte": fonte, "nota": nota, "updated_at": _now_iso()}},
+            upsert=True,
+        )
+    await _log_admin_action("import_concomitanze", fonte, (payload or {}).get("actor"))
+    return {"ok": True, "fonte": fonte, "count": len(tratta_ids), "tratta_ids": tratta_ids}
 
 
 @app.get("/api/imprese/me")
@@ -1482,7 +1879,7 @@ async def impresa_pratiche(sess: dict = Depends(_require_session)):
 
 @app.get("/api/imprese/master-sed")
 async def impresa_master_sed(sess: dict = Depends(_require_session)):
-    """GeoJSON (QTS.geojson + SED_QTS.geojson) filtrati ai SOLI lotti
+    """GeoJSON (QGIS.geojson + SED_classificato.geojson) filtrati ai SOLI lotti
     assegnati all'impresa (nome dal token firmato). Le pagine Area Impresa usano
     questo endpoint invece di scaricare i file interi con i lotti di tutti i
     concorrenti. Stesso pattern di scoping di /api/imprese/pratiche."""
@@ -1503,8 +1900,8 @@ async def impresa_master_sed(sess: dict = Depends(_require_session)):
         out["features"] = feats
         return out
 
-    qgis = _scope(await _read_current_geojson("QTS.geojson"))
-    sed = _scope(await _read_current_geojson("SED_QTS.geojson"))
+    qgis = _scope(await _read_current_geojson("QGIS.geojson"))
+    sed = _scope(await _read_current_geojson("SED_classificato.geojson"))
     return {"qgis": qgis, "sed": sed, "lotti": sorted(lotti)}
 
 
@@ -1797,7 +2194,7 @@ async def regenerate_derived(
     x_upload_token: Annotated[str | None, Header(alias="x-upload-token")] = None,
     token_q: Annotated[str | None, Query(alias="x_upload_token")] = None,
 ):
-    """Rigenera QTS.geojson dal Master.csv corrente
+    """Rigenera QGIS.geojson + Riepilogo_progettazione.csv dal Master.csv corrente
     senza modificarlo — utile dopo un fix a _compute_tratta_summary per applicare
     la nuova logica ai dati già presenti, senza dover re-uploadare Master.csv."""
     _check_token(x_upload_token or token_q)
@@ -1873,7 +2270,64 @@ async def backfill_data_update_solleciti(
     return {"ok": True, "touched": len(touched), "column_created": column_created, "detail": touched}
 
 
-@app.put("/api/admin/pending-updates/{sub_id}")
+@app.post("/api/admin/backfill-fix-data-update-overreach")
+async def backfill_fix_data_update_overreach(
+    x_upload_token: Annotated[str | None, Header(alias="x-upload-token")] = None,
+    token_q: Annotated[str | None, Query(alias="x_upload_token")] = None,
+):
+    """One-off (rev.248): corregge il bug per cui _touch_data_update/_touch_data_update_multi
+    (prima del fix) scrivevano DATA_UPDATE=oggi su TUTTE le righe storicizzate con lo stesso
+    TRATTA_ID — inclusi altri iter/tipo_permesso sulla stessa tratta e righe storiche vecchie
+    dello stesso iter — invece che solo sull'ultima riga del gruppo tratta+tipo_permesso.
+
+    Per ogni gruppo (TRATTA_ID, TIPO_PERMESSO): azzera DATA_UPDATE su tutte le righe tranne
+    l'ultima (idx[-1], la più recente). Il frontend (index.html) ricade su DATA_ULTIMA_MODIFICA
+    quando DATA_UPDATE è vuota, recuperando la datazione corretta delle note storiche.
+    Non tocca NOTE/STATO_PERMESSO/DATA_ULTIMA_MODIFICA/altri campi. Idempotente: rieseguibile
+    senza effetti collaterali (le righe già a DATA_UPDATE vuota vengono saltate)."""
+    _check_token(x_upload_token or token_q)
+
+    async with _master_csv_lock:
+        df = await _read_master_csv()
+        if "TRATTA_ID" not in df.columns or "DATA_UPDATE" not in df.columns:
+            return {
+                "ok": False,
+                "error": "colonna TRATTA_ID o DATA_UPDATE assente da Master.csv",
+                "colonne_trovate": df.columns.tolist(),
+            }
+
+        has_tipo = "TIPO_PERMESSO" in df.columns
+        group_cols = ["TRATTA_ID", "TIPO_PERMESSO"] if has_tipo else ["TRATTA_ID"]
+        cleared = []
+
+        for _, idx_arr in df.groupby(
+            [df[c].astype(str).str.strip() for c in group_cols]
+        ).groups.items():
+            idx = list(idx_arr)
+            if len(idx) < 2:
+                continue  # gruppo con una sola riga: nulla da correggere
+            for i in idx[:-1]:  # tutte tranne l'ultima
+                existing = str(df.loc[i, "DATA_UPDATE"] or "").strip()
+                if not existing or existing.lower() == "nan":
+                    continue
+                cleared.append({
+                    "tratta_id": str(df.loc[i, "TRATTA_ID"]),
+                    "tipo_permesso": str(df.loc[i, "TIPO_PERMESSO"]) if has_tipo else "",
+                    "pratica": str(df.loc[i, "PRATICA"]) if "PRATICA" in df.columns else "",
+                    "data_update_rimossa": existing,
+                })
+                df.loc[i, "DATA_UPDATE"] = ""
+
+        if cleared:
+            await _write_master_csv(
+                df,
+                note=f"Backfill one-off rev.248: azzerato DATA_UPDATE errato su {len(cleared)} righe storiche non-ultime",
+            )
+
+    return {"ok": True, "cleared": len(cleared), "detail": cleared}
+
+
+
 async def edit_pending(
     sub_id: str,
     payload: dict,
@@ -1936,7 +2390,6 @@ async def approve_pending(
     await _log_admin_action("approve_pending_update", sub_id, x_actor_nome)
     # Sync cantieri: crea automaticamente cantieri non_avviato per le nuove tratte lavorabili
     asyncio.create_task(_sync_cantieri())
-    asyncio.create_task(_push_cantieri_to_github())
     return {"ok": True, "summary": summary, "new_upload_id": upload_id}
 
 
@@ -2035,7 +2488,6 @@ async def search_pratiche_admin(
     ))
     PREFIX = {"AUTORIZZAZIONE": "AUT", "NULLA OSTA": "NO", "ORDINANZA": "ORD"}
     out = []
-    has_concomitanza_col = "CONCOMITANZA ENRI" in latest.columns
     for _, grp in latest.groupby("_gkey", sort=False):
         with_note = grp[grp["NOTE"].astype(str).str.strip() != ""]
         rep = with_note.iloc[-1] if not with_note.empty else grp.iloc[0]
@@ -2059,126 +2511,9 @@ async def search_pratiche_admin(
             "data_prevista_rilascio": _it_date_to_iso(rep.get("DATA_PREVISTA_RILASCIO", "")),
             "data_approvazione": _it_date_to_iso(rep.get("DATA_APPROVAZIONE", "")),
             "n_sed": str(rep.get("N_SED", "")).strip(),
-            "concomitanza_enri": "SI" if (has_concomitanza_col and grp["CONCOMITANZA ENRI"].astype(str).str.strip().str.upper().eq("SI").any()) else "NO",
         })
     out.sort(key=lambda x: x["codice"])
     return {"results": out[:max(1, min(limit, 800))]}
-
-
-def _parse_enri_pratica_rif(pratica_raw) -> tuple[str, str] | None:
-    """Sulle righe con CONCOMITANZA ENRI=SI, il campo PRATICA è stato
-    valorizzato da Andrea con '<numero>_<lotto_ENRI>' (es. '14_2') invece
-    del solo numero di pratica QTS, per codificare a quale pratica del
-    progetto ENRI fa riferimento la tratta. Ritorna (numero, lotto_enri)
-    o None se il valore non è in questo formato (pratica non ancora
-    referenziata)."""
-    s = str(pratica_raw or "").strip()
-    if "_" not in s:
-        return None
-    numero, _, lotto = s.rpartition("_")
-    numero, lotto = numero.strip(), lotto.strip()
-    return (numero, lotto) if numero and lotto else None
-
-
-async def _fetch_enri_pratica_status(lookup_keys: list[dict]) -> tuple[dict, str | None]:
-    """Chiama POST /api/external/pratica-status su ENRI per le pratiche
-    richieste (identificate come ENRI stesso le identifica in
-    /api/admin/pratiche-search: ente+tipo_permesso+numero+lotto — la
-    corrispondenza tra progetti è per PRATICA, non per TRATTA_ID: più
-    tratte QTS possono riferirsi alla stessa pratica ENRI). Cache in-process
-    di _ENRI_SYNC_TTL secondi (ENRI è su Render free tier e può essere
-    addormentato: non lo si martella ad ogni refresh del pannello admin).
-    Ritorna (dict keyed by (ente,tipo,numero,lotto) -> stato, errore) — in
-    caso di errore, se esiste una cache scaduta la riusa comunque (dato
-    stantio meglio di nessun dato)."""
-    if not lookup_keys:
-        return {}, None
-    if not ENRI_SYNC_TOKEN:
-        return {}, "ENRI_SYNC_TOKEN non configurato sul backend QTS"
-    cache_key = json.dumps(lookup_keys, sort_keys=True)
-    now = time.time()
-    cached = _enri_sync_cache.get(cache_key)
-    if cached and (now - cached[0]) < _ENRI_SYNC_TTL:
-        return cached[1], None
-    try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            r = await client.post(
-                f"{ENRI_API_BASE}/api/external/pratica-status",
-                json={"items": lookup_keys},
-                headers={"x-sync-token": ENRI_SYNC_TOKEN},
-            )
-        r.raise_for_status()
-        pratiche = r.json().get("pratiche", [])
-        result = {(p["ente"], p["tipo_permesso"], p["numero"], p["lotto"]): p for p in pratiche}
-        _enri_sync_cache[cache_key] = (now, result)
-        return result, None
-    except Exception as e:
-        if cached:
-            return cached[1], f"ENRI non raggiungibile, mostro l'ultimo dato disponibile ({e})"
-        return {}, f"ENRI non raggiungibile: {e}"
-
-
-@app.get("/api/admin/concomitanza-enri")
-async def list_concomitanza_enri(sess: dict = Depends(_require_staff_session)):
-    """Elenco tratte con CONCOMITANZA ENRI = SI in Master.csv, a livello di
-    TRATTA_ID (indipendente dal numero PRATICA QTS — a differenza di
-    /api/admin/pratiche-search, include anche le tratte la cui pratica QTS
-    non è ancora stata numerata, che è la situazione attuale per la
-    maggior parte di esse). Per ogni riga SI con PRATICA nel formato
-    '<numero>_<lotto_ENRI>', include anche lo stato live letto dal backend
-    ENRI (che gestisce la pratica per queste tratte, non Telebit/QTS) — una
-    tratta può avere più riferimenti ENRI se AUTORIZZAZIONE e NULLA OSTA
-    sono entrambi gestiti là con pratiche diverse."""
-    df = await _read_master_csv()
-    if df is None or df.empty:
-        return {"results": [], "count": 0, "enri_error": None}
-    summary = _compute_tratta_summary(df)
-    concomitanti_ids = {tid for tid, s in summary.items() if s.get("CONCOMITANZA_ENRI") == "SI"}
-    if not concomitanti_ids:
-        return {"results": [], "count": 0, "enri_error": None}
-
-    work = df.fillna("")
-    si_mask = (
-        work["TRATTA_ID"].astype(str).str.strip().isin(concomitanti_ids)
-        & (work["CONCOMITANZA ENRI"].astype(str).str.strip().str.upper() == "SI")
-    )
-    si_rows = work[si_mask]
-
-    refs_by_tratta: dict[str, list[dict]] = {}
-    lookup_keys: list[dict] = []
-    for _, row in si_rows.iterrows():
-        tid = str(row.get("TRATTA_ID", "")).strip()
-        tipo = _norm(row.get("TIPO_PERMESSO"))
-        prefix = _TIPO_PREFIX.get(tipo)
-        parsed = _parse_enri_pratica_rif(row.get("PRATICA"))
-        if not prefix or not parsed:
-            continue  # riferimento ENRI non ancora inserito su questa riga
-        numero, lotto = parsed
-        key = {"ente": str(row.get("ENTE", "")).strip(), "tipo_permesso": tipo, "numero": numero, "lotto": lotto}
-        entry = {**key, "codice": f"{prefix}/{numero}/{lotto}"}
-        bucket = refs_by_tratta.setdefault(tid, [])
-        if not any(e["codice"] == entry["codice"] for e in bucket):
-            bucket.append(entry)
-        if key not in lookup_keys:
-            lookup_keys.append(key)
-
-    enri_results, enri_error = await _fetch_enri_pratica_status(lookup_keys)
-
-    out = []
-    for tid in concomitanti_ids:
-        s = summary[tid]
-        refs = refs_by_tratta.get(tid, [])
-        for r in refs:
-            r["enri_stato"] = enri_results.get((r["ente"], r["tipo_permesso"], r["numero"], r["lotto"]))
-        out.append({
-            "tratta_id": tid,
-            "ente": s["ENTE"],
-            "lotto": s["LOTTO"],
-            "stato_autorizzazione": s["STATO_AUTORIZZAZIONE"],
-            "riferimenti_enri": refs,  # vuoto se PRATICA non è ancora nel formato 'numero_lotto'
-        })
-    out.sort(key=lambda x: (x["lotto"], x["tratta_id"]))
-    return {"results": out, "count": len(out), "enri_error": enri_error}
 
 
 PRATICA_STATO_VALUES = [
@@ -2331,10 +2666,12 @@ def _pratica_note_history_core(df: "pd.DataFrame", ente: str, tipo_permesso: str
         note = str(row.get("NOTE", "")).strip()
         if not note:
             continue
-        key = (note, effective_date)
-        if key in seen:
+        # Dedup per solo testo nota (non (nota, data)): la stessa nota invariata viene
+        # riportata dal CSV su più righe di cambio stato consecutive con date diverse,
+        # non è un evento nuovo ogni volta — stessa logica di index.html (praticaNotesRaw).
+        if note in seen:
             continue
-        seen.add(key)
+        seen.add(note)
         notes.append({"note": note, "date": effective_date})
     notes.sort(key=lambda n: _it_date_to_iso(n["date"]), reverse=True)
     return notes
@@ -2409,16 +2746,17 @@ async def correct_pratica_note(
             (df["Source.Name"].apply(_lotto_from_source) == lotto) &
             (df["NOTE"].astype(str).str.strip() == old_note)
         )
-        if old_date:
-            cols_present = [c for c in ("DATA_ULTIMA_MODIFICA", "DATA_UPDATE") if c in df.columns]
-            if cols_present:
-                date_mask = df[cols_present[0]].astype(str).str.strip() == old_date
-                for c in cols_present[1:]:
-                    date_mask = date_mask | (df[c].astype(str).str.strip() == old_date)
-                mask = mask & date_mask
+        # NB: old_date NON viene più usata per filtrare. Lo storico note (v.
+        # _pratica_note_history_core) dedupe ora per solo testo, quindi una voce
+        # visualizzata con una data può corrispondere a più righe fisiche con quello
+        # stesso testo ma date diverse (nota invariata riportata su più cambi stato).
+        # Filtrare anche per data correggerebbe/eliminerebbe solo una di quelle righe,
+        # lasciando le altre col testo vecchio — il doppione riapparirebbe al
+        # prossimo touch di DATA_UPDATE. old_date resta accettato per compatibilità
+        # ma è ignorato: l'identità della nota è il testo.
         idx = df.index[mask].tolist()
         if not idx:
-            raise HTTPException(404, "Nessuna riga trovata per quella nota/data — verifica che il testo combaci esattamente")
+            raise HTTPException(404, "Nessuna riga trovata per quella nota — verifica che il testo combaci esattamente")
         # Preserva il tag [RETELIT]/[IMPRESA] esistente su ciascuna riga: si corregge
         # solo il testo, non l'autore mostrato.
         for i in idx:
@@ -2471,16 +2809,10 @@ async def delete_pratica_note(
             (df["Source.Name"].apply(_lotto_from_source) == lotto) &
             (df["NOTE"].astype(str).str.strip() == old_note)
         )
-        if old_date:
-            cols_present = [c for c in ("DATA_ULTIMA_MODIFICA", "DATA_UPDATE") if c in df.columns]
-            if cols_present:
-                date_mask = df[cols_present[0]].astype(str).str.strip() == old_date
-                for c in cols_present[1:]:
-                    date_mask = date_mask | (df[c].astype(str).str.strip() == old_date)
-                mask = mask & date_mask
+        # V. nota in note/correct: old_date non filtra più, stesso motivo.
         idx = df.index[mask].tolist()
         if not idx:
-            raise HTTPException(404, "Nessuna riga trovata per quella nota/data — verifica che il testo combaci esattamente")
+            raise HTTPException(404, "Nessuna riga trovata per quella nota — verifica che il testo combaci esattamente")
         for i in idx:
             df.loc[i, "NOTE"] = ""
         reviewer = x_actor_nome or "admin"
@@ -2766,36 +3098,6 @@ async def set_pol_conv_date(
 # ═════════════════════════════════════════════════════════════════════════════
 # SOPRALLUOGHI — verbali di sopralluogo
 # ─────────────────────────────────────────────────────────────────────────────
-SOPRALLUOGHI_COLS = [
-    "codice_verbale", "data_sopralluogo", "lotto", "tratta_id", "impresa",
-    "referente_impresa", "referente_retelit", "comune", "localita",
-    "tipo_intervento", "esito", "note", "segnalazioni", "azioni_richieste",
-    "scadenza_azioni", "prossimo_sopralluogo",
-    "firma_impresa", "firma_retelit", "foto_urls", "created_at",
-]
-
-
-async def _build_sopralluoghi_csv() -> bytes:
-    rows = []
-    async for d in sopralluoghi_col.find({}).sort("codice_verbale", 1):
-        row = {col: str(d.get(col, "")) for col in SOPRALLUOGHI_COLS}
-        rows.append(row)
-    import io, csv as _csv
-    buf = io.StringIO()
-    w = _csv.DictWriter(buf, fieldnames=SOPRALLUOGHI_COLS, delimiter=";",
-                        extrasaction="ignore", lineterminator="\n")
-    w.writeheader()
-    w.writerows(rows)
-    return buf.getvalue().encode("utf-8-sig")
-
-
-async def _push_sopralluoghi_to_github() -> None:
-    try:
-        data = await _build_sopralluoghi_csv()
-        await _push_to_github(data, path=GITHUB_PATHS["sopralluoghi.csv"], label="sopralluoghi.csv")
-    except Exception as e:
-        print(f"[GitHub] _push_sopralluoghi: {e}")
-
 
 @app.get("/api/lotti-cantieri")
 async def get_lotti_cantieri(sess: dict = Depends(_require_staff_session)):
@@ -2862,7 +3164,7 @@ async def delete_sopralluogo(sop_id: str, sess: dict = Depends(_require_session)
     res = await sopralluoghi_col.delete_one({"_id": oid})
     if res.deleted_count == 0:
         raise HTTPException(404, "Verbale non trovato")
-    asyncio.create_task(_push_sopralluoghi_to_github())
+    _schedule_sopralluoghi_csv_regen(f"eliminazione verbale: {sop_id}")
     return {"ok": True, "deleted": sop_id}
 
 
@@ -2893,7 +3195,7 @@ async def sopralluogo_next_codice(sess: dict = Depends(_require_staff_session)):
 
 @app.post("/api/sopralluoghi")
 async def save_sopralluogo(payload: dict, sess: dict = Depends(_require_staff_session)):
-    """Salva un verbale di sopralluogo su MongoDB e aggiorna sopralluoghi.csv su GitHub.
+    """Salva un verbale di sopralluogo su MongoDB (unica fonte, nessun export CSV su GitHub).
     Le foto (se presenti, come data URL base64) vengono caricate su GitHub in
     sopralluoghi/foto/{codice_verbale}/ per non saturare lo storage MongoDB gratuito."""
     last = await sopralluoghi_col.find_one({}, sort=[("codice_verbale", -1)])
@@ -2952,40 +3254,19 @@ async def save_sopralluogo(payload: dict, sess: dict = Depends(_require_staff_se
         "created_at":          _now_iso(),
     }
     await sopralluoghi_col.insert_one(record)
-    asyncio.create_task(_push_sopralluoghi_to_github())
+    _schedule_sopralluoghi_csv_regen(f"nuovo verbale: {codice}")
     return {"ok": True, "codice_verbale": codice, "foto_urls": foto_urls}
 
 
 # SOLLECITI — registro solleciti per tratta/pratica
 # ─────────────────────────────────────────────────────────────────────────────
-# Ogni sollecito viene scritto direttamente su MongoDB (senza approvazione admin)
-# e il CSV solleciti.csv viene sincronizzato su GitHub dopo ogni inserimento.
+# Ogni sollecito viene scritto direttamente su MongoDB (senza approvazione admin).
+# Nessuna sincronizzazione su GitHub: MongoDB è l'unica fonte (rev. TODO-versione).
 # ═════════════════════════════════════════════════════════════════════════════
 
 SOLLECITI_COLS = ["_id", "tratta_id", "pratica", "ente", "tipo_permesso", "stato_permesso",
                   "lunghezza", "data_richiesta", "data_ultima_modifica",
                   "numero_sollecito", "tipo_sollecito", "data_sollecito", "note", "impresa", "created_at"]
-
-
-async def _build_solleciti_csv() -> bytes:
-    """Legge tutti i solleciti da MongoDB e genera un CSV con separatore ;"""
-    cols = ["tratta_id", "pratica", "tipo_sollecito", "data_sollecito", "note", "impresa", "created_at"]
-    rows = []
-    async for d in solleciti_col.find({}).sort("created_at", -1):
-        rows.append({c: str(d.get(c, "") or "") for c in cols})
-    df = pd.DataFrame(rows, columns=cols) if rows else pd.DataFrame(columns=cols)
-    buf = io.StringIO()
-    df.to_csv(buf, index=False, sep=";")
-    return buf.getvalue().encode("utf-8")
-
-
-async def _push_solleciti_to_github() -> None:
-    """Rigenera solleciti.csv e lo pusha su GitHub."""
-    try:
-        data = await _build_solleciti_csv()
-        await _push_to_github(data, path=GITHUB_PATHS["solleciti.csv"], label="solleciti.csv")
-    except Exception as e:
-        print(f"[GitHub] _push_solleciti: {e}")
 
 
 @app.get("/api/imprese/solleciti")
@@ -3020,17 +3301,26 @@ async def get_solleciti(sess: dict = Depends(_require_session)):
 
 
 async def _touch_data_update(tratta_id: str, pratica: str, tipo_permesso: str = "") -> None:
-    """Aggiorna DATA_UPDATE=oggi sulle righe Master.csv della pratica toccata da un sollecito.
-    Scrittura diretta (fire-and-forget), coerente col modello 'solleciti senza approvazione admin'."""
+    """Aggiorna DATA_UPDATE=oggi SOLO sull'ultima riga storicizzata del gruppo
+    tratta+tipo_permesso toccato da un sollecito. Un TRATTA_ID può avere più iter
+    (es. AUTORIZZAZIONE e NULLA OSTA sulla stessa tratta) e ciascun iter più righe
+    storicizzate nel tempo (una per nota/cambio stato): mascherare solo su TRATTA_ID
+    le toccava TUTTE, retro-datando a oggi anche note storiche vecchie (bug segnalato
+    dall'utente: note vecchie duplicate con data odierna nel popup Storico Note)."""
     try:
         async with _master_csv_lock:
             df = await _read_master_csv()
             if "DATA_UPDATE" not in df.columns or "TRATTA_ID" not in df.columns:
                 return
             mask = df["TRATTA_ID"].astype(str).str.strip() == str(tratta_id).strip()
-            if not mask.any():
+            if tipo_permesso and "TIPO_PERMESSO" in df.columns:
+                mask_t = mask & (df["TIPO_PERMESSO"].astype(str).str.strip().str.upper() == tipo_permesso.strip().upper())
+                if mask_t.any():
+                    mask = mask_t
+            idx = df.index[mask].tolist()
+            if not idx:
                 return
-            df.loc[mask, "DATA_UPDATE"] = datetime.now(timezone.utc).strftime("%d/%m/%Y")
+            df.loc[idx[-1], "DATA_UPDATE"] = datetime.now(timezone.utc).strftime("%d/%m/%Y")
             await _write_master_csv(df, note=f"Sollecito tratta {tratta_id} pratica {pratica}: touch DATA_UPDATE")
     except Exception as e:
         print(f"[_touch_data_update] {e}")
@@ -3045,10 +3335,16 @@ async def _touch_data_update_multi(keys: list) -> None:
                 return
             oggi = datetime.now(timezone.utc).strftime("%d/%m/%Y")
             any_hit = False
+            has_tipo = "TIPO_PERMESSO" in df.columns
             for tratta_id, pratica, tipo_permesso in keys:
                 mask = df["TRATTA_ID"].astype(str).str.strip() == str(tratta_id).strip()
-                if mask.any():
-                    df.loc[mask, "DATA_UPDATE"] = oggi
+                if tipo_permesso and has_tipo:
+                    mask_t = mask & (df["TIPO_PERMESSO"].astype(str).str.strip().str.upper() == tipo_permesso.strip().upper())
+                    if mask_t.any():
+                        mask = mask_t
+                idx = df.index[mask].tolist()
+                if idx:
+                    df.loc[idx[-1], "DATA_UPDATE"] = oggi
                     any_hit = True
             if any_hit:
                 await _write_master_csv(df, note=f"Solleciti bulk ({len(keys)}): touch DATA_UPDATE")
@@ -3082,6 +3378,9 @@ async def add_sollecito(payload: dict, sess: dict = Depends(_require_session)):
         raise HTTPException(400, "tipo_sollecito deve essere PEC, MAIL o TELEFONICO")
     if not data_sol:
         raise HTTPException(400, "data_sollecito obbligatoria")
+    _dt_sol = _parse_it_date(data_sol)
+    if _dt_sol and _dt_sol.date() > datetime.now(timezone.utc).date():
+        raise HTTPException(400, "data_sollecito non può essere futura")
 
     record = {
         "tratta_id":           tratta_id,
@@ -3100,8 +3399,8 @@ async def add_sollecito(payload: dict, sess: dict = Depends(_require_session)):
         "created_at":          _now_iso(),
     }
     res = await solleciti_col.insert_one(record)
-    asyncio.create_task(_push_solleciti_to_github())
     asyncio.create_task(_touch_data_update(tratta_id, pratica, tipo_perm))
+    _schedule_solleciti_csv_regen(f"nuovo sollecito: {tratta_id}")
     return {"ok": True, "id": str(res.inserted_id)}
 
 
@@ -3120,6 +3419,9 @@ async def bulk_insert_solleciti(payload: dict, sess: dict = Depends(_require_ses
         tipo      = str(item.get("tipo_sollecito", "")).strip()
         data_sol  = str(item.get("data_sollecito", "")).strip()
         if not tratta_id or tipo not in ("PEC", "MAIL", "TELEFONICO") or not data_sol:
+            continue
+        _dt_sol = _parse_it_date(data_sol)
+        if _dt_sol and _dt_sol.date() > datetime.now(timezone.utc).date():
             continue
         record = {
             "tratta_id":           tratta_id,
@@ -3142,8 +3444,8 @@ async def bulk_insert_solleciti(payload: dict, sess: dict = Depends(_require_ses
         touch_keys.append((tratta_id, record["pratica"], record["tipo_permesso"]))
 
     if inserted:
-        asyncio.create_task(_push_solleciti_to_github())
         asyncio.create_task(_touch_data_update_multi(touch_keys))
+        _schedule_solleciti_csv_regen(f"bulk-insert: {len(inserted)} solleciti")
     return {"ok": True, "inserted": inserted, "count": len(inserted)}
 
 
@@ -3160,7 +3462,7 @@ async def delete_sollecito(sol_id: str, sess: dict = Depends(_require_session)):
     if doc.get("impresa") != sess["nome"]:
         raise HTTPException(403, "Non autorizzato")
     await solleciti_col.delete_one({"_id": oid})
-    asyncio.create_task(_push_solleciti_to_github())
+    _schedule_solleciti_csv_regen(f"eliminazione sollecito: {sol_id}")
     return {"deleted": sol_id}
 
 
@@ -3184,7 +3486,7 @@ async def admin_get_solleciti(
 async def staff_get_solleciti(sess: dict = Depends(_require_staff_session)):
     """Restituisce tutti i solleciti per le pagine staff (index.html ecc.), letti
     direttamente da MongoDB — non dipende dal push/deploy su GitHub Pages, a
-    differenza del vecchio solleciti.csv statico (vedi AGENT_BRIEF rev.215)."""
+    differenza dal vecchio CSV statico, ormai rimosso (vedi AGENT_BRIEF)."""
     items = []
     async for d in solleciti_col.find({}).sort("created_at", -1):
         items.append({
@@ -3215,7 +3517,7 @@ async def bulk_delete_solleciti(payload: dict, sess: dict = Depends(_require_ses
         await solleciti_col.delete_one({"_id": oid})
         deleted.append(str(sol_id))
     if deleted:
-        asyncio.create_task(_push_solleciti_to_github())
+        _schedule_solleciti_csv_regen(f"bulk-delete: {len(deleted)} solleciti")
     return {"deleted": deleted, "count": len(deleted)}
 
 
@@ -3242,29 +3544,6 @@ async def bulk_delete_solleciti(payload: dict, sess: dict = Depends(_require_ses
 
 STATO_CANTIERE_VALUES = ["non_avviato", "allestimento", "in_corso", "sospeso", "completato"]
 TECNICA_SCAVO_VALUES  = ["trincea", "no_dig", "canaletta", ""]
-
-CANTIERI_CSV_PATH = os.environ.get("GITHUB_CANTIERI_PATH", "cantieri.csv")
-CANTIERI_COLS = [
-    "cantiere_key", "codice_cantiere", "pratica_id", "ente", "lotto",
-    "tratte_lavorabili", "tratte_bloccate",
-    "metri_totali", "metri_totali_potenziali",
-    "stato_cantiere", "tecnica_scavo",
-    "data_inizio_prevista", "data_inizio_effettiva",
-    "data_fine_prevista", "data_fine_effettiva",
-    "metri_scavati", "note", "motivo_blocco", "data_ripresa_stimata",
-    "impresa", "updated_at",
-]
-
-
-def _cantieri_csv_row(d: dict) -> dict:
-    """Appiattisce un documento cantiere (con array 'tratte') in una riga CSV."""
-    tratte = d.get("tratte", []) or []
-    lav  = [t["tratta_id"] for t in tratte if t.get("lavorabile")]
-    bloc = [f"{t['tratta_id']} ({t.get('motivo_no','').strip() or 'bloccata'})" for t in tratte if not t.get("lavorabile")]
-    row = {c: str(d.get(c, "") or "") for c in CANTIERI_COLS}
-    row["tratte_lavorabili"] = ", ".join(lav)
-    row["tratte_bloccate"]   = ", ".join(bloc)
-    return row
 
 
 async def _max_codice_per_lotto() -> dict:
@@ -3302,6 +3581,142 @@ async def _backfill_codici_cantiere(cache: dict) -> int:
     return n
 
 
+async def _dedupe_codici_cantiere(cache: dict) -> int:
+    """Ripara codice_cantiere duplicati già presenti in Mongo (causati dalla race
+    condition di _sync_cantieri risolta con _cantieri_sync_lock — v. commento sopra
+    la definizione del lock: due esecuzioni concorrenti potevano leggere lo stesso
+    _max_codice_per_lotto() e assegnare lo stesso codice a due pratiche diverse).
+    Per ogni codice duplicato mantiene invariato il documento più vecchio (_id più
+    basso) e riassegna un nuovo codice progressivo ai restanti."""
+    groups: dict[str, list] = {}
+    async for d in cantieri_col.find(
+        {"codice_cantiere": {"$regex": "^CA/"}}, {"lotto": 1, "codice_cantiere": 1}
+    ):
+        groups.setdefault(d["codice_cantiere"], []).append(d)
+
+    n = 0
+    for codice, docs in groups.items():
+        if len(docs) < 2:
+            continue
+        docs.sort(key=lambda d: d["_id"])
+        for d in docs[1:]:  # il primo (più vecchio) mantiene il codice originale
+            lotto = d.get("lotto", "")
+            cache[lotto] = cache.get(lotto, 0) + 1
+            nuovo = f"CA/{cache[lotto]}/{lotto}"
+            await cantieri_col.update_one({"_id": d["_id"]}, {"$set": {"codice_cantiere": nuovo}})
+            print(f"[sync_cantieri] riassegnato codice duplicato {codice} → {nuovo} (_id={d['_id']})")
+            n += 1
+    return n
+
+
+async def _regenerate_cantieri_csv(note: str = "") -> str | None:
+    """Rigenera Cantieri.csv (snapshot corrente della collection cantieri) come
+    file derivato in GridFS — compare in 'File correnti' come Master.csv/QGIS,
+    scaricabile con lo stesso bottone 'Scarica'. Fire-and-forget: eventuali
+    errori vengono solo loggati."""
+    try:
+        cols = [
+            "codice_cantiere", "pratica_id", "ente", "lotto", "cluster", "impresa",
+            "provincia", "comune", "stato_cantiere", "tecnica_scavo",
+            "metri_scavati", "metri_totali", "metri_totali_potenziali",
+            "data_inizio_prevista", "data_inizio_effettiva",
+            "data_fine_prevista", "data_fine_effettiva",
+            "motivo_blocco", "data_ripresa_stimata", "note", "updated_at", "log_count",
+        ]
+        buf = io.StringIO()
+        w = csv.DictWriter(buf, fieldnames=cols, extrasaction="ignore")
+        w.writeheader()
+        n = 0
+        async for d in cantieri_col.find({}).sort("pratica_id", 1):
+            d["log_count"] = len(d.get("log") or [])
+            w.writerow({k: d.get(k, "") for k in cols})
+            n += 1
+        data = buf.getvalue().encode("utf-8-sig")  # BOM per apertura corretta in Excel
+        gid = await _store_derived_file(CANTIERI_FILENAME, data, "text/csv", note)
+        print(f"[cantieri_csv] rigenerato Cantieri.csv ({n} righe)")
+        return gid
+    except Exception as e:
+        print(f"[cantieri_csv] errore rigenerazione: {type(e).__name__}: {e}")
+        return None
+
+
+def _schedule_cantieri_csv_regen(note: str = "") -> None:
+    asyncio.create_task(_regenerate_cantieri_csv(note))
+
+
+async def _regenerate_sopralluoghi_csv(note: str = "") -> str | None:
+    """Rigenera sopralluoghi.csv come file derivato in GridFS a partire dalla
+    collection sopralluoghi_col (unica fonte dei verbali) — sostituisce il
+    vecchio seed statico rimosso dal repo, compare in 'File correnti' con lo
+    stesso bottone 'Scarica'. Fire-and-forget: eventuali errori solo loggati."""
+    try:
+        cols = [
+            "codice_verbale", "data_sopralluogo", "lotto", "tratta_id", "impresa",
+            "referente_impresa", "referente_retelit", "comune", "localita",
+            "tipo_intervento", "esito", "note", "segnalazioni", "azioni_richieste",
+            "scadenza_azioni", "prossimo_sopralluogo", "firma_impresa",
+            "firma_retelit", "foto_urls", "created_at",
+        ]
+        buf = io.StringIO()
+        w = csv.DictWriter(buf, fieldnames=cols, extrasaction="ignore")
+        w.writeheader()
+        n = 0
+        async for d in sopralluoghi_col.find({}).sort("codice_verbale", 1):
+            w.writerow({k: d.get(k, "") for k in cols})
+            n += 1
+        data = buf.getvalue().encode("utf-8-sig")
+        gid = await _store_derived_file(SOPRALLUOGHI_FILENAME, data, "text/csv", note)
+        print(f"[sopralluoghi_csv] rigenerato sopralluoghi.csv ({n} righe)")
+        return gid
+    except Exception as e:
+        print(f"[sopralluoghi_csv] errore rigenerazione: {type(e).__name__}: {e}")
+        return None
+
+
+def _schedule_sopralluoghi_csv_regen(note: str = "") -> None:
+    asyncio.create_task(_regenerate_sopralluoghi_csv(note))
+
+
+async def _regenerate_solleciti_csv(note: str = "") -> str | None:
+    """Rigenera solleciti.csv come file derivato in GridFS a partire dalla
+    collection solleciti_col — compare in 'File correnti' con lo stesso
+    bottone 'Scarica'. Fire-and-forget: eventuali errori solo loggati."""
+    try:
+        cols = [
+            "tratta_id", "pratica", "tipo_sollecito", "data_sollecito", "note",
+            "impresa", "ente", "tipo_permesso", "stato_permesso", "lunghezza",
+            "data_richiesta", "data_ultima_modifica", "numero_sollecito", "created_at",
+        ]
+        buf = io.StringIO()
+        w = csv.DictWriter(buf, fieldnames=cols, extrasaction="ignore")
+        w.writeheader()
+        n = 0
+        async for d in solleciti_col.find({}).sort("data_sollecito", -1):
+            w.writerow({k: d.get(k, "") for k in cols})
+            n += 1
+        data = buf.getvalue().encode("utf-8-sig")
+        gid = await _store_derived_file(SOLLECITI_FILENAME, data, "text/csv", note)
+        print(f"[solleciti_csv] rigenerato solleciti.csv ({n} righe)")
+        return gid
+    except Exception as e:
+        print(f"[solleciti_csv] errore rigenerazione: {type(e).__name__}: {e}")
+        return None
+
+
+def _schedule_solleciti_csv_regen(note: str = "") -> None:
+    asyncio.create_task(_regenerate_solleciti_csv(note))
+
+
+async def _sync_cantieri() -> int:
+    """Wrapper serializzato: vedi _sync_cantieri_impl per la logica. Il lock evita
+    che due esecuzioni concorrenti assegnino lo stesso codice_cantiere (v. commento
+    su _cantieri_sync_lock)."""
+    async with _cantieri_sync_lock:
+        result = await _sync_cantieri_impl()
+    _schedule_cantieri_csv_regen("sync da Master.csv")
+    return result
+
+
 async def _sync_cantieri_impl() -> int:
     """Raggruppa le tratte con AUTORIZZAZIONE OTTENUTA per pratica (ente, numero,
     lotto) e crea/aggiorna un documento cantiere per pratica. metri_totali conta
@@ -3317,28 +3732,29 @@ async def _sync_cantieri_impl() -> int:
         print(f"[sync_cantieri] errore lettura master: {e}")
         return 0
 
-    # PROVINCIA/COMUNE non esistono in Master.csv: vengono recuperati direttamente
-    # da QTS.geojson (properties), indicizzati per TRATTA_ID. Fail-soft: se il
-    # file non è disponibile i cantieri vengono comunque creati, semplicemente
-    # senza questi campi.
+    # CLUSTER/PROVINCIA/COMUNE non esistono in Master.csv: vengono recuperati da
+    # Riepilogo_progettazione.csv (che li eredita da QGIS.geojson), indicizzati
+    # per TRATTA_ID. Fail-soft: se il file non è disponibile i cantieri vengono
+    # comunque creati, semplicemente senza questi tre campi.
     geo_by_tratta: dict[str, dict] = {}
     try:
-        geo = await _read_current_geojson(QGIS_FILENAME)
-        if geo and isinstance(geo.get("features"), list):
-            for feat in geo["features"]:
-                props = feat.get("properties") or {}
-                tid = str(props.get("TRATTA_ID", "")).strip()
+        riep_df = await _read_riepilogo_csv()
+        if riep_df is not None and "TRATTA_ID" in riep_df.columns:
+            for _, row in riep_df.iterrows():
+                tid = str(row.get("TRATTA_ID", "")).strip()
                 if not tid:
                     continue
                 geo_by_tratta[tid] = {
-                    "provincia": str(props.get("PROVINCIA", "")).strip(),
-                    "comune":    str(props.get("COMUNE", "")).strip(),
+                    "cluster":   str(row.get("CLUSTER", "")).strip(),
+                    "provincia": str(row.get("PROVINCIA", "")).strip(),
+                    "comune":    str(row.get("COMUNE", "")).strip(),
                 }
     except Exception as e:
-        print(f"[sync_cantieri] errore lettura QTS.geojson (provincia/comune): {e}")
+        print(f"[sync_cantieri] errore lettura riepilogo (cluster/provincia/comune): {e}")
 
     codice_cache = await _max_codice_per_lotto()
     await _backfill_codici_cantiere(codice_cache)
+    await _dedupe_codici_cantiere(codice_cache)
 
     # Mappa lotto → impresa assegnata (stessa fonte di /api/lotti-cantieri) per
     # popolare/backfillare 'impresa' sia sui cantieri esistenti che su quelli nuovi.
@@ -3360,6 +3776,7 @@ async def _sync_cantieri_impl() -> int:
         rows = df[df["TRATTA_ID"].astype(str).str.strip() == tratta_id]
         lotto = _lotto_from_source(rows.iloc[0].get("Source.Name", "")) if not rows.empty else ""
         geo   = geo_by_tratta.get(tratta_id, {})
+        cluster   = geo.get("cluster", "")
         provincia = geo.get("provincia", "")
         comune    = geo.get("comune", "")
         try:
@@ -3374,7 +3791,7 @@ async def _sync_cantieri_impl() -> int:
         g = groups.setdefault(key, {
             "cantiere_key": f"{pratica_num}|{lotto}|{ente_key}",
             "pratica_id": f"AUT/{pratica_num}/{lotto}",
-            "ente": ente_display, "lotto": lotto,
+            "ente": ente_display, "lotto": lotto, "cluster": cluster,
             "tratte": [],
         })
         g["tratte"].append({
@@ -3405,7 +3822,7 @@ async def _sync_cantieri_impl() -> int:
             await cantieri_col.update_one(
                 {"_id": existing["_id"]},
                 {"$set": {
-                    "tratte": g["tratte"], "lotto": g["lotto"],
+                    "tratte": g["tratte"], "lotto": g["lotto"], "cluster": g["cluster"],
                     "metri_totali": metri_totali, "metri_totali_potenziali": metri_totali_pot,
                     "provincia": provincia_cantiere, "comune": comune_cantiere,
                     "impresa": lotto_impresa.get(g["lotto"], existing.get("impresa", "")),
@@ -3439,7 +3856,7 @@ async def _sync_cantieri_impl() -> int:
         doc = {
             "cantiere_key": g["cantiere_key"],
             "codice_cantiere": codice_cantiere,
-            "pratica_id": g["pratica_id"], "ente": g["ente"], "lotto": g["lotto"],
+            "pratica_id": g["pratica_id"], "ente": g["ente"], "lotto": g["lotto"], "cluster": g["cluster"],
             "provincia": provincia_cantiere, "comune": comune_cantiere,
             "tratte": g["tratte"],
             "metri_totali": metri_totali, "metri_totali_potenziali": metri_totali_pot,
@@ -3493,41 +3910,16 @@ async def _sync_cantieri_impl() -> int:
     return created
 
 
-async def _sync_cantieri() -> int:
-    """Wrapper con lock su _sync_cantieri_impl(): la funzione è invocata da più
-    punti concorrenti (startup, dopo ogni aggiornamento Master.csv, sync admin
-    manuale, approvazione pending_updates) e assegna codice_cantiere leggendo
-    prima il progressivo massimo per lotto e poi incrementandolo in memoria —
-    senza serializzazione, due esecuzioni in overlap possono partire dallo
-    stesso valore e produrre codice_cantiere duplicati sullo stesso lotto."""
-    async with _sync_cantieri_lock:
-        return await _sync_cantieri_impl()
-
-
-async def _push_cantieri_to_github() -> None:
-    """Rigenera cantieri.csv e lo pusha su GitHub."""
-    try:
-        rows = []
-        async for d in cantieri_col.find({}).sort("pratica_id", 1):
-            rows.append(_cantieri_csv_row(d))
-        import pandas as _pd, io as _io
-        _df = _pd.DataFrame(rows, columns=CANTIERI_COLS) if rows else _pd.DataFrame(columns=CANTIERI_COLS)
-        buf = _io.StringIO()
-        _df.to_csv(buf, index=False, sep=";")
-        data = buf.getvalue().encode("utf-8")
-        await _push_to_github(data, path=CANTIERI_CSV_PATH, label="cantieri.csv")
-    except Exception as e:
-        print(f"[GitHub] _push_cantieri: {e}")
-
 
 # ── Endpoint pubblico: lista cantieri ────────────────────────────────────────
 
 @app.get("/api/cantieri")
-async def get_cantieri(lotto: str = "", stato: str = "", sess: dict = Depends(_require_staff_session)):
+async def get_cantieri(lotto: str = "", cluster: str = "", stato: str = "", sess: dict = Depends(_require_staff_session)):
     """Lista cantieri (pubblica), uno per pratica di autorizzazione. Filtrabile
-    per lotto, stato."""
+    per lotto, cluster, stato."""
     q: dict = {}
     if lotto:   q["lotto"]          = lotto
+    if cluster: q["cluster"]        = cluster
     if stato:   q["stato_cantiere"] = stato
     items = []
     async for d in cantieri_col.find(q).sort("pratica_id", 1):
@@ -3536,6 +3928,103 @@ async def get_cantieri(lotto: str = "", stato: str = "", sess: dict = Depends(_r
         d.pop("log", None)   # non esporre lo storico nel listing
         items.append(d)
     return {"cantieri": items, "count": len(items)}
+
+
+@app.post("/api/external/pratica-status")
+async def external_pratica_status(
+    payload: dict,
+    x_sync_token: Annotated[str | None, Header(alias="x-sync-token")] = None,
+):
+    """Endpoint READ-ONLY dedicato alla sincronizzazione cross-progetto con QTS:
+    le tratte in concomitanza hanno la pratica di autorizzazione aperta e
+    seguita qui su ENRI, non su QTS/Telebit — QTS deve poter leggere lo stato
+    corrente senza duplicare la pratica. La corrispondenza tra i due progetti
+    NON è per TRATTA_ID (numerazioni indipendenti, spesso più tratte QTS ->
+    una sola pratica ENRI) ma per identità di pratica: ente + tipo_permesso +
+    numero + lotto, la stessa chiave usata da /api/admin/pratiche-search.
+
+    Body atteso: {"items": [{"ente": str, "tipo_permesso": "AUTORIZZAZIONE"|
+    "NULLA OSTA"|"ORDINANZA", "numero": str, "lotto": str}, ...]}
+
+    Protetto da QTS_SYNC_TOKEN, separato da UPLOAD_TOKEN: nessuna scrittura,
+    nessun dato oltre lo stato delle pratiche esplicitamente richieste (mai
+    l'intero Master.csv)."""
+    _check_qts_sync_token(x_sync_token)
+    items = (payload or {}).get("items") or []
+    if not items:
+        raise HTTPException(400, "Body 'items' obbligatorio (lista di {ente, tipo_permesso, numero, lotto})")
+
+    df = await _read_master_csv()
+    if df is None or df.empty:
+        return {"pratiche": [{**it, "trovata": False} for it in items], "checked_at": _now_iso()}
+    work = df.fillna("")
+    work = work.assign(_lotto=work["Source.Name"].apply(_lotto_from_source))
+    ente_col   = work["ENTE"].astype(str).str.strip().str.upper()
+    tipo_col   = work["TIPO_PERMESSO"].astype(str).str.strip().str.upper()
+    numero_col = work["PRATICA"].astype(str).str.strip()
+
+    out = []
+    for it in items:
+        ente   = str(it.get("ente", "")).strip()
+        tipo   = str(it.get("tipo_permesso", "")).strip().upper()
+        numero = str(it.get("numero", "")).strip()
+        lotto  = str(it.get("lotto", "")).strip().upper()
+        match = work[
+            (ente_col == ente.upper()) & (tipo_col == tipo) &
+            (numero_col == numero) & (work["_lotto"] == lotto)
+        ]
+        if match.empty:
+            out.append({"ente": ente, "tipo_permesso": tipo, "numero": numero, "lotto": lotto, "trovata": False})
+            continue
+        rep = match.iloc[-1]  # ultima riga inserita per questa pratica = stato attuale
+        out.append({
+            "ente": ente, "tipo_permesso": tipo, "numero": numero, "lotto": lotto,
+            "trovata": True,
+            "stato_permesso": str(rep.get("STATO_PERMESSO", "")).strip(),
+            "data_richiesta": str(rep.get("DATA_RICHIESTA", "")).strip(),
+            "data_approvazione": str(rep.get("DATA_APPROVAZIONE", "")).strip(),
+            "data_prevista_rilascio": str(rep.get("DATA_PREVISTA_RILASCIO", "")).strip(),
+            "nota": str(rep.get("NOTE", "")).strip(),
+        })
+    return {"pratiche": out, "checked_at": _now_iso()}
+
+
+@app.get("/api/cantieri/scavi-timeseries")
+async def get_scavi_timeseries(
+    lotto: str = "",
+    data_da: str = "",
+    data_a: str = "",
+    sess: dict = Depends(_require_staff_session),
+):
+    """Serie storica metri scavati per giorno e impresa, aggregata sui log dei
+    cantieri (vedi update_cantiere/log_entry). Usata dal grafico 'Scavi nel
+    tempo' (mappa.html, vista Scavi). Filtro opzionale per lotto e per
+    intervallo date inclusivo (formato YYYY-MM-DD, confrontabile come
+    stringa grazie al formato ISO); se omesse copre l'intero storico.
+    Aggregazione fatta lato Mongo per evitare N+1 fetch (un cantiere per
+    pratica, ciascuno col proprio storico log)."""
+    pipeline: list = []
+    if lotto:
+        pipeline.append({"$match": {"lotto": lotto}})
+    pipeline.append({"$unwind": "$log"})
+    log_match: dict = {"log.metri_realizzati": {"$gt": 0}}
+    data_range: dict = {}
+    if data_da: data_range["$gte"] = data_da
+    if data_a:  data_range["$lte"] = data_a
+    if data_range:
+        log_match["log.data"] = data_range
+    pipeline.append({"$match": log_match})
+    pipeline.append({
+        "$group": {
+            "_id": {"data": "$log.data", "impresa": "$log.impresa"},
+            "metri": {"$sum": "$log.metri_realizzati"},
+        }
+    })
+    out = []
+    async for d in cantieri_col.aggregate(pipeline):
+        out.append({"data": d["_id"]["data"], "impresa": d["_id"]["impresa"] or "N/D", "metri": round(d["metri"], 1)})
+    out.sort(key=lambda x: (x["data"], x["impresa"]))
+    return {"serie": out, "count": len(out)}
 
 
 @app.get("/api/cantieri/{cantiere_key:path}/log")
@@ -3588,7 +4077,7 @@ async def admin_reset_sopralluoghi(
     """Svuota la collection sopralluoghi (solo test/dev)."""
     _check_token(x_upload_token or token_q)
     deleted = (await sopralluoghi_col.delete_many({})).deleted_count
-    asyncio.create_task(_push_sopralluoghi_to_github())
+    _schedule_sopralluoghi_csv_regen("reset totale")
     return {"deleted": deleted}
 
 
@@ -3601,7 +4090,6 @@ async def admin_reset_cantieri(
     _check_token(x_upload_token or token_q)
     deleted = (await cantieri_col.delete_many({})).deleted_count
     created = await _sync_cantieri()
-    asyncio.create_task(_push_cantieri_to_github())
     return {"deleted": deleted, "recreated": created}
 
 
@@ -3614,7 +4102,6 @@ async def admin_sync_cantieri(
     _check_token(x_upload_token or token_q)
     created = await _sync_cantieri()
     total = await cantieri_col.count_documents({})
-    asyncio.create_task(_push_cantieri_to_github())
     return {"created": created, "total_cantieri": total}
 
 
@@ -3666,7 +4153,7 @@ async def admin_update_cantiere(
 
     await cantieri_col.update_one({"cantiere_key": cantiere_key}, mongo_update)
     await _log_admin_action("update_cantiere", cantiere_key, x_actor_nome)
-    asyncio.create_task(_push_cantieri_to_github())
+    _schedule_cantieri_csv_regen(f"correzione admin: {cantiere_key}")
     return {"ok": True, "cantiere_key": cantiere_key}
 
 
@@ -3717,7 +4204,7 @@ async def admin_update_cantiere_log_entry(
         {"$set": {"log": log, "metri_scavati": metri_scavati, "updated_at": _now_iso()}},
     )
     await _log_admin_action("update_cantiere_log", f"{cantiere_key}#{idx}", x_actor_nome)
-    asyncio.create_task(_push_cantieri_to_github())
+    _schedule_cantieri_csv_regen(f"correzione log: {cantiere_key}#{idx}")
     return {"ok": True, "cantiere_key": cantiere_key, "idx": idx, "metri_scavati": metri_scavati}
 
 
@@ -3746,7 +4233,7 @@ async def admin_delete_cantiere_log_entry(
         {"$set": {"log": log, "metri_scavati": metri_scavati, "updated_at": _now_iso()}},
     )
     await _log_admin_action("delete_cantiere_log", f"{cantiere_key}#{idx}", x_actor_nome)
-    asyncio.create_task(_push_cantieri_to_github())
+    _schedule_cantieri_csv_regen(f"eliminazione log: {cantiere_key}#{idx}")
     return {"ok": True, "cantiere_key": cantiere_key, "idx": idx, "metri_scavati": metri_scavati}
 
 
@@ -3779,7 +4266,7 @@ async def admin_reset_single_cantiere(
         }},
     )
     await _log_admin_action("reset_single_cantiere", cantiere_key, x_actor_nome)
-    asyncio.create_task(_push_cantieri_to_github())
+    _schedule_cantieri_csv_regen(f"reset singolo: {cantiere_key}")
     return {"ok": True, "cantiere_key": cantiere_key}
 
 
@@ -3889,7 +4376,7 @@ async def update_cantiere(cantiere_key: str, payload: dict, sess: dict = Depends
         mongo_update["$inc"] = update["$inc"]
 
     await cantieri_col.update_one({"cantiere_key": cantiere_key}, mongo_update)
-    asyncio.create_task(_push_cantieri_to_github())
+    _schedule_cantieri_csv_regen(f"aggiornamento impresa: {cantiere_key}")
     return {"ok": True, "cantiere_key": cantiere_key, "pratica_id": doc.get("pratica_id")}
 
 
