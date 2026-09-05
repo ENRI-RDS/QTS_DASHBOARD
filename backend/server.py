@@ -65,6 +65,15 @@ UPLOAD_TOKEN = os.environ.get("UPLOAD_TOKEN", "").strip()
 ALLOWED_EXT = {".csv", ".xlsx", ".xls", ".geojson", ".json"}
 MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "25"))
 
+# Sincronizzazione cross-progetto con ENRI: le tratte con CONCOMITANZA ENRI=SI
+# in Master.csv hanno la pratica di autorizzazione gestita là, non da Telebit
+# su QTS. ENRI_SYNC_TOKEN deve combaciare con QTS_SYNC_TOKEN configurato sul
+# backend ENRI (endpoint dedicato /api/external/tratte-status, sola lettura).
+ENRI_API_BASE = os.environ.get("ENRI_API_BASE", "https://enri-dashboard-api.onrender.com").rstrip("/")
+ENRI_SYNC_TOKEN = os.environ.get("ENRI_SYNC_TOKEN", "").strip()
+_ENRI_SYNC_TTL = 300  # secondi — ENRI è su Render free tier e può essere addormentato
+_enri_sync_cache: dict[str, tuple[float, dict]] = {}
+
 # ─────────────────────────────────────────────────────────────────────────────
 # DB
 # ─────────────────────────────────────────────────────────────────────────────
@@ -2056,28 +2065,120 @@ async def search_pratiche_admin(
     return {"results": out[:max(1, min(limit, 800))]}
 
 
+def _parse_enri_pratica_rif(pratica_raw) -> tuple[str, str] | None:
+    """Sulle righe con CONCOMITANZA ENRI=SI, il campo PRATICA è stato
+    valorizzato da Andrea con '<numero>_<lotto_ENRI>' (es. '14_2') invece
+    del solo numero di pratica QTS, per codificare a quale pratica del
+    progetto ENRI fa riferimento la tratta. Ritorna (numero, lotto_enri)
+    o None se il valore non è in questo formato (pratica non ancora
+    referenziata)."""
+    s = str(pratica_raw or "").strip()
+    if "_" not in s:
+        return None
+    numero, _, lotto = s.rpartition("_")
+    numero, lotto = numero.strip(), lotto.strip()
+    return (numero, lotto) if numero and lotto else None
+
+
+async def _fetch_enri_pratica_status(lookup_keys: list[dict]) -> tuple[dict, str | None]:
+    """Chiama POST /api/external/pratica-status su ENRI per le pratiche
+    richieste (identificate come ENRI stesso le identifica in
+    /api/admin/pratiche-search: ente+tipo_permesso+numero+lotto — la
+    corrispondenza tra progetti è per PRATICA, non per TRATTA_ID: più
+    tratte QTS possono riferirsi alla stessa pratica ENRI). Cache in-process
+    di _ENRI_SYNC_TTL secondi (ENRI è su Render free tier e può essere
+    addormentato: non lo si martella ad ogni refresh del pannello admin).
+    Ritorna (dict keyed by (ente,tipo,numero,lotto) -> stato, errore) — in
+    caso di errore, se esiste una cache scaduta la riusa comunque (dato
+    stantio meglio di nessun dato)."""
+    if not lookup_keys:
+        return {}, None
+    if not ENRI_SYNC_TOKEN:
+        return {}, "ENRI_SYNC_TOKEN non configurato sul backend QTS"
+    cache_key = json.dumps(lookup_keys, sort_keys=True)
+    now = time.time()
+    cached = _enri_sync_cache.get(cache_key)
+    if cached and (now - cached[0]) < _ENRI_SYNC_TTL:
+        return cached[1], None
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            r = await client.post(
+                f"{ENRI_API_BASE}/api/external/pratica-status",
+                json={"items": lookup_keys},
+                headers={"x-sync-token": ENRI_SYNC_TOKEN},
+            )
+        r.raise_for_status()
+        pratiche = r.json().get("pratiche", [])
+        result = {(p["ente"], p["tipo_permesso"], p["numero"], p["lotto"]): p for p in pratiche}
+        _enri_sync_cache[cache_key] = (now, result)
+        return result, None
+    except Exception as e:
+        if cached:
+            return cached[1], f"ENRI non raggiungibile, mostro l'ultimo dato disponibile ({e})"
+        return {}, f"ENRI non raggiungibile: {e}"
+
+
 @app.get("/api/admin/concomitanza-enri")
 async def list_concomitanza_enri(sess: dict = Depends(_require_staff_session)):
     """Elenco tratte con CONCOMITANZA ENRI = SI in Master.csv, a livello di
-    TRATTA_ID (indipendente dal numero PRATICA — a differenza di
-    /api/admin/pratiche-search, include anche le tratte la cui pratica non è
-    ancora stata numerata, che è la situazione attuale per la maggior parte
-    di esse)."""
+    TRATTA_ID (indipendente dal numero PRATICA QTS — a differenza di
+    /api/admin/pratiche-search, include anche le tratte la cui pratica QTS
+    non è ancora stata numerata, che è la situazione attuale per la
+    maggior parte di esse). Per ogni riga SI con PRATICA nel formato
+    '<numero>_<lotto_ENRI>', include anche lo stato live letto dal backend
+    ENRI (che gestisce la pratica per queste tratte, non Telebit/QTS) — una
+    tratta può avere più riferimenti ENRI se AUTORIZZAZIONE e NULLA OSTA
+    sono entrambi gestiti là con pratiche diverse."""
     df = await _read_master_csv()
     if df is None or df.empty:
-        return {"results": [], "count": 0}
+        return {"results": [], "count": 0, "enri_error": None}
     summary = _compute_tratta_summary(df)
-    out = [
-        {
+    concomitanti_ids = {tid for tid, s in summary.items() if s.get("CONCOMITANZA_ENRI") == "SI"}
+    if not concomitanti_ids:
+        return {"results": [], "count": 0, "enri_error": None}
+
+    work = df.fillna("")
+    si_mask = (
+        work["TRATTA_ID"].astype(str).str.strip().isin(concomitanti_ids)
+        & (work["CONCOMITANZA ENRI"].astype(str).str.strip().str.upper() == "SI")
+    )
+    si_rows = work[si_mask]
+
+    refs_by_tratta: dict[str, list[dict]] = {}
+    lookup_keys: list[dict] = []
+    for _, row in si_rows.iterrows():
+        tid = str(row.get("TRATTA_ID", "")).strip()
+        tipo = _norm(row.get("TIPO_PERMESSO"))
+        prefix = _TIPO_PREFIX.get(tipo)
+        parsed = _parse_enri_pratica_rif(row.get("PRATICA"))
+        if not prefix or not parsed:
+            continue  # riferimento ENRI non ancora inserito su questa riga
+        numero, lotto = parsed
+        key = {"ente": str(row.get("ENTE", "")).strip(), "tipo_permesso": tipo, "numero": numero, "lotto": lotto}
+        entry = {**key, "codice": f"{prefix}/{numero}/{lotto}"}
+        bucket = refs_by_tratta.setdefault(tid, [])
+        if not any(e["codice"] == entry["codice"] for e in bucket):
+            bucket.append(entry)
+        if key not in lookup_keys:
+            lookup_keys.append(key)
+
+    enri_results, enri_error = await _fetch_enri_pratica_status(lookup_keys)
+
+    out = []
+    for tid in concomitanti_ids:
+        s = summary[tid]
+        refs = refs_by_tratta.get(tid, [])
+        for r in refs:
+            r["enri_stato"] = enri_results.get((r["ente"], r["tipo_permesso"], r["numero"], r["lotto"]))
+        out.append({
             "tratta_id": tid,
             "ente": s["ENTE"],
             "lotto": s["LOTTO"],
             "stato_autorizzazione": s["STATO_AUTORIZZAZIONE"],
-        }
-        for tid, s in summary.items() if s.get("CONCOMITANZA_ENRI") == "SI"
-    ]
+            "riferimenti_enri": refs,  # vuoto se PRATICA non è ancora nel formato 'numero_lotto'
+        })
     out.sort(key=lambda x: (x["lotto"], x["tratta_id"]))
-    return {"results": out, "count": len(out)}
+    return {"results": out, "count": len(out), "enri_error": enri_error}
 
 
 PRATICA_STATO_VALUES = [
