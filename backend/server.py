@@ -2286,10 +2286,12 @@ async def _sync_enri_to_master(actor: str) -> dict:
         changes = []
         dettaglio = []
         seen_targets = set()
+        trovate = 0
         for idx, key in row_keys.items():
             res = enri_results.get((key["ente"], key["tipo_permesso"], key["numero"], key["lotto"]))
             if not res or not res.get("trovata"):
                 continue
+            trovate += 1
             row = df.loc[idx]
             tratta = str(row.get("TRATTA_ID", "")).strip()
             ente_raw = str(row.get("ENTE", "")).strip()
@@ -2336,7 +2338,8 @@ async def _sync_enri_to_master(actor: str) -> dict:
             })
 
         if not changes:
-            return {"ok": True, "aggiornate": 0, "dettaglio": [], "enri_error": enri_error}
+            return {"ok": True, "aggiornate": 0, "dettaglio": [], "enri_error": enri_error,
+                    "pratiche_totali": len(lookup_keys), "pratiche_trovate": trovate}
 
         submission = {"type": "update", "in_place": True, "changes": changes}
         new_df, summary = _apply_changes_to_df(df, submission)
@@ -2345,7 +2348,8 @@ async def _sync_enri_to_master(actor: str) -> dict:
         )
     await _log_admin_action("sync_concomitanza_enri", f"{summary.get('updated', 0)} righe", actor)
     return {"ok": True, "aggiornate": summary.get("updated", 0), "dettaglio": dettaglio,
-            "new_upload_id": upload_id, "enri_error": enri_error}
+            "new_upload_id": upload_id, "enri_error": enri_error,
+            "pratiche_totali": len(lookup_keys), "pratiche_trovate": trovate}
 
 
 @app.post("/api/admin/concomitanza-enri/sync-master")
