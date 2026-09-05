@@ -1117,3 +1117,26 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
   incorporato, ma è lo stesso bug potenziale se in futuro un campo note lì
   contenesse `\n`. Non toccato in questa sessione (nessuna nota "a capo" in
   quel CSV a oggi).
+- **rev.40** — Verifica richiesta da Andrea: stesso bug di rev.39 controllato
+  su `mappa.html`. Risultato:
+  - **Layer tracciato principale** (colore tratta, badge "Concomitanza ENRI"
+    nel popup tratta): NON affetto — legge `p.STATO_LEGENDA`/
+    `p.CONCOMITANZA_ENRI` da `QTS.geojson`, calcolato lato backend da
+    `_compute_tratta_summary`/`_regenerate_derived_files` via pandas
+    (gestisce correttamente i campi quotati multi-riga).
+  - **Popup SED** (attraversamenti, `_buildSedLayer`/`onEachFeature`): AFFETTO
+    — stesso bug di rev.39. `_loadSEDInner()` (riga ~2119) faceva
+    `csvText.split('\n')` un secondo parsing client-side di Master.csv
+    indipendente da quello di `index.html`, con lo stesso problema sulle
+    righe con NOTE `[ENRI] ...` a capo. Stesso fix applicato: tokenizer
+    CSV quote-aware, stessa logica di `_processMasterText`. Verificato in
+    Node contro il Master.csv reale: 155/155 righe parsate, righe
+    `IN FIRMA RDS` per pratica `13_2`/`14_2` ora visibili (anche se per
+    queste due pratiche specifiche `N_SED` è vuoto in Master.csv, quindi
+    non comparirebbero comunque in un popup SED — nessun SED associato,
+    non è un problema del parser). Verificata invece pratica `32_2`
+    (6 tratte con `N_SED` popolato, es. `SED-002`/`SED-016`): risulta
+    ancora `IN REDAZIONE` su tutte — dato reale non ancora sincronizzato da
+    ENRI (nessuna riga gemella `IN FIRMA RDS`), non un bug del parser.
+    Verificato `node --check` (via estrazione script inline) su tutti gli
+    script di `mappa.html`.
