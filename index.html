@@ -3656,6 +3656,7 @@ function _processMasterText(text) {
     const iNote  = findCol('NOTE');
     const iDataPrevRil = findCol('DATA_PREVISTA_RILASCIO');
     const iDataUpdate  = findCol('DATA_UPDATE');
+    const iConcomEnri  = findCol('CONCOMITANZA ENRI');
 
     if (iTrat === -1 || iPrat === -1) return;
 
@@ -3696,6 +3697,7 @@ function _processMasterText(text) {
       const note   = iNote !== -1 ? (cols[iNote]?.trim() || '') : '';
       const dataPrevRilascio = iDataPrevRil !== -1 ? (cols[iDataPrevRil]?.trim() || '') : '';
       const dataUpdate = iDataUpdate !== -1 ? (cols[iDataUpdate]?.trim() || '') : '';
+      const concomEnri = iConcomEnri !== -1 && (cols[iConcomEnri]?.trim().toUpperCase() === 'SI');
 
       // Estrai lotto da Source.Name (es. "Lotto 1A.xlsx" → "1A")
       const lotto = src ? src.replace(/\.xlsx$/i,'').replace(/^Lotto\s*/i,'').trim().toUpperCase() : '';
@@ -3741,14 +3743,14 @@ function _processMasterText(text) {
 
       if (!existing) {
         permessiMap[key] = {
-          tratta, prat, tipo, stato, ente, dr, dum, lungh, lotto, comune, nSed, note, dataPrevRilascio, dataUpdate,
+          tratta, prat, tipo, stato, ente, dr, dum, lungh, lotto, comune, nSed, note, dataPrevRilascio, dataUpdate, concomEnri,
           dr_invio: stato === 'INVIATO' ? (dr || dum) : ''
         };
       } else if (dumDate && (!exDate || dumDate >= exDate)) {
         const dr_invio = existing.dr_invio
           || (stato === 'INVIATO' ? (dr || dum) : '')
           || (existing.stato === 'INVIATO' ? (existing.dr || existing.dum) : '');
-        permessiMap[key] = { tratta, prat, tipo, stato, ente, dr, dum, lungh: lungh || existing.lungh || 0, lotto, comune: comune || existing.comune || '', nSed: existing.nSed || nSed, note: note || existing.note || '', dataPrevRilascio: dataPrevRilascio || existing.dataPrevRilascio || '', dataUpdate: dataUpdate || existing.dataUpdate || '', dr_invio };
+        permessiMap[key] = { tratta, prat, tipo, stato, ente, dr, dum, lungh: lungh || existing.lungh || 0, lotto, comune: comune || existing.comune || '', nSed: existing.nSed || nSed, note: note || existing.note || '', dataPrevRilascio: dataPrevRilascio || existing.dataPrevRilascio || '', dataUpdate: dataUpdate || existing.dataUpdate || '', concomEnri: concomEnri || existing.concomEnri || false, dr_invio };
       } else if (stato === 'INVIATO' && !existing.dr_invio) {
         existing.dr_invio = dr;
       }
@@ -3790,10 +3792,13 @@ function _processMasterText(text) {
       if (!praticheByLotto[lotto][codice]) {
         praticheByLotto[lotto][codice] = {
           codice, tipo: r.tipo, stato: r.stato, ente: r.ente,
-          dr: r.dr, dum: r.dum, dr_invio: r.dr_invio || '', dataPrevRilascio: r.dataPrevRilascio || '', dataUpdate: r.dataUpdate || '', notes: [], statoHistory: [], metri: 0, lotto,
+          dr: r.dr, dum: r.dum, dr_invio: r.dr_invio || '', dataPrevRilascio: r.dataPrevRilascio || '', dataUpdate: r.dataUpdate || '', notes: [], statoHistory: [], metri: 0, lotto, concomEnri: false,
           comuni: new Set(r.comune ? [r.comune] : [])
         };
       }
+      // OR logico: se ANCHE UNA SOLA tratta/riga della pratica ha CONCOMITANZA ENRI=SI,
+      // l'intera pratica è considerata in concomitanza (gestita da Sertori via ENRI).
+      if (r.concomEnri) praticheByLotto[lotto][codice].concomEnri = true;
       praticheByLotto[lotto][codice].metri += r.lungh;
       // Accumula comuni della pratica
       if (r.comune) praticheByLotto[lotto][codice].comuni.add(r.comune);
@@ -3852,7 +3857,7 @@ function _processMasterText(text) {
       if (!window._masterByTratta[r.tratta].find(x => x.codice === codice)) {
         window._masterByTratta[r.tratta].push({
           codice, tipo: r.tipo, stato: r.stato, ente: r.ente,
-          dr: r.dr, dum: r.dum, dr_invio: r.dr_invio || '', dataPrevRilascio: r.dataPrevRilascio || '', dataUpdate: r.dataUpdate || '', metri: r.lungh, lotto,
+          dr: r.dr, dum: r.dum, dr_invio: r.dr_invio || '', dataPrevRilascio: r.dataPrevRilascio || '', dataUpdate: r.dataUpdate || '', metri: r.lungh, lotto, concomEnri: !!r.concomEnri,
           notes: praticaNotesRaw[codice] || [], statoHistory: praticaStatoRaw[codice] || [], comune: r.comune || ''
         });
       }
@@ -4547,7 +4552,7 @@ function _colGetDisplay(p, col) {
   switch (col) {
     case 'codice': return p.codice || '';
     case 'ente':   return p.ente   || '';
-    case 'impresa': return IMPRESE_PER_LOTTO[p.lotto] || '';
+    case 'impresa': return p.concomEnri ? 'Sertori' : (IMPRESE_PER_LOTTO[p.lotto] || '');
     case 'stato':  return p.stato  || '';
     case 'invio': {
       const dp = buildDateParts(p);
@@ -4575,7 +4580,7 @@ function _colGetSort(p, col) {
   switch (col) {
     case 'codice': return (p.codice || '').toLowerCase();
     case 'ente':   return (p.ente   || '').toLowerCase();
-    case 'impresa': return (IMPRESE_PER_LOTTO[p.lotto] || '').toLowerCase();
+    case 'impresa': return (p.concomEnri ? 'Sertori' : (IMPRESE_PER_LOTTO[p.lotto] || '')).toLowerCase();
     case 'stato':  return (p.stato  || '').toLowerCase();
     case 'invio':
     case 'update': {
@@ -5022,7 +5027,7 @@ function buildCercaCard(p, query) {
   }
 
   // ── Impresa ───────────────────────────────────────────────────────────────
-  const impresa = IMPRESE_PER_LOTTO[p.lotto] || '';
+  const impresa = p.concomEnri ? 'Sertori' : (IMPRESE_PER_LOTTO[p.lotto] || '');
   const impresaHtml = impresa ? `<div style="margin-top:7px;display:flex;align-items:center;gap:6px;padding:5px 8px;background:#1A7D990A;border:1px solid #1A7D9925;border-radius:5px">
     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#1A7D99" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
     <span style="font-size:9px;text-transform:uppercase;letter-spacing:0.07em;color:#1A7D99;font-weight:600">Impresa</span>
@@ -5386,7 +5391,7 @@ _hookScadenze();
         out.push({
           ...p,
           lotto,
-          impresa: IMPRESE_PER_LOTTO[lotto] || '',
+          impresa: p.concomEnri ? 'Sertori' : (IMPRESE_PER_LOTTO[lotto] || ''),
           invio: invioStr,
           agg:   aggStr,
           data_update: p.dataUpdate || '',
