@@ -1426,6 +1426,14 @@ async def _find_assignment(nome: str) -> dict | None:
     )
 
 
+def _is_sertori(nome: str) -> bool:
+    """Le pratiche/tratte con CONCOMITANZA ENRI=SI sono gestite da Sertori via
+    ENRI, non dall'impresa assegnata al lotto (Telebit) — vanno quindi escluse
+    dalle pagine Area Impresa per qualsiasi impresa diversa da Sertori, anche
+    se quell'impresa è assegnata allo stesso lotto."""
+    return nome.strip().lower() == "sertori"
+
+
 # ── Milestone di Progetto — dati serviti da qui (non più embedded in
 # milestone.html) così il controllo di accesso per ruolo è reale lato server,
 # non solo un redirect client-side aggirabile forzando localStorage.
@@ -1489,7 +1497,10 @@ async def impresa_me(sess: dict = Depends(_require_session)):
 async def impresa_pratiche(sess: dict = Depends(_require_session)):
     """Returns Master.csv rows whose Source.Name matches one of the user's lotti
     (confronto per codice lotto esatto, non substring — così 'Lotto 2' non
-    aggancia per errore 'Lotto 2A.xlsx' o eventuali lotti a doppia cifra)."""
+    aggancia per errore 'Lotto 2A.xlsx' o eventuali lotti a doppia cifra).
+    Le righe con CONCOMITANZA ENRI=SI sono escluse per qualsiasi impresa
+    diversa da Sertori (pratica gestita via ENRI, non dall'impresa del lotto:
+    vedi _is_sertori)."""
     doc = await _find_assignment(sess["nome"])
     if not doc or not doc.get("active", True):
         raise HTTPException(404, "Impresa non autorizzata")
@@ -1498,6 +1509,8 @@ async def impresa_pratiche(sess: dict = Depends(_require_session)):
     if "Source.Name" not in df.columns or not lotti:
         return {"pratiche": [], "lotti": sorted(lotti), "total": 0}
     mask = df["Source.Name"].apply(lambda x: _lotto_from_source(x) in lotti)
+    if "CONCOMITANZA ENRI" in df.columns and not _is_sertori(sess["nome"]):
+        mask = mask & ~(df["CONCOMITANZA ENRI"].astype(str).str.strip().str.upper() == "SI")
     sub = df[mask]
     pratiche = sub.fillna("").to_dict(orient="records")
     return {"pratiche": pratiche, "lotti": sorted(lotti), "total": len(pratiche)}
@@ -1508,19 +1521,26 @@ async def impresa_master_sed(sess: dict = Depends(_require_session)):
     """GeoJSON (QTS.geojson + SED_QTS.geojson) filtrati ai SOLI lotti
     assegnati all'impresa (nome dal token firmato). Le pagine Area Impresa usano
     questo endpoint invece di scaricare i file interi con i lotti di tutti i
-    concorrenti. Stesso pattern di scoping di /api/imprese/pratiche."""
+    concorrenti. Stesso pattern di scoping di /api/imprese/pratiche. Esclude
+    anche le tratte con CONCOMITANZA_ENRI=SI per chi non è Sertori (stesso
+    criterio di impresa_pratiche)."""
     doc = await _find_assignment(sess["nome"])
     if not doc or not doc.get("active", True):
         raise HTTPException(404, "Impresa non autorizzata")
     lotti = {_lotto_from_source(l) for l in doc.get("lotti", []) if str(l).strip()}
+    escludi_concomitanza = not _is_sertori(sess["nome"])
 
     def _scope(geo: "dict | None") -> dict:
         if not geo or not isinstance(geo.get("features"), list):
             return {"type": "FeatureCollection", "features": []}
-        feats = [
-            f for f in geo["features"]
-            if str((f.get("properties") or {}).get("LOTTO", "")).strip().upper() in lotti
-        ]
+        def _keep(f):
+            props = f.get("properties") or {}
+            if str(props.get("LOTTO", "")).strip().upper() not in lotti:
+                return False
+            if escludi_concomitanza and str(props.get("CONCOMITANZA_ENRI", "")).strip().upper() == "SI":
+                return False
+            return True
+        feats = [f for f in geo["features"] if _keep(f)]
         out = {k: v for k, v in geo.items() if k != "features"}
         out.setdefault("type", "FeatureCollection")
         out["features"] = feats
@@ -3149,7 +3169,9 @@ async def _push_solleciti_to_github() -> None:
 
 @app.get("/api/imprese/solleciti")
 async def get_solleciti(sess: dict = Depends(_require_session)):
-    """Restituisce i solleciti dell'impresa autenticata, filtrati per le tratte dei suoi lotti."""
+    """Restituisce i solleciti dell'impresa autenticata, filtrati per le tratte dei suoi lotti.
+    Le tratte con CONCOMITANZA ENRI=SI sono escluse per chi non è Sertori
+    (stesso criterio di impresa_pratiche/get_cantieri_impresa)."""
     nome = sess["nome"]
     # Recupera i lotti assegnati
     assignment = await _find_assignment(nome)
@@ -3164,6 +3186,8 @@ async def get_solleciti(sess: dict = Depends(_require_session)):
         tratte_impresa: set[str] = set()
         if "Source.Name" in df.columns and lotti:
             mask = df["Source.Name"].apply(lambda x: _lotto_from_source(x) in lotti)
+            if "CONCOMITANZA ENRI" in df.columns and not _is_sertori(nome):
+                mask = mask & ~(df["CONCOMITANZA ENRI"].astype(str).str.strip().str.upper() == "SI")
             tratte_impresa.update(df.loc[mask, "TRATTA_ID"].astype(str).str.strip().tolist())
     except Exception:
         tratte_impresa = set()
