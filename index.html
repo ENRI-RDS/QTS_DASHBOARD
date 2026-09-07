@@ -589,6 +589,27 @@ window.loadXLSX = (function(){
   .app-sidebar a.active { background:#fff; color: var(--retelit-blue); }
   .app-sidebar a.active:hover { background:#fff; color: var(--retelit-blue); }
 
+  /* Prev. Rilascio — badge compatto in fondo alla sidebar (solo index.html) */
+  #prevRilascioSidebar {
+    margin-top: auto; display:none; flex-direction:column; align-items:center;
+    gap:5px; padding-top:12px; width:100%;
+    border-top: 1px solid rgba(255,255,255,.16);
+  }
+  #prevRilascioSidebar .prs-label {
+    font-size:13px; line-height:1; margin-bottom:2px; opacity:.85;
+  }
+  #prevRilascioSidebar .prs-cell {
+    width:42px; height:30px; border-radius:9px; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    font-family:'Raleway',sans-serif; transition: transform 0.15s, filter 0.15s;
+  }
+  #prevRilascioSidebar .prs-cell:hover { filter:brightness(1.15); transform:scale(1.05); }
+  #prevRilascioSidebar .prs-cell .prs-val { font-size:13px; font-weight:800; line-height:1; }
+  #prevRilascioSidebar .prs-cell .prs-ico { font-size:8px; line-height:1; margin-top:2px; }
+  #prevOkCellSide   { background:#1E9E6A26; color:#7BE0B4; }
+  #prevWarnCellSide { background:#D08A1A26; color:#F0C878; }
+  #prevLateCellSide { background:#C0392B26; color:#F0A090; }
+
   /* ── RESPONSIVE 768px ── */
   @media (max-width:768px) {
     .app-sidebar { display:none; }
@@ -643,27 +664,6 @@ window.loadXLSX = (function(){
     /* Tabella — scroll orizzontale su mobile */
     #tabellaContainer { overflow-x: auto; -webkit-overflow-scrolling: touch; }
     #tabellaContainer table { min-width: 700px; }
-
-    /* Previsioni Rilascio: layout mobile */
-    #prevRilascioCol {
-      display: flex !important;
-      flex-direction: row !important;
-      justify-content: space-around !important;
-      align-items: stretch !important;
-      border-left: none !important;
-      border-top: 2px solid var(--border2) !important;
-      margin-left: 0 !important;
-      padding-left: 0 !important;
-      padding-top: 14px !important;
-      margin-top: 10px !important;
-      min-width: unset !important;
-      width: 100% !important;
-      gap: 8px !important;
-    }
-    #prevRilascioCol > div {
-      flex: 1 !important;
-      min-width: 0 !important;
-    }
 
     /* Modali — full width con safe area */
     .modal {
@@ -1040,6 +1040,23 @@ window.loadXLSX = (function(){
   <a id="navAdmin" href="admin.html" title="Impostazioni — Admin">
     <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
   </a>
+
+  <!-- Prev. Rilascio — badge compatto in fondo alla sidebar -->
+  <div id="prevRilascioSidebar" title="Prev. Rilascio">
+    <div class="prs-label">📅</div>
+    <div id="prevOkCellSide" class="prs-cell" onclick="openModalPrev('ok')" title="In linea">
+      <div id="prevOkVal" class="prs-val">0</div>
+      <div class="prs-ico">✓</div>
+    </div>
+    <div id="prevWarnCellSide" class="prs-cell" onclick="openModalPrev('warn')" title="In scadenza">
+      <div id="prevWarnVal" class="prs-val">0</div>
+      <div class="prs-ico">⚠</div>
+    </div>
+    <div id="prevLateCellSide" class="prs-cell" onclick="openModalPrev('late')" title="Scadute">
+      <div id="prevLateVal" class="prs-val">0</div>
+      <div class="prs-ico">✕</div>
+    </div>
+  </div>
 </nav>
 <script>
 (() => {
@@ -1146,28 +1163,6 @@ window.loadXLSX = (function(){
       </div>
     </div>
 
-  </div>
-  <!-- Prev. Rilascio (indicatori pratiche inviate: in linea / in scadenza / scadute) -->
-  <div id="prevRilascioSection">
-    <div class="card">
-      <div class="card-body">
-        <div id="prevRilascioCol" style="display:none;flex-direction:row;flex-wrap:wrap;gap:12px;justify-content:center;align-items:center">
-          <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;color:var(--text2);margin-right:4px;text-align:center;padding:4px 8px;background:var(--surface2);border-radius:6px;border:1px solid var(--border2)">📅 Prev. Rilascio</div>
-          <div id="prevOkCell" onclick="openModalPrev('ok')" style="cursor:pointer;background:#1E9E6A18;border:1.5px solid #1E9E6A66;border-radius:8px;padding:8px 14px;text-align:center;transition:background 0.15s" onmouseover="this.style.background='#1E9E6A30'" onmouseout="this.style.background='#1E9E6A18'">
-            <div id="prevOkVal" style="font-size:24px;font-weight:800;font-family:'Raleway',sans-serif;color:#1E9E6A;line-height:1;letter-spacing:-0.02em">0</div>
-            <div style="font-size:9px;color:#1E9E6A;font-weight:600;margin-top:3px">✓ In linea</div>
-          </div>
-          <div id="prevWarnCell" onclick="openModalPrev('warn')" style="cursor:pointer;background:#D08A1A18;border:1.5px solid #D08A1A66;border-radius:8px;padding:8px 14px;text-align:center;transition:background 0.15s" onmouseover="this.style.background='#D08A1A30'" onmouseout="this.style.background='#D08A1A18'">
-            <div id="prevWarnVal" style="font-size:24px;font-weight:800;font-family:'Raleway',sans-serif;color:#D08A1A;line-height:1;letter-spacing:-0.02em">0</div>
-            <div style="font-size:9px;color:#D08A1A;font-weight:600;margin-top:3px">⚠ In scadenza</div>
-          </div>
-          <div id="prevLateCell" onclick="openModalPrev('late')" style="cursor:pointer;background:#C0392B18;border:1.5px solid #C0392B66;border-radius:8px;padding:8px 14px;text-align:center;transition:background 0.15s" onmouseover="this.style.background='#C0392B30'" onmouseout="this.style.background='#C0392B18'">
-            <div id="prevLateVal" style="font-size:24px;font-weight:800;font-family:'Raleway',sans-serif;color:#C0392B;line-height:1;letter-spacing:-0.02em">0</div>
-            <div style="font-size:9px;color:#C0392B;font-weight:600;margin-top:3px">✕ Scadute</div>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
   <div class="grid-main">
     <div class="card">
@@ -4322,7 +4317,7 @@ function updatePrevRilascio() {
   window._prevWarnPrats = warnPrats;
   window._prevLatePrats = latePrats;
 
-  const col = document.getElementById('prevRilascioCol');
+  const col = document.getElementById('prevRilascioSidebar');
   if (!col) return;
   if (okPrats.length + warnPrats.length + latePrats.length === 0) {
     col.style.display = 'none'; return;
