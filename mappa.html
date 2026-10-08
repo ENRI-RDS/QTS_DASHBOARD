@@ -1427,15 +1427,13 @@ function makePopupHtml(p, gmapsUrl) {
     ? `<div class="popup-detail-row"><span class="dl">Motivo</span><span class="dv" style="color:#c0392b">${p.MOTIVO_NO}</span></div>` : '';
   const noHtml = p.STATO_NULLAOSTA && p.STATO_NULLAOSTA !== 'NON NECESSARIO'
     ? `<div class="popup-detail-row"><span class="dl">Nulla Osta</span><span class="dv" style="color:${getColor(p.STATO_NULLAOSTA)}">${p.STATO_NULLAOSTA}</span></div>` : '';
-  const ordHtml = p.STATO_ORDINANZA && p.STATO_ORDINANZA !== 'IN ATTESA'
-    ? `<div class="popup-detail-row"><span class="dl">Ordinanza</span><span class="dv" style="color:${getColor(p.STATO_ORDINANZA)}">${p.STATO_ORDINANZA}</span></div>` : '';
   const enriHtml = p.CONCOMITANZA_ENRI === 'SI'
     ? `<div class="popup-detail-row"><span class="dl">Concomitanza ENRI</span><span class="dv" style="color:var(--retelit-teal);font-weight:700">SI</span></div>` : '';
   // Pratiche in concomitanza ENRI sono gestite da Sertori (non dall'impresa del lotto)
   const impresaTratta = p.CONCOMITANZA_ENRI === 'SI' ? 'Sertori' : (IMPRESE_PER_LOTTO[p.LOTTO] || IMPRESE[p.LOTTO] || '—');
 
   const enti = [p.ENTE, p['ENTE 2']].filter(Boolean).join(', ') || '—';
-  const hasDetail = motivoHtml || noHtml || ordHtml || enriHtml;
+  const hasDetail = motivoHtml || noHtml || enriHtml;
 
   // Cantiere collegato a questa tratta — sola lettura, nessuna azione
   const cantiere = (typeof RO_CANTIERI !== 'undefined')
@@ -1566,7 +1564,7 @@ function makePopupHtml(p, gmapsUrl) {
         </div>
         ${hasDetail ? `<div class="popup-section">
           <div class="popup-section-title">Dettaglio stato</div>
-          ${motivoHtml}${noHtml}${ordHtml}${enriHtml}
+          ${motivoHtml}${noHtml}${enriHtml}
         </div>` : ''}
         ${cantiereHtml}
       </div>
@@ -2450,6 +2448,12 @@ async function _roLoadCantieri(){
 
     _buildMapLayers(geojson);
 
+    // Deep-link da index.html: mappa.html?pratica=AUT/1/A evidenzia e inquadra la pratica
+    try {
+      const _pp = new URLSearchParams(location.search).get('pratica');
+      if (_pp) selectPraticaCompleta(_pp.trim());
+    } catch(_e) { console.warn('Deep-link pratica:', _e); }
+
   } catch(e){
     document.getElementById('loadingOverlay').innerHTML=`
       <div style="color:#C0392B;font-size:14px">Errore</div>
@@ -2862,7 +2866,7 @@ window.addEventListener('load', () => {
 
     <div class="help-section">
       <h4>📍 Popup Dettaglio Tratta</h4>
-      <p>Clicca su qualsiasi tratta per aprire il pannello di dettaglio. Trovi: comune, tipologia, lunghezza, ente destinatario (fino a due enti), stato autorizzativo con badge colorato, stato lavorabilità e motivo di eventuale blocco, nulla osta e ordinanza se presenti, codici pratica associati. La colonna destra mostra l'avanzamento del lotto con due barre grafiche (permessi ottenuti e pratiche inviate+) e il contributo della tratta sul totale del lotto. Un link apre la posizione direttamente in Google Maps.</p>
+      <p>Clicca su qualsiasi tratta per aprire il pannello di dettaglio. Trovi: comune, tipologia, lunghezza, ente destinatario (fino a due enti), stato autorizzativo con badge colorato, stato lavorabilità e motivo di eventuale blocco, nulla osta se presente, codici pratica associati. La colonna destra mostra l'avanzamento del lotto con due barre grafiche (permessi ottenuti e pratiche inviate+) e il contributo della tratta sul totale del lotto. Un link apre la posizione direttamente in Google Maps.</p>
     </div>
 
     <div class="help-section">
