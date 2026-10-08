@@ -854,6 +854,9 @@ window.loadXLSX = (function(){
   td.tbl-codice-click .tbl-codice-wrap { display:inline-flex; align-items:center; gap:5px; padding:2px 4px; border-radius:5px; transition:background .12s; white-space:nowrap; }
   td.tbl-codice-click:hover .tbl-codice-wrap { background:var(--surface2); }
   td.tbl-codice-click .tbl-codice { border-bottom:1px dashed var(--accent); }
+  .pratica-map-btn { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; margin-left:4px; border-radius:4px; cursor:pointer; color:var(--accent); opacity:.6; vertical-align:middle; flex:0 0 auto; }
+  .pratica-map-btn svg { width:12px; height:12px; }
+  .pratica-map-btn:hover { opacity:1; background:var(--surface2); }
   .tbl-note-icon { width:12px; height:12px; flex:0 0 auto; color:var(--muted); opacity:.55; }
   .tbl-note-icon.has-note { color:var(--accent); opacity:1; }
   td.tbl-codice-click:hover .tbl-note-icon { opacity:1; }
@@ -4079,7 +4082,7 @@ function _kpiApplyFilter() {
     const upd   = p.dataUpdate ? fmtDateIT(p.dataUpdate) : '';
     const badge = _showPrev ? prevBadgeHtml(p) : '';
     return `<tr style="border-bottom:1px solid #DFE4EB" onmouseover="this.style.background='#EEF1F5'" onmouseout="this.style.background=''">
-      <td style="padding:6px 10px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;white-space:nowrap;color:var(--text);border-left:3px solid ${col}">${p.codice}</td>
+      <td style="padding:6px 10px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;white-space:nowrap;color:var(--text);border-left:3px solid ${col}">${p.codice}<span class="pratica-map-btn" data-map-cod="${p.codice}" title="Apri in mappa" role="link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span></td>
       <td style="padding:6px 10px;font-size:9px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.ente || '—'}</td>
       <td style="padding:6px 10px;font-size:9px;font-weight:700;color:${col};white-space:nowrap">${p.stato}</td>
       <td style="padding:6px 10px;font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--text2);white-space:nowrap;text-align:center">${invio}</td>
@@ -4287,7 +4290,7 @@ function _prevApplyFilter() {
         const prevTxt = r ? (r.status==='ok'?r.label:r.status==='warn'?`Scade in ${r.diff}gg`:`Scad. ${Math.abs(r.diff)}gg fa`) : '—';
         const prevCol = r ? prevColors[r.status] : 'var(--muted)';
         return `<tr style="border-bottom:1px solid #DFE4EB" onmouseover="this.style.background='#EEF1F5'" onmouseout="this.style.background=''">
-          <td style="padding:6px 10px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;white-space:nowrap;color:var(--text);border-left:3px solid ${col}">${p.codice}</td>
+          <td style="padding:6px 10px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;white-space:nowrap;color:var(--text);border-left:3px solid ${col}">${p.codice}<span class="pratica-map-btn" data-map-cod="${p.codice}" title="Apri in mappa" role="link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span></td>
           <td style="padding:6px 10px;font-size:9px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.ente||'—'}</td>
           <td style="padding:6px 10px;font-size:9px;font-weight:700;color:${col};white-space:nowrap">${p.stato}</td>
           <td style="padding:6px 10px;font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--text2);white-space:nowrap;text-align:center">${invio}</td>
@@ -4866,7 +4869,7 @@ function _colLottoRefresh() {
       <td class="tbl-codice-click" data-cod="${p.codice}" style="padding:6px 10px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;white-space:nowrap;color:var(--text);border-left:3px solid ${col};cursor:pointer" title="${hasNote ? 'Vedi note pratica' : 'Nessuna nota — clicca per vedere'}">
         <span class="tbl-codice-wrap">
           <span class="tbl-codice" style="color:var(--text)">${p.codice}</span>
-          <svg class="tbl-note-icon${hasNote ? ' has-note' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <svg class="tbl-note-icon${hasNote ? ' has-note' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="pratica-map-btn" data-map-cod="${p.codice}" title="Apri in mappa" role="link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
         </span>
       </td>
       <td style="padding:6px 10px;font-size:9px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.ente||'—'}</td>
@@ -4909,6 +4912,15 @@ function _colLottoRefresh() {
       </tbody>
     </table>`;
 }
+
+// ── APRI PRATICA IN MAPPA ─────────────────────────────────────────────────────
+// Capture-phase: intercetta il click prima dei listener delle celle codice (popover note).
+document.addEventListener('click', function(e) {
+  const b = e.target.closest('.pratica-map-btn[data-map-cod]');
+  if (!b) return;
+  e.stopPropagation(); e.preventDefault();
+  window.location.href = 'mappa.html?pratica=' + encodeURIComponent(b.dataset.mapCod);
+}, true);
 
 // ── CERCA PRATICA ─────────────────────────────────────────────────────────────
 function openCercaPratica() {
@@ -5084,7 +5096,7 @@ function buildCercaCard(p, query) {
     <!-- HEADER: codice + metri -->
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">
       <div style="display:flex;flex-direction:column;gap:4px">
-        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--accent)">${p.codice}</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--accent)">${p.codice}</span><span class="pratica-map-btn" data-map-cod="${p.codice}" title="Apri in mappa" role="link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
         <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
           <span style="font-size:9px;font-weight:700;color:${col};background:${col}18;border:1px solid ${col}44;border-radius:4px;padding:1px 8px;white-space:nowrap">${p.stato}</span>
           ${p.lotto ? `<span style="font-size:9px;color:var(--muted2);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 7px">Lotto ${p.lotto}</span>` : ''}
@@ -5637,10 +5649,10 @@ _hookScadenze();
       if (notes.length) {
         rows = notes.map(n => {
           const m = /^\[(RETELIT|IMPRESA)\]\s*/.exec(n.note || '');
-          const author = m ? (m[1] === 'RETELIT' ? 'Retelit' : 'Impresa') : '';
-          const authorBg = m && m[1] === 'RETELIT' ? 'var(--retelit-blue)' : 'var(--retelit-teal)';
+          const author = m ? (m[1] === 'RETELIT' ? 'Retelit' : 'Impresa') : 'Dato progetto';
+          const authorBg = m ? (m[1] === 'RETELIT' ? 'var(--retelit-blue)' : 'var(--retelit-teal)') : 'var(--muted2)';
           const note = (n.note||'').slice(m ? m[0].length : 0).replace(/</g,'&lt;').replace(/>/g,'&gt;');
-          const chip = author ? '<span style="display:inline-block;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;margin-right:6px;background:' + authorBg + ';color:#fff">' + author + '</span>' : '';
+          const chip = '<span style="display:inline-block;padding:1px 6px;border-radius:4px;font-size:9px;font-weight:700;margin-right:6px;background:' + authorBg + ';color:#fff">' + author + '</span>';
           return '<tr>'
             + '<td style="padding:4px 8px;font-size:10.5px;white-space:nowrap;color:var(--muted)">' + (n.date ? fmtDateIT(n.date) : '—') + '</td>'
             + '<td style="padding:4px 8px;font-size:10.5px;color:var(--text2)">' + chip + note + '</td>'
@@ -5821,7 +5833,7 @@ _hookScadenze();
         <td class="tbl-td tbl-codice-click" data-cod="${r.codice}" style="cursor:pointer" title="${hasNote ? 'Vedi note pratica' : 'Nessuna nota — clicca per aggiungere/vedere'}">
           <span class="tbl-codice-wrap">
             <span class="tbl-codice">${r.codice}</span>
-            <svg class="tbl-note-icon${hasNote ? ' has-note' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <svg class="tbl-note-icon${hasNote ? ' has-note' : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="pratica-map-btn" data-map-cod="${r.codice}" title="Apri in mappa" role="link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
           </span>
         </td>
         <td class="tbl-td">${lottoChip}</td>
