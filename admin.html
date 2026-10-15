@@ -1122,12 +1122,20 @@
     (s.changes || []).forEach(c => {
       const code = praticaCodeFromChange(c, s.type === 'new') || (c.tratta_id || c.TRATTA_ID || '—');
       if (!gruppiByCode.has(code)) {
-        const g = { code, first: c, tratte: [] };
+        const g = { code, first: c, tratte: [], lungTot: 0 };
         gruppiByCode.set(code, g);
         gruppiPratica.push(g);
       }
       const t = c.tratta_id || c.TRATTA_ID || '';
-      if (t) gruppiByCode.get(code).tratte.push(t);
+      const gr = gruppiByCode.get(code);
+      // fix: la lunghezza va sommata su TUTTE le tratte del gruppo (una volta per
+      // tratta), non letta dalla sola prima riga (mostrava la lunghezza di 1 tratta).
+      if (t && !gr.tratte.includes(t)) {
+        const lr = c.lunghezza || c.LUNGHEZZA || '';
+        const ln = String(lr).includes(',') ? parseFloat(String(lr).replace(/\./g,'').replace(',','.')) : parseFloat(lr);
+        if (!isNaN(ln)) gr.lungTot += ln;
+      }
+      if (t) gr.tratte.push(t);
     });
     const changesHtml = gruppiPratica.map(gruppo => {
       const c = gruppo.first;
@@ -1171,7 +1179,7 @@
       }
 
       // Dati dal change (locali) + dati arricchiti dal backend (_stato_attuale ecc.)
-      const lunghezza    = c.lunghezza || c.LUNGHEZZA || '';
+      const lunghezza    = gruppo.lungTot > 0 ? gruppo.lungTot.toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2}) : (c.lunghezza || c.LUNGHEZZA || '');
       const lotto        = c._lotto || '';
       const statoAttuale = c._stato_attuale || '';
       const drAttuale    = c._data_richiesta || '';
@@ -1219,7 +1227,7 @@
               ${dumAttuale ? `<div class="detail-field"><span class="detail-field-key">Ultima modifica</span><span class="detail-field-val">${escapeHtml(dumAttuale)}</span></div>` : ''}
               ${daAttuale ? `<div class="detail-field"><span class="detail-field-key">Data approvazione</span><span class="detail-field-val">${escapeHtml(daAttuale)}</span></div>` : ''}
               ${noAttuale ? `<div class="detail-field"><span class="detail-field-key">Nulla Osta necessario</span><span class="detail-field-val" style="color:${noAttuale==='SI'?'var(--err)':'var(--gray-700)'};font-weight:${noAttuale==='SI'?'700':'400'}">${escapeHtml(noAttuale)}</span></div>` : ''}
-              ${lunghezza && lunghezza !== '—' ? `<div class="detail-field"><span class="detail-field-key">Lunghezza</span><span class="detail-field-val">${escapeHtml(String(lunghezza))} m</span></div>` : ''}
+              ${lunghezza && lunghezza !== '—' ? `<div class="detail-field"><span class="detail-field-key">Lunghezza${tratte.length>1?' totale':''}</span><span class="detail-field-val">${escapeHtml(String(lunghezza))} m</span></div>` : ''}
               ${!statoAttuale ? '<span style="color:var(--muted);font-size:11px">Dati non trovati nel CSV</span>' : ''}
             </div>
             <div class="detail-col-box" style="border-color:var(--retelit-mist);background:var(--bg-3)">
