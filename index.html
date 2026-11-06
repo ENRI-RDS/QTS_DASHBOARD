@@ -1144,6 +1144,7 @@ window.loadXLSX = (function(){
       <div class="phase-header">
         <span class="phase-header-icon">📐</span>
         Design &amp; Permitting Submission
+        <span id="phasePctSubmission" style="margin-left:auto;font-family:'Raleway',sans-serif;font-size:15px;font-weight:700;letter-spacing:-0.01em;color:#043F75;text-transform:none">—</span>
       </div>
       <div class="kpi-row">
         <div class="kpi attesa" role="button" tabindex="0" aria-label="KPI In Attesa / Redazione" onclick="openModalKpi('attesa')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openModalKpi('attesa')}"><span class="kpi-owner impresa">Impresa</span><div class="kpi-label">In Attesa / Redazione</div><div class="kpi-value" id="kpi-attesa">—</div><div class="kpi-sub" id="kpisub-attesa">—</div></div>
@@ -1157,6 +1158,7 @@ window.loadXLSX = (function(){
       <div class="phase-header">
         <span class="phase-header-icon">✅</span>
         Permitting Approval
+        <span id="phasePctApproval" style="margin-left:auto;font-family:'Raleway',sans-serif;font-size:15px;font-weight:700;letter-spacing:-0.01em;color:#1E9E6A;text-transform:none">—</span>
       </div>
       <div class="kpi-row">
         <div class="kpi inviato" role="button" tabindex="0" aria-label="KPI Inviato / Protocollato" onclick="openModalKpi('inviato')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openModalKpi('inviato')}"><span class="kpi-owner ente">Ente</span><div class="kpi-label">Inviato / Protocollato</div><div class="kpi-value" id="kpi-inviato">—</div><div class="kpi-sub" id="kpisub-inviato">—</div></div>
@@ -1220,8 +1222,6 @@ window.loadXLSX = (function(){
         <div style="flex:1"></div>
         <span style="font-size:9px;color:var(--muted2);font-style:italic" id="flussoDataRef"></span>
       </div>
-      <!-- ── FASI DI PROGETTO (% metri, calcolata) ── -->
-      <div id="fasiProgetto" style="display:flex;align-items:stretch;gap:24px;padding:12px 20px 14px;border-top:1px solid var(--border);background:var(--surface)"></div>
     </div>
     <div class="side">
       <div id="lottiTable" style="display:none"></div>
@@ -3440,45 +3440,25 @@ function renderFlussoMese() {
   }
 }
 
-// Fasi di progetto (% sui metri delle tratte, NO COMPETENZA già esclusa).
-//  Design & Permit submission (fase unica): ogni tratta vale W_DESIGN quando la pratica
-//    è uscita da IN ATTESA/IN REDAZIONE (design fatto) e 100% quando è INVIATO o oltre
-//    (INVIATO, PROTOCOLLATO, NECESSARIA/IN REDAZIONE/PROTOCOLLATO INTEGRAZIONE, OTTENUTO).
-//    Con W_DESIGN=0.5 equivale alla media di "design completato" e "submission".
-//  Permitting approval = metri OTTENUTO.
+// Fasi di progetto: % calcolata sui metri (NO COMPETENZA già esclusa), mostrata nell'header di ogni fase.
+//  Design & Permitting Submission (fase unica): ogni tratta vale W_DESIGN quando la pratica è
+//    uscita da IN ATTESA/IN REDAZIONE e 100% quando è INVIATO o oltre (= media di design e submission
+//    con W_DESIGN=0.5).
+//  Permitting Approval = metri OTTENUTO.
 const W_DESIGN = 0.5;
 function renderFasiProgetto(lotti, lottiMap, lottiTotale, globalStati, grandTotal) {
-  const el = document.getElementById('fasiProgetto');
-  if (!el) return;
   const INATTIVI = ['IN ATTESA','IN REDAZIONE'];
   const INVIATE  = ['INVIATO','PROTOCOLLATO','NECESSARIA INTEGRAZIONE','IN REDAZIONE INTEGRAZIONE','PROTOCOLLATO INTEGRAZIONE','OTTENUTO'];
   const sumIn = (m, list) => list.reduce((s,st)=>s+(m[st]||0),0);
-  const mDesign = (m,t) => t - sumIn(m,INATTIVI);
-  const mInviati = (m) => sumIn(m,INVIATE);
-  const FASI = [
-    { label:'Design & Permit submission', color:'#043F75',
-      calc:(m,t)=> W_DESIGN*mDesign(m,t) + (1-W_DESIGN)*mInviati(m),
-      sub:(m,t)=> 'design '+(t>0?(mDesign(m,t)/t*100).toFixed(1):'0.0')+'% · inviato '+(t>0?(mInviati(m)/t*100).toFixed(1):'0.0')+'%' },
-    { label:'Permitting approval', color:'#1E9E6A',
-      calc:(m,t)=>(m['OTTENUTO']||0),
-      sub:(m,t)=> fmt(m['OTTENUTO']||0)+' / '+fmt(t)+' m' }
-  ];
-  el.innerHTML = FASI.map(f => {
-    const done = f.calc(globalStati, grandTotal);
-    const pct = grandTotal > 0 ? done/grandTotal*100 : 0;
-    const det = lotti.map(l => {
-      const t = lottiTotale[l], d = f.calc(lottiMap[l], t);
-      return l+': '+(t>0 ? (d/t*100).toFixed(1) : '0.0')+'%';
-    }).join(' · ');
-    return '<div style="flex:1;min-width:0" title="'+det+'">'
-      + '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">'
-      +   '<span style="font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted2)">'+f.label+'</span>'
-      +   '<span style="font-size:16px;font-weight:700;font-family:\'Raleway\',sans-serif;color:'+f.color+';line-height:1">'+pct.toFixed(1)+'%</span>'
-      + '</div>'
-      + '<div style="height:6px;border-radius:3px;background:var(--border);overflow:hidden"><div style="width:'+pct.toFixed(1)+'%;height:100%;background:'+f.color+'"></div></div>'
-      + '<div style="font-size:9px;color:var(--muted2);margin-top:4px">'+f.sub(globalStati, grandTotal)+'</div>'
-      + '</div>';
-  }).join('');
+  const pct = (n,t) => t>0 ? n/t*100 : 0;
+  const fmtP = v => v.toFixed(1)+'%';
+  const subm = (m,t) => W_DESIGN*(t-sumIn(m,INATTIVI)) + (1-W_DESIGN)*sumIn(m,INVIATE);
+  const appr = (m)   => (m['OTTENUTO']||0);
+  const perLotto = fn => lotti.map(l => l+': '+fmtP(pct(fn(lottiMap[l],lottiTotale[l]),lottiTotale[l]))).join(' · ');
+  const set = (id, v, tip) => { const e=document.getElementById(id); if(e){ e.textContent=fmtP(v); e.title=tip; } };
+  set('phasePctSubmission', pct(subm(globalStati,grandTotal),grandTotal),
+      'Design '+fmtP(pct(grandTotal-sumIn(globalStati,INATTIVI),grandTotal))+' · Inviato '+fmtP(pct(sumIn(globalStati,INVIATE),grandTotal))+'\n'+perLotto(subm));
+  set('phasePctApproval', pct(appr(globalStati),grandTotal), perLotto(appr));
 }
 
 function renderDonut(globalStati, grandTotal) {
