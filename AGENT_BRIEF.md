@@ -109,6 +109,28 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
 
 ## 6. Log revisioni
 
+- **rev.45** — Rimosso ovunque lo stato `INVIO PRELIMINARE` (non previsto in QTS; 0 righe in
+  Master.csv). `index.html`: KPI "Invio Preliminare" (card, CSS, `kpiMap`, modal), legenda,
+  gruppo barre, colori, label, opzioni filtro, SED_STATI/ORDER, testi guida (ora "Sei riquadri");
+  `backend/server.py`: `_STATUS_RANK` e `PRATICA_STATO_VALUES`; `admin.html`, `mappa.html`,
+  `mappa_impresa_caricamento.html`, `imprese.html`, `gantt.html`: legende, colori, label, transizioni
+  (eliminata anche la regola "da IN FIRMA RDS solo per AUT Comune di Milano"). Non toccato:
+  `polizze_convenzioni.html` ('COORDINAMENTO' = stato convenzioni, altro concetto).
+  Allineato in `index.html` (SED_STATI, STATI_INV, ORDER, `STATI_COLORI_MAP`) il nome canonico
+  `PROTOCOLLATO INTEGRAZIONE` (prima i SED usavano `PROTOCOLLATA ...`). Tolleranza legacy: alias
+  colore `PROTOCOLLATA INTEGRAZIONE` in `STATI_COLORI_MAP`, normalizzazione della desinenza sui
+  dati letti da localStorage (`qts_sed_stati_v1`) e in `getSedStatoPrincipale`.
+- **rev.44** — `index.html`: % calcolata per le due fasi di contratto, mostrata come badge
+  a destra negli header dei pannelli "Design & Permitting Submission" e "Permitting Approval"
+  (`#phasePctSubmission`/`#phasePctApproval`, `renderFasiProgetto()` da `renderDashboard`; tooltip
+  con dettaglio e % per lotto). Metri delle tratte, NO COMPETENZA esclusa. **Design & Permit
+  submission** (fase unica) = per tratta `W_DESIGN`(0,5) quando la pratica è oltre IN ATTESA/
+  IN REDAZIONE, 100% quando INVIATO o oltre (INVIATO, PROTOCOLLATO, NECESSARIA/IN REDAZIONE/
+  PROTOCOLLATO INTEGRAZIONE, OTTENUTO) = media di design e submission. **Permitting approval** =
+  metri OTTENUTO. Pesi regolabili con `W_DESIGN`. (Prima versione con striscia sotto "Ultimi 30
+  gg" scartata per resa grafica.)
+  Diagnosi collegata: il grigio "In Attesa/Redazione" residuo nel lotto C era `TR_0043` senza
+  riga IN FIRMA RDS in Master.csv (dato, non bug).
 - **rev.28** — `milestone.html`: rinomina colonne milestone contrattuali
   e fix di due bug segnalati da Andrea.
   - Header tabella "Milestone Imprese": `Invio P.1` → `Submission SED`,
