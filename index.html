@@ -1220,6 +1220,8 @@ window.loadXLSX = (function(){
         <div style="flex:1"></div>
         <span style="font-size:9px;color:var(--muted2);font-style:italic" id="flussoDataRef"></span>
       </div>
+      <!-- ── FASI DI PROGETTO (% metri, calcolata) ── -->
+      <div id="fasiProgetto" style="display:flex;align-items:stretch;gap:24px;padding:12px 20px 14px;border-top:1px solid var(--border);background:var(--surface)"></div>
     </div>
     <div class="side">
       <div id="lottiTable" style="display:none"></div>
@@ -3328,6 +3330,7 @@ function renderDashboard(data) {
   // Badge autorizzati topbar
   const metriOttenuto = globalStati['OTTENUTO'] || 0;
   const pctAutorizzati = grandTotal > 0 ? metriOttenuto / grandTotal * 100 : 0;
+  renderFasiProgetto(lotti, lottiMap, lottiTotale, globalStati, grandTotal);
   document.getElementById('totaleMetri').textContent=fmt(grandTotal)+' m totali';
 
   // Bar chart
@@ -3435,6 +3438,47 @@ function renderFlussoMese() {
     const to   = now.toLocaleDateString('it-IT', {day:'2-digit', month:'short'});
     el_ref.textContent = from + ' – ' + to;
   }
+}
+
+// Fasi di progetto (% sui metri delle tratte, NO COMPETENZA già esclusa).
+//  Design & Permit submission (fase unica): ogni tratta vale W_DESIGN quando la pratica
+//    è uscita da IN ATTESA/IN REDAZIONE (design fatto) e 100% quando è INVIATO o oltre
+//    (INVIATO, PROTOCOLLATO, NECESSARIA/IN REDAZIONE/PROTOCOLLATO INTEGRAZIONE, OTTENUTO).
+//    Con W_DESIGN=0.5 equivale alla media di "design completato" e "submission".
+//  Permitting approval = metri OTTENUTO.
+const W_DESIGN = 0.5;
+function renderFasiProgetto(lotti, lottiMap, lottiTotale, globalStati, grandTotal) {
+  const el = document.getElementById('fasiProgetto');
+  if (!el) return;
+  const INATTIVI = ['IN ATTESA','IN REDAZIONE'];
+  const INVIATE  = ['INVIATO','PROTOCOLLATO','NECESSARIA INTEGRAZIONE','IN REDAZIONE INTEGRAZIONE','PROTOCOLLATO INTEGRAZIONE','OTTENUTO'];
+  const sumIn = (m, list) => list.reduce((s,st)=>s+(m[st]||0),0);
+  const mDesign = (m,t) => t - sumIn(m,INATTIVI);
+  const mInviati = (m) => sumIn(m,INVIATE);
+  const FASI = [
+    { label:'Design & Permit submission', color:'#043F75',
+      calc:(m,t)=> W_DESIGN*mDesign(m,t) + (1-W_DESIGN)*mInviati(m),
+      sub:(m,t)=> 'design '+(t>0?(mDesign(m,t)/t*100).toFixed(1):'0.0')+'% · inviato '+(t>0?(mInviati(m)/t*100).toFixed(1):'0.0')+'%' },
+    { label:'Permitting approval', color:'#1E9E6A',
+      calc:(m,t)=>(m['OTTENUTO']||0),
+      sub:(m,t)=> fmt(m['OTTENUTO']||0)+' / '+fmt(t)+' m' }
+  ];
+  el.innerHTML = FASI.map(f => {
+    const done = f.calc(globalStati, grandTotal);
+    const pct = grandTotal > 0 ? done/grandTotal*100 : 0;
+    const det = lotti.map(l => {
+      const t = lottiTotale[l], d = f.calc(lottiMap[l], t);
+      return l+': '+(t>0 ? (d/t*100).toFixed(1) : '0.0')+'%';
+    }).join(' · ');
+    return '<div style="flex:1;min-width:0" title="'+det+'">'
+      + '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px">'
+      +   '<span style="font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted2)">'+f.label+'</span>'
+      +   '<span style="font-size:16px;font-weight:700;font-family:\'Raleway\',sans-serif;color:'+f.color+';line-height:1">'+pct.toFixed(1)+'%</span>'
+      + '</div>'
+      + '<div style="height:6px;border-radius:3px;background:var(--border);overflow:hidden"><div style="width:'+pct.toFixed(1)+'%;height:100%;background:'+f.color+'"></div></div>'
+      + '<div style="font-size:9px;color:var(--muted2);margin-top:4px">'+f.sub(globalStati, grandTotal)+'</div>'
+      + '</div>';
+  }).join('');
 }
 
 function renderDonut(globalStati, grandTotal) {
