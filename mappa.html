@@ -94,6 +94,10 @@
   .filter-btn:hover{border-color:var(--accent);color:var(--text);}
   .filter-btn.active{background:var(--accent);border-color:var(--accent);color:white;}
   .filter-btn.selected{background:var(--accent);border-color:var(--accent);color:white;opacity:0.85;}
+  .no-btn{font-size:10px;padding:3px 9px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;transition:all 0.15s;font-family:var(--font-body);}
+  .no-btn:hover{border-color:#8E3FD1;color:var(--text);}
+  .no-btn.active{background:#8E3FD1;border-color:#8E3FD1;color:white;}
+  .no-btn .n{opacity:.75;font-family:var(--font-mono);margin-left:3px;}
   .filter-multi-hint{font-size:9px;color:var(--muted);margin-top:4px;display:block;}
   .sidebar-body{flex:1;overflow-y:auto;}
   .sidebar-body::-webkit-scrollbar{width:4px;}
@@ -839,6 +843,12 @@
       </div>
       <div class="sidebar-title">Filtra per lotto</div>
       <div class="filter-row" id="filterRow"></div>
+      <div class="sidebar-title" style="margin-top:10px">Filtra per nulla osta</div>
+      <div class="filter-row" id="noFilterRow">
+        <button class="no-btn active" id="nobtn-tutte"  onclick="setNoFilter('tutte')">Tutte</button>
+        <button class="no-btn"        id="nobtn-con"    onclick="setNoFilter('con')">Con nulla osta<span class="n" id="noCnt-con"></span></button>
+        <button class="no-btn"        id="nobtn-senza"  onclick="setNoFilter('senza')">Senza<span class="n" id="noCnt-senza"></span></button>
+      </div>
     </div>
     <div class="sidebar-body" id="lottoList"></div>
   </div>
@@ -930,6 +940,52 @@ function _outlineStyle(f, hide) {
     : { color:'#8E3FD1', weight:11, opacity:0.9,  dashArray:'1 11', lineCap:'round' };
 }
 
+// ── Filtro Nulla Osta: tutte / con / senza ──
+let _noFilter = 'tutte';
+function _noPass(f) {
+  if (_noFilter === 'tutte') return true;
+  const req = !!_noStato(f && f.properties);
+  return _noFilter === 'con' ? req : !req;
+}
+const _HIDDEN_STYLE = { opacity:0, weight:0 };
+function _updateNoCounts() {
+  let con = 0, senza = 0;
+  (allFeatures || []).forEach(f => { if (_noStato(f.properties)) con++; else senza++; });
+  const a = document.getElementById('noCnt-con'), b = document.getElementById('noCnt-senza');
+  if (a) a.textContent = con; if (b) b.textContent = senza;
+}
+function setNoFilter(mode) {
+  _noFilter = mode;
+  ['tutte','con','senza'].forEach(m => {
+    const b = document.getElementById('nobtn-' + m);
+    if (b) b.classList.toggle('active', m === mode);
+  });
+  clearHighlight();
+  let bounds = null;
+  allLayers.forEach(({layer, outlineLayer}) => {
+    layer.eachLayer(l => {
+      if (!l.feature) return;
+      const ok = _noPass(l.feature);
+      const c = getColorForMode(l.feature, currentViewMode);
+      const show = ok && !(currentViewMode === 'scavi' && c === null);
+      if (show) {
+        l.setStyle({ color: c, weight:4, opacity:0.95 });
+        l.options.interactive = true;
+        if (mode !== 'tutte' && map.hasLayer(layer)) { const lb = l.getBounds(); bounds = bounds ? bounds.extend(lb) : L.latLngBounds(lb.getSouthWest(), lb.getNorthEast()); }
+      } else {
+        l.setStyle(_HIDDEN_STYLE);
+        l.options.interactive = false;
+      }
+    });
+    if (outlineLayer) outlineLayer.eachLayer(ol => {
+      if (!ol.feature) return;
+      const c = getColorForMode(ol.feature, currentViewMode);
+      ol.setStyle(_outlineStyle(ol.feature, !_noPass(ol.feature) || (currentViewMode === 'scavi' && c === null)));
+    });
+  });
+  if (bounds && bounds.isValid()) map.fitBounds(bounds, { padding:[60,60], maxZoom:15 });
+}
+
 function getColorForMode(feature, mode) {
   const p = feature.properties;
   if (mode === 'lotto')   return LOTTO_COLORS[p.LOTTO] || '#6b7080';
@@ -951,7 +1007,7 @@ function setViewMode(mode) {
     layer.eachLayer(l => {
       if (!l.feature) return;
       const c = getColorForMode(l.feature, mode);
-      if (mode === 'scavi' && c === null) {
+      if ((mode === 'scavi' && c === null) || !_noPass(l.feature)) {
         l.setStyle({ opacity:0, weight:0 });
         l.options.interactive = false;
       } else {
@@ -962,7 +1018,7 @@ function setViewMode(mode) {
     if (outlineLayer) {
       outlineLayer.eachLayer(ol => {
         if (!ol.feature) return;
-        const hide = mode === 'scavi' && getColorForMode(ol.feature, mode) === null;
+        const hide = (mode === 'scavi' && getColorForMode(ol.feature, mode) === null) || !_noPass(ol.feature);
         ol.setStyle(_outlineStyle(ol.feature, hide));
       });
     }
@@ -1993,6 +2049,7 @@ let _highlightedLayers = [];
 
 function clearHighlight() {
   _highlightedLayers.forEach(l => {
+    if (!_noPass(l.feature)) { l.setStyle(_HIDDEN_STYLE); return; }
     l.setStyle({
       weight: 4, opacity: 0.95,
       color: getColorForMode(l.feature, currentViewMode)
@@ -2407,12 +2464,12 @@ function _buildMapLayers(geojson, isUpdate = false) {
     const geoData = { type: 'FeatureCollection', features: feats };
     const outlineLayer = L.geoJSON(geoData, {
       renderer: outlineRenderer,
-      style: f => Object.assign(_outlineStyle(f, false), { smoothFactor:1.5, interactive:false })
+      style: f => Object.assign(_outlineStyle(f, !_noPass(f)), { smoothFactor:1.5, interactive:false })
     }).addTo(map);
     outlineLayer.bringToBack();
     const layer = L.geoJSON(geoData, {
       renderer: mainRenderer,
-      style: f => ({ color: getColorForMode(f, currentViewMode), weight:4, opacity:0.95, smoothFactor:1.5 }),
+      style: f => _noPass(f) ? ({ color: getColorForMode(f, currentViewMode), weight:4, opacity:0.95, smoothFactor:1.5 }) : Object.assign({ smoothFactor:1.5 }, _HIDDEN_STYLE),
       onEachFeature: (f, layer) => {
         const coords = f.geometry.type === 'MultiLineString'
           ? f.geometry.coordinates.flat() : f.geometry.coordinates;
@@ -2443,6 +2500,7 @@ function _buildMapLayers(geojson, isUpdate = false) {
         layer.on('mouseover', e => { e.target.setStyle({ weight:6, opacity:1 }); e.target.bringToFront(); });
         layer.on('mouseout', e => {
           if (_highlightedLayers.includes(e.target)) return;
+          if (!_noPass(e.target.feature)) { e.target.setStyle(_HIDDEN_STYLE); return; }
           e.target.setStyle({ weight:4, opacity:0.95, color: getColorForMode(e.target.feature, currentViewMode) });
         });
         layer.on('click', e => {
@@ -2453,6 +2511,8 @@ function _buildMapLayers(geojson, isUpdate = false) {
     }).addTo(map);
     allLayers.push({ layer, outlineLayer, lotto });
   });
+  _updateNoCounts();
+  if (isUpdate && _noFilter !== 'tutte') allLayers.forEach(({layer}) => layer.eachLayer(l => { if (!_noPass(l.feature)) l.options.interactive = false; }));
 
   // Con deep-link ?pratica= niente zoom iniziale su tutto: l'animazione in corso
   // sovrascriveva il fitBounds sulla pratica (focusPraticaFromUrl lo applica subito dopo).
