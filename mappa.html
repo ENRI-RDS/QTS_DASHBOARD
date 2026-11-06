@@ -936,8 +936,8 @@ function _outlineStyle(f, hide) {
   if (hide) return { opacity:0, weight:0 };
   if (!n) return { color:'#8899aa', weight:7, opacity:0.25, dashArray:null, lineCap:'round' };
   return n === 'OTTENUTO'
-    ? { color:'#1E9E6A', weight:11, opacity:0.55, dashArray:'1 11', lineCap:'round' }
-    : { color:'#8E3FD1', weight:11, opacity:0.9,  dashArray:'1 11', lineCap:'round' };
+    ? { color:'#1E9E6A', weight:11, opacity:0.9, dashArray:'1 11', lineCap:'round' }   // verde = nulla osta ottenuto
+    : { color:'#E53935', weight:11, opacity:0.9, dashArray:'1 11', lineCap:'round' };  // rosso = mancante
 }
 
 // ── Filtro Nulla Osta: tutte / con / senza ──
@@ -1136,7 +1136,7 @@ function updateLegend(mode) {
   leg.innerHTML += `
     <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">
       <div class="legend-title">Nulla Osta</div>
-      <div class="legend-item"><div style="width:22px;height:0;border-top:5px dotted #8E3FD1;flex-shrink:0"></div>Richiesto (da ottenere)</div>
+      <div class="legend-item"><div style="width:22px;height:0;border-top:5px dotted #E53935;flex-shrink:0"></div>Mancante</div>
       <div class="legend-item"><div style="width:22px;height:0;border-top:5px dotted #1E9E6A;flex-shrink:0"></div>Ottenuto</div>
     </div>`;
   // ── voci SED (condizionali al toggle) ──
