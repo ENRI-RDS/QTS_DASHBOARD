@@ -916,6 +916,20 @@ function getScaviColorForFeature(feature) {
   return c ? (RO_SC_STATO_COLOR[c.stato_cantiere] || RO_SC_STATO_COLOR.non_avviato) : null;
 }
 
+// Tratte che richiedono Nulla Osta: alone tratteggiato sul contorno (visibile a colpo d'occhio, non solo nel popup)
+function _noStato(p) {
+  const n = (p && p.STATO_NULLAOSTA ? String(p.STATO_NULLAOSTA) : '').trim().toUpperCase();
+  return (!n || n === 'NON NECESSARIO') ? null : n;
+}
+function _outlineStyle(f, hide) {
+  const n = _noStato(f && f.properties);
+  if (hide) return { opacity:0, weight:0 };
+  if (!n) return { color:'#8899aa', weight:7, opacity:0.25, dashArray:null, lineCap:'round' };
+  return n === 'OTTENUTO'
+    ? { color:'#1E9E6A', weight:11, opacity:0.55, dashArray:'1 11', lineCap:'round' }
+    : { color:'#8E3FD1', weight:11, opacity:0.9,  dashArray:'1 11', lineCap:'round' };
+}
+
 function getColorForMode(feature, mode) {
   const p = feature.properties;
   if (mode === 'lotto')   return LOTTO_COLORS[p.LOTTO] || '#6b7080';
@@ -949,7 +963,7 @@ function setViewMode(mode) {
       outlineLayer.eachLayer(ol => {
         if (!ol.feature) return;
         const hide = mode === 'scavi' && getColorForMode(ol.feature, mode) === null;
-        ol.setStyle({ opacity: hide ? 0 : 0.25, weight: hide ? 0 : 7 });
+        ol.setStyle(_outlineStyle(ol.feature, hide));
       });
     }
     if (!map.hasLayer(layer)) map.addLayer(layer);
@@ -1062,6 +1076,13 @@ function updateLegend(mode) {
     ).join('');
     leg.innerHTML = `<div class="legend-title">Lotto</div>${items}`;
   }
+  // ── Nulla Osta (alone tratteggiato sul contorno) ──
+  leg.innerHTML += `
+    <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">
+      <div class="legend-title">Nulla Osta</div>
+      <div class="legend-item"><div style="width:22px;height:0;border-top:5px dotted #8E3FD1;flex-shrink:0"></div>Richiesto (da ottenere)</div>
+      <div class="legend-item"><div style="width:22px;height:0;border-top:5px dotted #1E9E6A;flex-shrink:0"></div>Ottenuto</div>
+    </div>`;
   // ── voci SED (condizionali al toggle) ──
   const sedOn = _sedActive;
   if (sedOn) {
@@ -1579,13 +1600,6 @@ function makePopupHtml(p, gmapsUrl) {
           ${pratiche.length ? `<div class="popup-field full">
             <span class="popup-field-label">Pratiche</span>
             <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:2px">${praticheHtml}</div>
-          </div>` : `<div class="popup-field">
-            <span class="popup-field-label">Tipologia</span>
-            <span class="popup-field-val">${p.TIPOLOGIA||'—'}</span>
-          </div>`}
-          ${pratiche.length ? `<div class="popup-field">
-            <span class="popup-field-label">Tipologia</span>
-            <span class="popup-field-val">${p.TIPOLOGIA||'—'}</span>
           </div>` : ''}
         </div>
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:${hasDetail||cantiereHtml?'10px':'0'}">
@@ -2393,7 +2407,7 @@ function _buildMapLayers(geojson, isUpdate = false) {
     const geoData = { type: 'FeatureCollection', features: feats };
     const outlineLayer = L.geoJSON(geoData, {
       renderer: outlineRenderer,
-      style: () => ({ color:'#8899aa', weight:7, opacity:0.25, smoothFactor:1.5, interactive:false })
+      style: f => Object.assign(_outlineStyle(f, false), { smoothFactor:1.5, interactive:false })
     }).addTo(map);
     outlineLayer.bringToBack();
     const layer = L.geoJSON(geoData, {
@@ -3045,7 +3059,7 @@ window.addEventListener('load', () => {
 
     <div class="help-section">
       <h4>📍 Popup Dettaglio Tratta</h4>
-      <p>Clicca su qualsiasi tratta per aprire il pannello di dettaglio. Trovi: comune, tipologia, lunghezza, ente destinatario (fino a due enti), stato autorizzativo con badge colorato, stato lavorabilità e motivo di eventuale blocco, nulla osta se presente, codici pratica associati. La colonna destra mostra l'avanzamento del lotto con due barre grafiche (permessi ottenuti e pratiche inviate+) e il contributo della tratta sul totale del lotto. Un link apre la posizione direttamente in Google Maps.</p>
+      <p>Clicca su qualsiasi tratta per aprire il pannello di dettaglio. Trovi: comune, lunghezza, ente destinatario (fino a due enti), stato autorizzativo con badge colorato, stato lavorabilità e motivo di eventuale blocco, nulla osta se presente, codici pratica associati. La colonna destra mostra l'avanzamento del lotto con due barre grafiche (permessi ottenuti e pratiche inviate+) e il contributo della tratta sul totale del lotto. Un link apre la posizione direttamente in Google Maps.</p>
     </div>
 
     <div class="help-section">
