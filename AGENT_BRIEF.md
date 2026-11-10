@@ -1208,3 +1208,12 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
   `IMPRESE_PER_LOTTO[p.LOTTO]`. Sostituito il campo Cluster nella griglia
   popup con questo valore, nessun'altra riga toccata. Verificato
   `node --check` su tutti gli script inline di `mappa.html`.
+- **rev.44** — Richiesta Andrea: poter disattivare in mappa i pallini dello
+  stato Nulla Osta. `mappa.html`: nuova var `_noDots` (default `true`),
+  `_outlineStyle` restituisce il contorno neutro grigio quando `_noDots` è
+  false; nuova `toggleNoDots()` (re-stila tutti gli `outlineLayer` rispettando
+  filtro NO/modalità scavi e ricostruisce la legenda); bottone `#noDotsBtn`
+  nella sidebar sotto "Filtra per nulla osta"; blocco legenda "Nulla Osta"
+  mostrato solo se `_noDots`. Il filtro Tutte/Con/Senza resta indipendente.
+  `mappa_impresa_caricamento.html` non toccata (non ha l'alone NO).
+  Verificato `node --check` su tutti gli script inline.
