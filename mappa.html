@@ -97,6 +97,8 @@
   .no-btn{font-size:10px;padding:3px 9px;border-radius:12px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);cursor:pointer;transition:all 0.15s;font-family:var(--font-body);}
   .no-btn:hover{border-color:#8E3FD1;color:var(--text);}
   .no-btn.active{background:#8E3FD1;border-color:#8E3FD1;color:white;}
+  .no-toggle{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--muted);cursor:pointer;margin-top:6px;width:100%;}
+  .no-toggle input{accent-color:#8E3FD1;cursor:pointer;}
   .no-btn .n{opacity:.75;font-family:var(--font-mono);margin-left:3px;}
   .filter-multi-hint{font-size:9px;color:var(--muted);margin-top:4px;display:block;}
   .sidebar-body{flex:1;overflow-y:auto;}
@@ -848,7 +850,7 @@
         <button class="no-btn active" id="nobtn-tutte"  onclick="setNoFilter('tutte')">Tutte</button>
         <button class="no-btn"        id="nobtn-con"    onclick="setNoFilter('con')">Con nulla osta<span class="n" id="noCnt-con"></span></button>
         <button class="no-btn"        id="nobtn-senza"  onclick="setNoFilter('senza')">Senza<span class="n" id="noCnt-senza"></span></button>
-        <button class="no-btn active" id="noDotsBtn" onclick="toggleNoDots()">Pallini NO: attivi</button>
+        <label class="no-toggle"><input type="checkbox" id="noDotsBtn" checked onchange="toggleNoDots()"> Mostra stato nulla osta</label>
       </div>
     </div>
     <div class="sidebar-body" id="lottoList"></div>
@@ -945,7 +947,7 @@ function _outlineStyle(f, hide) {
 function toggleNoDots() {
   _noDots = !_noDots;
   const b = document.getElementById('noDotsBtn');
-  if (b) { b.classList.toggle('active', _noDots); b.textContent = _noDots ? 'Pallini NO: attivi' : 'Pallini NO: nascosti'; }
+  if (b) b.checked = _noDots;
   allLayers.forEach(({outlineLayer}) => {
     if (!outlineLayer) return;
     outlineLayer.eachLayer(ol => {
