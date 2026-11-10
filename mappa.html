@@ -848,6 +848,7 @@
         <button class="no-btn active" id="nobtn-tutte"  onclick="setNoFilter('tutte')">Tutte</button>
         <button class="no-btn"        id="nobtn-con"    onclick="setNoFilter('con')">Con nulla osta<span class="n" id="noCnt-con"></span></button>
         <button class="no-btn"        id="nobtn-senza"  onclick="setNoFilter('senza')">Senza<span class="n" id="noCnt-senza"></span></button>
+        <button class="no-btn active" id="noDotsBtn" onclick="toggleNoDots()">Pallini NO: attivi</button>
       </div>
     </div>
     <div class="sidebar-body" id="lottoList"></div>
@@ -931,13 +932,29 @@ function _noStato(p) {
   const n = (p && p.STATO_NULLAOSTA ? String(p.STATO_NULLAOSTA) : '').trim().toUpperCase();
   return (!n || n === 'NON NECESSARIO') ? null : n;
 }
+let _noDots = true; // toggle pallini nulla osta (alone tratteggiato)
 function _outlineStyle(f, hide) {
   const n = _noStato(f && f.properties);
   if (hide) return { opacity:0, weight:0 };
-  if (!n) return { color:'#8899aa', weight:7, opacity:0.25, dashArray:null, lineCap:'round' };
+  if (!n || !_noDots) return { color:'#8899aa', weight:7, opacity:0.25, dashArray:null, lineCap:'round' };
   return n === 'OTTENUTO'
     ? { color:'#1E9E6A', weight:11, opacity:0.9, dashArray:'1 11', lineCap:'round' }   // verde = nulla osta ottenuto
     : { color:'#E53935', weight:11, opacity:0.9, dashArray:'1 11', lineCap:'round' };  // rosso = mancante
+}
+
+function toggleNoDots() {
+  _noDots = !_noDots;
+  const b = document.getElementById('noDotsBtn');
+  if (b) { b.classList.toggle('active', _noDots); b.textContent = _noDots ? 'Pallini NO: attivi' : 'Pallini NO: nascosti'; }
+  allLayers.forEach(({outlineLayer}) => {
+    if (!outlineLayer) return;
+    outlineLayer.eachLayer(ol => {
+      if (!ol.feature) return;
+      const c = getColorForMode(ol.feature, currentViewMode);
+      ol.setStyle(_outlineStyle(ol.feature, !_noPass(ol.feature) || (currentViewMode === 'scavi' && c === null)));
+    });
+  });
+  updateLegend(currentViewMode);
 }
 
 // ── Filtro Nulla Osta: tutte / con / senza ──
@@ -1133,7 +1150,7 @@ function updateLegend(mode) {
     leg.innerHTML = `<div class="legend-title">Lotto</div>${items}`;
   }
   // ── Nulla Osta (alone tratteggiato sul contorno) ──
-  leg.innerHTML += `
+  if (_noDots) leg.innerHTML += `
     <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">
       <div class="legend-title">Nulla Osta</div>
       <div class="legend-item"><div style="width:22px;height:0;border-top:5px dotted #E53935;flex-shrink:0"></div>Mancante</div>
