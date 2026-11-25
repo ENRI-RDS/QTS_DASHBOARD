@@ -1538,12 +1538,7 @@ window.addEventListener('pageshow', (e) => {
   let SOL_SELECTED = null;
   let SOL_SIBLINGS = [];
 
-  const SOL_STATI_ESCLUSI = new Set([
-    'IN REDAZIONE', 'IN FIRMA RDS',
-    'OTTENUTO',
-    'NECESSARIA INTEGRAZIONE', 'IN REDAZIONE INTEGRAZIONE',
-    'NO COMPETENZA'
-  ]);
+  const SOL_STATI_ESCLUSI = new Set(['OTTENUTO']);
 
   function renderSolPratiche(filter) {
     const tbody = $('solPratBody');
