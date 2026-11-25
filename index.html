@@ -1964,7 +1964,7 @@ function exportXlsx(pratiche, filename) {
 
 function _exportXlsxImpl(pratiche, filename) {
   if (!pratiche || !pratiche.length) { alert('Nessuna pratica da esportare.'); return; }
-  const header = ['Codice', 'Tipo', 'Lotto', 'Stato', 'Ente', 'Comune', 'Data Invio', 'Cambio Stato', 'Update', 'Data Ott.', 'Prev. Rilascio', 'Metri (m)'];
+  const header = ['Codice', 'Tipo', 'Lotto', 'Stato', 'Ente', 'Comune', 'Data Invio', 'Cambio Stato', 'Update', 'Data Ott.', 'Prev. Rilascio', 'Metri (m)', 'Note'];
 
   // Indici colonne data (0-based): 6=Data Invio, 7=Cambio Stato, 8=Update, 9=Data Ott., 10=Prev. Rilascio
   const DATE_COLS = [6, 7, 8, 9, 10];
@@ -1977,6 +1977,17 @@ function _exportXlsxImpl(pratiche, filename) {
     if (p.length === 3) return new Date(+p[2], +p[1]-1, +p[0]);
     const d = new Date(s.trim());
     return isNaN(d) ? '' : d;
+  }
+
+  // Ultima nota = quella con data più recente (a parità di data, l'ultima inserita)
+  function ultimaNota(p) {
+    let best = null, bestD = null;
+    (p.notes || []).forEach(n => {
+      if (!n || !n.note) return;
+      const d = parseDateIT(n.date);
+      if (!best || (d && (!bestD || d >= bestD)) || (!d && !bestD)) { best = n; bestD = d || bestD; }
+    });
+    return best ? best.note : '';
   }
 
   const rows = pratiche.map(p => {
@@ -2002,7 +2013,8 @@ function _exportXlsxImpl(pratiche, filename) {
       toDateObj(p.dataUpdate || ''),// col 8 – Update → Date object
       toDateObj(dataOttStr),        // col 9 – Data Ott. → Date object
       prevDate || '',               // col 10 – Prev. Rilascio → Date object
-      p.metri ? Number(p.metri) : 0 // col 11 – Metri → numero
+      p.metri ? Number(p.metri) : 0, // col 11 – Metri → numero
+      ultimaNota(p)                  // col 12 – Note (ultima nota)
     ];
   });
 
@@ -2019,7 +2031,7 @@ function _exportXlsxImpl(pratiche, filename) {
     });
   }
 
-  ws['!cols'] = [{wch:22},{wch:18},{wch:8},{wch:30},{wch:32},{wch:20},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:12}];
+  ws['!cols'] = [{wch:22},{wch:18},{wch:8},{wch:30},{wch:32},{wch:20},{wch:14},{wch:14},{wch:14},{wch:14},{wch:14},{wch:12},{wch:60}];
   const headerRange = XLSX.utils.decode_range(ws['!ref']);
   for (let c = headerRange.s.c; c <= headerRange.e.c; c++) {
     const cell = ws[XLSX.utils.encode_cell({r:0, c})];
