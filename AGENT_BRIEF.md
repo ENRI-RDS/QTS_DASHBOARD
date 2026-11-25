@@ -109,6 +109,20 @@ Citare la sezione del brand kit pertinente quando informa una scelta di design.
 
 ## 6. Log revisioni
 
+- **rev.46** — Richieste Andrea (3 modifiche mirate):
+  1. `index.html` `exportXlsx()`: nuova colonna finale **Note** (col 12, larghezza 60) con
+     l'ultima nota della pratica (`p.notes`: data più recente, a parità l'ultima inserita; testo
+     grezzo incluso prefisso `[RETELIT]`/`[IMPRESA]`). Vale per tutti i chiamanti (Tutte le pratiche,
+     vista filtrata, lotto, modale KPI). Non toccato l'export Permessi_* di `imprese.html`.
+  2. Transizioni stato: aggiunto `NECESSARIA INTEGRAZIONE → PROTOCOLLATO INTEGRAZIONE` (oltre a
+     IN REDAZIONE INTEGRAZIONE) in `imprese.html` (`STATO_TRANSITIONS`) e
+     `mappa_impresa_caricamento.html` (`PR_STATO_TRANSITIONS`). Il backend non valida le
+     transizioni (`PRATICA_STATO_VALUES` accetta tutti gli stati); admin già libero.
+  3. `imprese.html` tab Solleciti: `SOL_STATI_ESCLUSI` ridotto a `{'OTTENUTO'}` (prima escludeva
+     anche IN REDAZIONE, IN FIRMA RDS, le due INTEGRAZIONE e NO COMPETENZA). Nessun vincolo sullo
+     stato nel backend (`POST /api/imprese/solleciti`).
+  Nota: `mappa_impresa_caricamento.html` contiene ancora 5 residui di `INVIO PRELIMINARE`
+  (colore, label, transizioni, regola Milano) nonostante rev.45 — non toccati.
 - **rev.45** — Rimosso ovunque lo stato `INVIO PRELIMINARE` (non previsto in QTS; 0 righe in
   Master.csv). `index.html`: KPI "Invio Preliminare" (card, CSS, `kpiMap`, modal), legenda,
   gruppo barre, colori, label, opzioni filtro, SED_STATI/ORDER, testi guida (ora "Sei riquadri");
